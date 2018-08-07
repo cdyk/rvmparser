@@ -5,6 +5,7 @@
 #include <string>
 #include <cstdio>
 #include <cctype>
+#include <vector>
 
 #include <cassert>
 
@@ -12,6 +13,19 @@
 
 
 namespace {
+
+  struct Context
+  {
+    RVMVisitor* v;
+
+    // scratch for reading facet groups
+    std::vector<uint32_t> polygons;
+    std::vector<uint32_t> contours;
+    std::vector<float> P;
+    std::vector<float> N;
+
+
+  };
 
   
 
@@ -89,7 +103,7 @@ const char* parse_string(std::string& str, const char* p, const char* e)
 
 
 
-const char* parse_head(RVMVisitor* v, const char* p, const char* e)
+const char* parse_head(Context* ctx, const char* p, const char* e)
 {
   uint32_t version;
   p = read_uint32_be(version, p, e);
@@ -101,22 +115,22 @@ const char* parse_head(RVMVisitor* v, const char* p, const char* e)
   if (2 <= version) {
     p = parse_string(encoding, p, e);
   }
-  v->beginFile(info, note, date, user, encoding);
+  ctx->v->beginFile(info, note, date, user, encoding);
   return p;
 }
 
-const char* parse_modl(RVMVisitor* v, const char* p, const char* e)
+const char* parse_modl(Context* ctx, const char* p, const char* e)
 {
   uint32_t version;
   p = read_uint32_be(version, p, e);
   std::string project, name;
   p = parse_string(project, p, e);
   p = parse_string(name, p, e);
-  v->beginModel(project, name);
+  ctx->v->beginModel(project, name);
   return p;
 }
 
-const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
+const char* parse_prim(Context* ctx, const char* p, const char* e)
 {
   uint32_t version, kind;
   p = read_uint32_be(version, p, e);
@@ -142,7 +156,7 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     p = read_float32_be(height, p, e);
     p = read_float32_be(offset[0], p, e);
     p = read_float32_be(offset[1], p, e);
-    v->pyramid(M, bbox, bottom, top, offset, height);
+    ctx->v->pyramid(M, bbox, bottom, top, offset, height);
     break;
   }
   case 2: {
@@ -150,7 +164,7 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     p = read_float32_be(lengths[0], p, e);
     p = read_float32_be(lengths[1], p, e);
     p = read_float32_be(lengths[2], p, e);
-    v->box(M, bbox, lengths);
+    ctx->v->box(M, bbox, lengths);
     break;
   }
   case 3: {
@@ -159,7 +173,7 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     p = read_float32_be(outer_radius, p, e);
     p = read_float32_be(height, p, e);
     p = read_float32_be(angle, p, e);
-    v->rectangularTorus(M, bbox, inner_radius, outer_radius, height, angle);
+    ctx->v->rectangularTorus(M, bbox, inner_radius, outer_radius, height, angle);
     break;
   }
   case 4: {
@@ -167,21 +181,21 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     p = read_float32_be(offset, p, e);
     p = read_float32_be(radius, p, e);
     p = read_float32_be(angle, p, e);
-    v->circularTorus(M, bbox, offset, radius, angle);
+    ctx->v->circularTorus(M, bbox, offset, radius, angle);
     break;
   }
   case 5: {
     float diameter, radius;
     p = read_float32_be(diameter, p, e);
     p = read_float32_be(radius, p, e);
-    v->ellipticalDish(M, bbox, diameter, radius);
+    ctx->v->ellipticalDish(M, bbox, diameter, radius);
     break;
   }
   case 6: {
     float diameter, height;
     p = read_float32_be(diameter, p, e);
     p = read_float32_be(height, p, e);
-    v->sphericalDish(M, bbox, diameter, height);
+    ctx->v->sphericalDish(M, bbox, diameter, height);
     break;
   }
   case 7: {
@@ -195,20 +209,20 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     p = read_float32_be(bshear[1], p, e);
     p = read_float32_be(tshear[0], p, e);
     p = read_float32_be(tshear[1], p, e);
-    v->snout(M, bbox, offset, bshear, tshear, bottom, top, height);
+    ctx->v->snout(M, bbox, offset, bshear, tshear, bottom, top, height);
     break;
   }
   case 8: {
     float radius, height;
     p = read_float32_be(radius, p, e);
     p = read_float32_be(height, p, e);
-    v->cylinder(M, bbox, radius, height);
+    ctx->v->cylinder(M, bbox, radius, height);
     break;
   }
   case 9: {
     float diameter;
     p = read_float32_be(diameter, p, e);
-    v->sphere(M, bbox, diameter);
+    ctx->v->sphere(M, bbox, diameter);
     break;
   }
   case 10:
@@ -217,7 +231,14 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
     break;
   case 11:
   {
-    fprintf(stderr, "  +- facet group\n");
+    ctx->polygons.clear();
+    ctx->contours.clear();
+    ctx->P.clear();
+    ctx->N.clear();
+
+    ctx->polygons.push_back(0);
+    ctx->contours.push_back(0);
+
     uint32_t pn;
     p = read_uint32_be(pn, p, e);
     for (unsigned pi = 0; pi < pn; pi++) {
@@ -227,13 +248,21 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
         uint32_t vn;
         p = read_uint32_be(vn, p, e);
         for (unsigned vi = 0; vi < vn; vi++) {
-          float ab[6]; // p0 xyz, p1 xyz
-          for (unsigned i = 0; i < 6; i++) {
-            p = read_float32_be(ab[i], p, e);
+          float t;
+          for (unsigned i = 0; i < 3; i++) {
+            p = read_float32_be(t, p, e);
+            ctx->P.push_back(t);
+          }
+          for (unsigned i = 0; i < 3; i++) {
+            p = read_float32_be(t, p, e);
+            ctx->N.push_back(t);
           }
         }
+        ctx->contours.push_back(uint32_t(ctx->P.size() / 3));
       }
+      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
     }
+    ctx->v->facetGroup(M, bbox, ctx->polygons, ctx->contours, ctx->P, ctx->N);
     break;
   }
   default:
@@ -244,7 +273,7 @@ const char* parse_prim(RVMVisitor* v, const char* p, const char* e)
   return p;
 }
 
-const char* parse_cntb(RVMVisitor* v, const char* p, const char* e)
+const char* parse_cntb(Context* ctx, const char* p, const char* e)
 {
   uint32_t version;
   p = read_uint32_be(version, p, e);
@@ -259,7 +288,7 @@ const char* parse_cntb(RVMVisitor* v, const char* p, const char* e)
 
   uint32_t material_id;
   p = read_uint32_be(material_id, p, e);
-  v->beginGroup(name, translation, material_id);
+  ctx->v->beginGroup(name, translation, material_id);
 
 
   // process children
@@ -271,10 +300,10 @@ const char* parse_cntb(RVMVisitor* v, const char* p, const char* e)
   while (p < e && id_chunk_id != id("CNTE")) {
     switch (id_chunk_id) {
     case id("CNTB"):
-      p = parse_cntb(v, p, e);
+      p = parse_cntb(ctx, p, e);
       break;
     case id("PRIM"):
-      p = parse_prim(v, p, e);
+      p = parse_prim(ctx, p, e);
       break;
     default:
       fprintf(stderr, "Unknown chunk id '%s", chunk_id);
@@ -290,7 +319,7 @@ const char* parse_cntb(RVMVisitor* v, const char* p, const char* e)
     p = read_uint32_be(a, p, e);
   }
 
-  v->EndGroup();
+  ctx->v->EndGroup();
   return p;
 }
 
@@ -298,6 +327,8 @@ const char* parse_cntb(RVMVisitor* v, const char* p, const char* e)
 
 void parseRVM(RVMVisitor* v, const void * ptr, size_t size)
 {
+  Context ctx = { v };
+
   auto * p = reinterpret_cast<const char*>(ptr);
   auto * e = p + size;
   uint32_t len, dunno;
@@ -307,13 +338,13 @@ void parseRVM(RVMVisitor* v, const void * ptr, size_t size)
   char chunk_id[5] = { 0, 0, 0, 0, 0 };
   p = parse_chunk_header(chunk_id, len, dunno, p, e);
   assert(id(chunk_id) == id("HEAD"));
-  p = parse_head(v, p, e);
+  p = parse_head(&ctx, p, e);
   assert(p - l == len);
 
   l = p;
   p = parse_chunk_header(chunk_id, len, dunno, p, e);
   assert(id(chunk_id) == id("MODL"));
-  p = parse_modl(v, p, e);
+  p = parse_modl(&ctx, p, e);
 
   l = p;
   p = parse_chunk_header(chunk_id, len, dunno, p, e);
@@ -321,10 +352,10 @@ void parseRVM(RVMVisitor* v, const void * ptr, size_t size)
   while (p < e && id_chunk_id != id("END:")) {
     switch (id_chunk_id) {
     case id("CNTB"):
-      p = parse_cntb(v, p, e);
+      p = parse_cntb(&ctx, p, e);
       break;
     case id("PRIM"):
-      p = parse_prim(v, p, e);
+      p = parse_prim(&ctx, p, e);
       break;
     default:
       fprintf(stderr, "Unknown chunk id '%s", chunk_id);

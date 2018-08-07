@@ -116,6 +116,12 @@ namespace {
               bottom, top, height);
     }
 
+    void facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
+    {
+      fprintf(stderr, "%s+- facet group polys=%zd, countours=%zd, vertices=%zd\n", istr(), polygons.size() - 1, contours.size() - 1, P.size() / 3);
+    }
+
+
 
   };
 

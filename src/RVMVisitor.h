@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 class RVMVisitor
 {
@@ -33,4 +34,6 @@ public:
   virtual void cylinder(float* affine, float* bbox, float radius, float height) = 0;
 
   virtual void snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height) = 0;
+
+  virtual void facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N) = 0;
 };
