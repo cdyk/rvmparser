@@ -29,7 +29,5 @@ private:
   FILE* out = nullptr;
   size_t off = 1;
   float curr_translation[3] = { 0,0,0 };
-  float shift[3] = { 0,0,0 };
-  bool first = true;
 
 };

@@ -38,7 +38,7 @@ void ExportObj::endModel() { }
 
 void ExportObj::beginGroup(const std::string& name, const float* translation, const uint32_t material)
 {
-  for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i] - shift[i];
+  for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i];
 
   fprintf(out, "o %s\n", name.c_str());
 
@@ -46,22 +46,43 @@ void ExportObj::beginGroup(const std::string& name, const float* translation, co
 
 void ExportObj::EndGroup() { }
 
-void ExportObj::triangles(float* affine, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices)
+void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices)
 {
-  if (first) {
-    for (unsigned i = 0; i < 3; i++) shift[i] = curr_translation[i];
-    for (unsigned i = 0; i < 3; i++) curr_translation[i] = 0.f;
-    first = false;
-  }
 
   assert(P.size() == N.size());
   fprintf(out, "g\n");
   for (size_t i = 0; i < P.size(); i += 3) {
-    fprintf(out, "v %f %f %f\n",
-            (curr_translation[0] + P[i]),
-            (curr_translation[1] + P[i + 1]),
-            (curr_translation[2] + P[i + 2]));
-    fprintf(out, "vn %f %f %f\n", N[i], N[i + 1], N[i + 2]);
+    auto px = P[i + 0];
+    auto py = P[i + 1];
+    auto pz = P[i + 2];
+    auto nx = P[i + 0];
+    auto ny = P[i + 1];
+    auto nz = P[i + 2];
+
+    float Px, Py, Pz, Nx, Ny, Nz;
+    if (false) { // fixme: no idea whether matrix is row-major or column major.
+      Px = M[0] * px + M[1] * py + M[ 2] * pz + M[ 3] + curr_translation[0];
+      Py = M[4] * px + M[5] * py + M[ 6] * pz + M[ 7] + curr_translation[1];
+      Pz = M[8] * px + M[9] * py + M[10] * pz + M[11] + curr_translation[2];
+      Nx = M[0] * nx + M[1] * ny + M[ 2] * nz;
+      Ny = M[4] * nx + M[5] * ny + M[ 6] * nz;
+      Nz = M[8] * nx + M[9] * ny + M[10] * nz;
+    }
+    else {
+      Px = M[0] * px + M[3] * py + M[6] * pz + M[ 9] + curr_translation[0];
+      Py = M[1] * px + M[4] * py + M[7] * pz + M[10] + curr_translation[1];
+      Pz = M[2] * px + M[5] * py + M[8] * pz + M[11] + curr_translation[2];
+      Nx = M[0] * nx + M[3] * ny + M[6] * nz;
+      Ny = M[1] * nx + M[4] * ny + M[7] * nz;
+      Nz = M[2] * nx + M[5] * ny + M[8] * nz;
+    }
+
+    //fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+    //fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+
+    fprintf(out, "v %f %f %f\n", px, py, pz);
+    fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+
   }
   for (size_t i = 0; i < indices.size(); i += 3) {
     fprintf(out, "f %zd//%zd %zd//%zd %zd//%zd\n",

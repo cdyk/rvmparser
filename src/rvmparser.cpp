@@ -296,6 +296,7 @@ const char* parse_cntb(Context* ctx, const char* p, const char* e)
   p = read_float32_be(translation[0], p, e);
   p = read_float32_be(translation[1], p, e);
   p = read_float32_be(translation[2], p, e);
+  for (unsigned i = 0; i < 3; i++) translation[i] *= 0.001f;  // appears that matrices have a factor of 1/1000 baked in them.
 
   uint32_t material_id;
   p = read_uint32_be(material_id, p, e);
