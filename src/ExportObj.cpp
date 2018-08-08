@@ -77,11 +77,11 @@ void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vec
       Nz = M[2] * nx + M[5] * ny + M[8] * nz;
     }
 
-    //fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-    //fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+    fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+    fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
 
-    fprintf(out, "v %f %f %f\n", px, py, pz);
-    fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+    //fprintf(out, "v %f %f %f\n", px, py, pz);
+    //fprintf(out, "vn %f %f %f\n", nx, ny, nz);
 
   }
   for (size_t i = 0; i < indices.size(); i += 3) {
@@ -90,5 +90,5 @@ void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vec
             indices[i + 1] + off, indices[i + 1] + off,
             indices[i + 2] + off, indices[i + 2] + off);
   }
-  off += P.size();
+  off += P.size() / 3;
 }

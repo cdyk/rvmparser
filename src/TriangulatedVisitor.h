@@ -33,4 +33,6 @@ private:
   std::vector<float> normals;
   std::vector<uint32_t> indices;
 
+  std::vector<float> t0;
+  std::vector<float> t1;
 };

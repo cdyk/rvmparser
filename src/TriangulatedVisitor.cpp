@@ -54,14 +54,105 @@ void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
     4 * 5 + 0, 4 * 5 + 2, 4 * 5 + 3,
   };
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)  { }
+void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
+{
+  assert(false);
+
+}
 
 void TriangulatedVisitor::rectangularTorus(float* M_affine, float* bbox, float inner_radius, float outer_radius, float height, float angle)  { }
 
-void TriangulatedVisitor::circularTorus(float* M_affine, float* bbox, float offset, float radius, float angle)  { }
+void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
+{
+  unsigned samples_u = 10;
+  unsigned samples_v = 10;
+
+  t0.resize(2 * samples_u);
+  for (unsigned i = 0; i < samples_u; i++) {
+    t0[2 * i + 0] = std::cos((angle / (samples_u - 1.f))*i);
+    t0[2 * i + 1] = std::sin((angle / (samples_u - 1.f))*i);
+  }
+
+  t1.resize(2 * samples_v);
+  for (unsigned i = 0; i < samples_v; i++) {
+    t1[2 * i + 0] = std::cos((twopi / samples_v)*i);
+    t1[2 * i + 1] = std::sin((twopi / samples_v)*i);
+  }
+
+  vertices.resize(3 * (samples_u + 2) * samples_v);
+  normals.resize(vertices.size());
+
+  unsigned k = 0;
+  for (unsigned u = 0; u < samples_u; u++) {
+    for (unsigned v = 0; v < samples_v; v++) {
+      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
+      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
+      vertices[k++] = radius * t1[2 * v + 1];
+    }
+  }
+  for (unsigned e = 0; e < 2; e++) {
+    auto u = e == 0 ? 0 : samples_v - 1;
+    for (unsigned v = 0; v < samples_v; v++) {
+      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
+      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
+      vertices[k++] = radius * t1[2 * v + 1];
+    }
+  }
+
+  k = 0;
+  for (unsigned u = 0; u < samples_u; u++) {
+    for (unsigned v = 0; v < samples_v; v++) {
+      normals[k++] = t1[2 * v + 0] * t0[2 * u + 0];
+      normals[k++] = t1[2 * v + 0] * t0[2 * u + 1];
+      normals[k++] = t1[2 * v + 1];
+    }
+  }
+  for (unsigned v = 0; v < samples_v; v++) {
+    normals[k++] = 0.f;
+    normals[k++] = -1.f;
+    normals[k++] = 0.f;
+  }
+  for (unsigned v = 0; v < samples_v; v++) {
+    normals[k++] = -t0[2 * (samples_u - 1) + 1];
+    normals[k++] = t0[2 * (samples_u - 1) + 0];
+    normals[k++] = 0.f;
+  }
+  k = 0;
+  indices.resize(6 * (samples_u - 1)*samples_v + 2 * 3 * (samples_v - 2));
+  for (unsigned u = 0; u + 1 < samples_u; u++) {
+    for (unsigned v = 0; v + 1 < samples_v; v++) {
+      indices[k++] = samples_v * (u + 0) + (v + 0);
+      indices[k++] = samples_v * (u + 1) + (v + 0);
+      indices[k++] = samples_v * (u + 1) + (v + 1);
+
+      indices[k++] = samples_v * (u + 1) + (v + 1);
+      indices[k++] = samples_v * (u + 0) + (v + 1);
+      indices[k++] = samples_v * (u + 0) + (v + 0);
+    }
+    indices[k++] = samples_v * (u + 0) + (samples_v - 1);
+    indices[k++] = samples_v * (u + 1) + (samples_v - 1);
+    indices[k++] = samples_v * (u + 1) + 0;
+    indices[k++] = samples_v * (u + 1) + 0;
+    indices[k++] = samples_v * (u + 0) + 0;
+    indices[k++] = samples_v * (u + 0) + (samples_v - 1);
+  }
+  unsigned t = samples_u * samples_v;
+  for (unsigned i = 1; i + 1 < samples_v; i++) {
+    indices[k++] = t + 0;
+    indices[k++] = t + i;
+    indices[k++] = t + i + 1;
+  }
+  t = (samples_u+1) * samples_v;
+  for (unsigned i = 1; i + 1 < samples_v; i++) {
+    indices[k++] = t + 0;
+    indices[k++] = t + i + 1;
+    indices[k++] = t + i;
+  }
+  triangles(affine, bbox, vertices, normals, indices);
+}
 
 void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)  { }
 
@@ -186,7 +277,7 @@ void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uin
     tessDeleteTess(tess);
 
     if (!indices.empty()) {
-      //triangles(affine, bbox, vertices, normals, indices);
+      triangles(affine, bbox, vertices, normals, indices);
     }
   }
 
