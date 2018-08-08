@@ -5,6 +5,7 @@
 
 #include "RVMParser.h"
 #include "RVMVisitor.h"
+#include "ExportObj.h"
 
 namespace {
 
@@ -144,9 +145,15 @@ int main(int argc, char** argv)
   const void * ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
   assert(ptr != nullptr);
 
-  DummyVisitor visitor;
-
-  parseRVM(&visitor, ptr, fileSize);
+  if (false) {
+    DummyVisitor visitor;
+    parseRVM(&visitor, ptr, fileSize);
+  }
+  else if (true) {
+    ExportObj visitor("output.obj");
+    parseRVM(&visitor, ptr, fileSize);
+  }
+    
 
   UnmapViewOfFile(ptr);
 
@@ -154,7 +161,7 @@ int main(int argc, char** argv)
 
   CloseHandle(h);
 
-  auto a = getc(stdin);
+  //auto a = getc(stdin);
  
   return 0;
 }

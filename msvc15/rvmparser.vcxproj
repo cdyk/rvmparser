@@ -156,8 +156,10 @@
     <ClCompile Include="..\libs\libtess2\Source\priorityq.c" />
     <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
+    <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\RVMParser.cpp" />
+    <ClCompile Include="..\src\TriangulatedVisitor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libs\libtess2\Include\tesselator.h" />
@@ -168,8 +170,10 @@
     <ClInclude Include="..\libs\libtess2\Source\priorityq.h" />
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
+    <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\RVMParser.h" />
     <ClInclude Include="..\src\RVMVisitor.h" />
+    <ClInclude Include="..\src\TriangulatedVisitor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

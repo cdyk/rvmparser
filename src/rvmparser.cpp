@@ -231,23 +231,31 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
     break;
   case 11:
   {
-    ctx->polygons.clear();
-    ctx->contours.clear();
     ctx->P.clear();
     ctx->N.clear();
 
-    ctx->polygons.push_back(0);
-    ctx->contours.push_back(0);
+    ctx->polygons.clear();
 
-    uint32_t pn;
-    p = read_uint32_be(pn, p, e);
-    for (unsigned pi = 0; pi < pn; pi++) {
-      uint32_t gn;
-      p = read_uint32_be(gn, p, e);
-      for (unsigned gi = 0; gi < gn; gi++) {
-        uint32_t vn;
-        p = read_uint32_be(vn, p, e);
-        for (unsigned vi = 0; vi < vn; vi++) {
+    ctx->contours.clear();
+
+
+    uint32_t polygons_n;
+    p = read_uint32_be(polygons_n, p, e);
+    //fprintf(stderr, "= Group, polygons_n=%d\n", polygons_n);
+
+    for (unsigned pi = 0; pi < polygons_n; pi++) {
+      uint32_t countours_n;
+      p = read_uint32_be(countours_n, p, e);
+      //fprintf(stderr, "  = Polygon, countours_n=%d\n", countours_n);
+
+      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
+      for (unsigned gi = 0; gi < countours_n; gi++) {
+        uint32_t vertices_n;
+        p = read_uint32_be(vertices_n, p, e);
+        //fprintf(stderr, "    = Countour, vertices_n=%d\n", vertices_n);
+
+        ctx->contours.push_back(uint32_t(ctx->P.size()));
+        for (unsigned vi = 0; vi < vertices_n; vi++) {
           float t;
           for (unsigned i = 0; i < 3; i++) {
             p = read_float32_be(t, p, e);
@@ -258,10 +266,13 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
             ctx->N.push_back(t);
           }
         }
-        ctx->contours.push_back(uint32_t(ctx->P.size() / 3));
       }
-      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
+      ctx->contours.push_back(uint32_t(ctx->P.size()));
+
     }
+    ctx->polygons.push_back(uint32_t(ctx->contours.size()));
+
+
     ctx->v->facetGroup(M, bbox, ctx->polygons, ctx->contours, ctx->P, ctx->N);
     break;
   }
