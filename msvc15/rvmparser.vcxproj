@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,6 +139,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,10 +149,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\libs\libtess2\Source\bucketalloc.c" />
+    <ClCompile Include="..\libs\libtess2\Source\dict.c" />
+    <ClCompile Include="..\libs\libtess2\Source\geom.c" />
+    <ClCompile Include="..\libs\libtess2\Source\mesh.c" />
+    <ClCompile Include="..\libs\libtess2\Source\priorityq.c" />
+    <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
+    <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\RVMParser.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libs\libtess2\Include\tesselator.h" />
+    <ClInclude Include="..\libs\libtess2\Source\bucketalloc.h" />
+    <ClInclude Include="..\libs\libtess2\Source\dict.h" />
+    <ClInclude Include="..\libs\libtess2\Source\geom.h" />
+    <ClInclude Include="..\libs\libtess2\Source\mesh.h" />
+    <ClInclude Include="..\libs\libtess2\Source\priorityq.h" />
+    <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
+    <ClInclude Include="..\libs\libtess2\Source\tess.h" />
     <ClInclude Include="..\src\RVMParser.h" />
     <ClInclude Include="..\src\RVMVisitor.h" />
   </ItemGroup>
