@@ -13,7 +13,7 @@ The file format was dechiphered by inspecting hex-dumps of RVM-files and reading
 
 Most fields are recognized and handled, so the code parses the files I have tested.
 
-Triangulation is currently implemented for box, circular/rectangular torus, cylinder, and facet group.
+Triangulation is currently implemented for pyramid, box, circular/rectangular torus, cylinder, snout, and facet group.
 
 
 ## Todo

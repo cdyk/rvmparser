@@ -35,4 +35,5 @@ private:
 
   std::vector<float> t0;
   std::vector<float> t1;
+  std::vector<float> t2;
 };

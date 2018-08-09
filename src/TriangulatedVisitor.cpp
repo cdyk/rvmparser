@@ -129,7 +129,7 @@ void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, 
   assert(l == indices.size());
   assert(3*o == vertices.size());
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
@@ -171,7 +171,7 @@ void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
     4 * 5 + 0, 4 * 5 + 2, 4 * 5 + 3,
   };
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
@@ -281,7 +281,7 @@ void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inn
   assert(3 * o == vertices.size());
   assert(l == indices.size());
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
@@ -379,7 +379,7 @@ void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset
   assert(l == indices.size());
   assert(3 * o == vertices.size());
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)  { }
@@ -413,8 +413,8 @@ void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, flo
 
   if (shell) {
     for (unsigned i = 0; i < samples; i++) {
-      l = vertex(normals, vertices, l, t1[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], -h2);
-      l = vertex(normals, vertices, l, t1[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
+      l = vertex(normals, vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], -h2);
+      l = vertex(normals, vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
     }
   }
   if (cap0) {
@@ -456,11 +456,104 @@ void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, flo
   triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height)
+void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, float* bshear, float* tshear, float radius_b, float radius_t, float height)
 {
-  //assert(false);
+  unsigned samples = 5;
 
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
 
+  t0.resize(2 * samples);
+  for (unsigned i = 0; i < samples; i++) {
+    t0[2 * i + 0] = std::cos((twopi / samples)*i);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+  }
+  t1.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t1[i] = radius_b * t0[i];
+  }
+  t2.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t2[i] = radius_t * t0[i];
+  }
+
+  float h2 = height;
+  unsigned l = 0;
+  auto ox = 0.5f*offset_xy[0];
+  auto oy = 0.5f*offset_xy[1];
+  float mb[2] = { std::tan(bshear[0]), std::tan(bshear[1]) };
+  float mt[2] = { std::tan(tshear[0]), std::tan(tshear[1]) };
+  vertices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0)));
+  normals.resize(vertices.size());
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      float xb = t1[2 * i + 0] - ox;
+      float yb = t1[2 * i + 1] - oy;
+      float zb = -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1];
+
+      float xt = t2[2 * i + 0] + ox;
+      float yt = t2[2 * i + 1] + oy;
+      float zt = h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1];
+
+      float s = (offset_xy[0] * t0[2 * i + 0] + offset_xy[1] * t0[2 * i + 1]);
+      float nx = t0[2 * i + 0];
+      float ny = t0[2 * i + 1];
+      float nz = -(radius_t - radius_b + s) / height;
+
+      l = vertex(normals, vertices, l, nx, ny, nz, xb, yb, zb);
+      l = vertex(normals, vertices, l, nx, ny, nz, xt, yt, zt);
+    }
+  }
+  if (cap0) {
+    auto nx = std::sin(bshear[0])*std::cos(bshear[1]);
+    auto ny = std::sin(bshear[1]);
+    auto nz = -std::cos(bshear[0])*std::cos(bshear[1]);
+    for (unsigned i = 0; cap0 && i < samples; i++) {
+      l = vertex(normals, vertices, l, nx, ny, nz,
+                 t1[2 * i + 0] - ox,
+                 t1[2 * i + 1] - oy,
+                 -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1]);
+    }
+  }
+  if (cap1) {
+    auto nx = -std::sin(tshear[0])*std::cos(tshear[1]);
+    auto ny = -std::sin(tshear[1]);
+    auto nz = std::cos(tshear[0])*std::cos(tshear[1]);
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(normals, vertices, l, nx, ny, nz,
+                 t2[2 * i + 0] + ox,
+                 t2[2 * i + 1] + oy,
+                 h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1]);
+    }
+  }
+
+  l = 0;
+  unsigned o = 0;
+  indices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0)));
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      unsigned ii = (i + 1) % samples;
+      l = quadIndices(indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
+    }
+    o += 2 * samples;
+  }
+  if (cap0) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(indices, l, o, 0, i + 1, i);
+    }
+    o += samples;
+  }
+  if (cap1) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(indices, l, o, 0, i, i + 1);
+    }
+    o += samples;
+  }
+  assert(l == indices.size());
+  assert(3 * o == vertices.size());
+
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
@@ -521,7 +614,7 @@ void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uin
     tessDeleteTess(tess);
 
     if (!indices.empty()) {
-      //triangles(affine, bbox, vertices, normals, indices);
+      triangles(affine, bbox, vertices, normals, indices);
     }
   }
 

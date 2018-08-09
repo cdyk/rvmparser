@@ -199,9 +199,9 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
     break;
   }
   case 7: {
-    float bottom, top, height, offset[2], bshear[2], tshear[2];
-    p = read_float32_be(bottom, p, e);
-    p = read_float32_be(top, p, e);
+    float radius_b, radius_t, height, offset[2], bshear[2], tshear[2];
+    p = read_float32_be(radius_b, p, e);
+    p = read_float32_be(radius_t, p, e);
     p = read_float32_be(height, p, e);
     p = read_float32_be(offset[0], p, e);
     p = read_float32_be(offset[1], p, e);
@@ -209,7 +209,7 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
     p = read_float32_be(bshear[1], p, e);
     p = read_float32_be(tshear[0], p, e);
     p = read_float32_be(tshear[1], p, e);
-    ctx->v->snout(M, bbox, offset, bshear, tshear, bottom, top, height);
+    ctx->v->snout(M, bbox, offset, bshear, tshear, radius_b, radius_t, height);
     break;
   }
   case 8: {
