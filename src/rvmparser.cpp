@@ -153,9 +153,9 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
     p = read_float32_be(bottom[1], p, e);
     p = read_float32_be(top[0], p, e);
     p = read_float32_be(top[1], p, e);
-    p = read_float32_be(height, p, e);
     p = read_float32_be(offset[0], p, e);
     p = read_float32_be(offset[1], p, e);
+    p = read_float32_be(height, p, e);
     ctx->v->pyramid(M, bbox, bottom, top, offset, height);
     break;
   }

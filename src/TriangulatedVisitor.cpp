@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <algorithm>
 #include <cstdio>
 #include <cassert>
 #include "tesselator.h"
@@ -10,10 +11,109 @@ namespace {
 
   const float twopi = float(2.0*M_PI);
 
+  unsigned quadIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2, unsigned v3)
+  {
+    indices[l++] = o + v0;
+    indices[l++] = o + v1;
+    indices[l++] = o + v2;
+
+    indices[l++] = o + v2;
+    indices[l++] = o + v3;
+    indices[l++] = o + v0;
+    return l;
+  }
+
+  unsigned vertex(std::vector<float>& normals, std::vector<float>& vertices, unsigned l, float* n, float* p)
+  {
+    normals[l] = n[0]; vertices[l++] = p[0];
+    normals[l] = n[1]; vertices[l++] = p[1];
+    normals[l] = n[2]; vertices[l++] = p[2];
+    return l;
+  }
+
 }
 
 
-void TriangulatedVisitor::pyramid(float* M_affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height)  { }
+void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) 
+{
+  bool cap0 = 1e-7f <= std::min(std::abs(bottom_xy[0]), std::abs(bottom_xy[1]));
+  bool cap1 = 1e-7f <= std::min(std::abs(top_xy[0]), std::abs(top_xy[1]));
+
+  auto bx = 0.5f*bottom_xy[0];
+  auto by = 0.5f*bottom_xy[1];
+  auto tx = 0.5f*top_xy[0];
+  auto ty = 0.5f*top_xy[1];
+  auto ox = 0.5f*offset_xy[0];
+  auto oy = 0.5f*offset_xy[1];
+  auto h2 = 0.5f*height;
+
+  float quad[2][4][3] =
+  {
+    {
+      { -bx - ox, -by - oy, -h2 },
+      {  bx - ox, -by - oy, -h2 },
+      {  bx - ox,  by - oy, -h2 },
+      { -bx - ox,  by - oy, -h2 }
+    },
+    {
+      { -tx + ox, -ty + oy, h2 },
+      {  tx + ox, -ty + oy, h2 },
+      {  tx + ox,  ty + oy, h2 },
+      { -tx + ox,  ty + oy, h2 }
+    },
+  };
+
+  float n[4][3] = {
+    { 0.f, -h2,  (quad[1][0][1] - quad[0][0][1]) },
+    {  h2, 0.f, -(quad[1][1][0] - quad[0][1][0]) },
+    { 0.f,  h2, -(quad[1][2][1] - quad[0][2][1]) },
+    { -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) },
+  };
+
+  unsigned l = 0;
+  vertices.resize(3 * 4 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
+  normals.resize(vertices.size());
+  for (unsigned i = 0; i < 4; i++) {
+    unsigned ii = (i + 1) & 3;
+    l = vertex(normals, vertices, l, n[i], quad[0][i]);
+    l = vertex(normals, vertices, l, n[i], quad[0][ii]);
+    l = vertex(normals, vertices, l, n[i], quad[1][ii]);
+    l = vertex(normals, vertices, l, n[i], quad[1][i]);
+  }
+  if (cap0) {
+    float n[3] = { 0, 0, -1 };
+    for (unsigned i = 0; i < 4; i++) {
+      l = vertex(normals, vertices, l, n, quad[0][i]);
+    }
+  }
+  if (cap1) {
+    float n[3] = { 0, 0, 1 };
+    for (unsigned i = 0; i < 4; i++) {
+      l = vertex(normals, vertices, l, n, quad[1][i]);
+    }
+  }
+  assert(l == vertices.size());
+
+
+  l = 0;
+  indices.resize(6 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
+  for (unsigned i = 0; i < 4; i++) {
+    l = quadIndices(indices, l, 4 * i, 0, 1, 2, 3);
+  }
+  unsigned o = 4 * 4;
+  if (cap0) {
+    l = quadIndices(indices, l, o, 3, 2, 1, 0);
+    o += 4;
+  }
+  if (cap1) {
+    l = quadIndices(indices, l, o, 0, 1, 2, 3);
+    o += 4;
+  }
+  assert(l == indices.size());
+  assert(3*o == vertices.size());
+
+  triangles(affine, bbox, vertices, normals, indices);
+}
 
 void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
 {
@@ -262,7 +362,7 @@ void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset
   assert(l == indices.size());
   assert(3 * o == vertices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)  { }
