@@ -11,6 +11,15 @@ namespace {
 
   const float twopi = float(2.0*M_PI);
 
+  unsigned triIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2)
+  {
+    indices[l++] = o + v0;
+    indices[l++] = o + v1;
+    indices[l++] = o + v2;
+    return l;
+  }
+
+
   unsigned quadIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2, unsigned v3)
   {
     indices[l++] = o + v0;
@@ -28,6 +37,14 @@ namespace {
     normals[l] = n[0]; vertices[l++] = p[0];
     normals[l] = n[1]; vertices[l++] = p[1];
     normals[l] = n[2]; vertices[l++] = p[2];
+    return l;
+  }
+
+  unsigned vertex(std::vector<float>& normals, std::vector<float>& vertices, unsigned l, float nx, float ny, float nz, float px, float py, float pz)
+  {
+    normals[l] = nx; vertices[l++] = px;
+    normals[l] = ny; vertices[l++] = py;
+    normals[l] = nz; vertices[l++] = pz;
     return l;
   }
 
@@ -112,7 +129,7 @@ void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, 
   assert(l == indices.size());
   assert(3*o == vertices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
@@ -371,64 +388,80 @@ void TriangulatedVisitor::sphericalDish(float* affine, float* bbox, float diamet
 
 void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, float height)
 { 
-  unsigned samples = 20;
+  unsigned samples = 5;
 
-  vertices.resize(4 * samples * 3);
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+  vertices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0)));
   normals.resize(vertices.size());
-  indices.resize(6 * samples + 6 * (samples - 2));
+
+
+  t0.resize(2 * samples);
+  for (unsigned i = 0; i < samples; i++) {
+    t0[2 * i + 0] = std::cos((twopi / samples)*i);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+  }
+  t1.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t1[i] = radius * t0[i];
+  }
 
   float h2 = 0.5f*height;
-  for (unsigned i = 0; i < samples; i++) {
-    auto x = std::cos((twopi / samples)*i);
-    auto y = std::sin((twopi / samples)*i);
-    for (unsigned k = 0; k < 4; k++) {
-      vertices[3 * (k*samples + i) + 0] = radius * x;
-      vertices[3 * (k*samples + i) + 1] = radius * y;
-      vertices[3 * (k*samples + i) + 2] = (k & 1) == 0 ? -h2 : h2;
-    }
-    for (unsigned k = 0; k < 2; k++) {
-      normals[3 * (k*samples + i) + 0] = x;
-      normals[3 * (k*samples + i) + 1] = y;
-      normals[3 * (k*samples + i) + 2] = 0.f;
+  unsigned l = 0;
+
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(normals, vertices, l, t1[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], -h2);
+      l = vertex(normals, vertices, l, t1[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
     }
   }
-  auto k = 3 * 2 * samples + 0;
-  for (unsigned i = 0; i < samples; i++) {
-    normals[k++] =  0.f;
-    normals[k++] =  0.f;
-    normals[k++] = -1.f;
+  if (cap0) {
+    for (unsigned i = 0; cap0 && i < samples; i++) {
+      l = vertex(normals, vertices, l, 0, 0, -1, t1[2 * i + 0], t1[2 * i + 1], -h2);
+    }
   }
-  for (unsigned i = 0; i < samples; i++) {
-    normals[k++] = 0.f;
-    normals[k++] = 0.f;
-    normals[k++] = 1.f;
-  }
-
-  k = 0;
-  for (unsigned i = 0; i < samples; i++) {
-    unsigned j = (i + 1) % samples;
-    indices[k++] = i;
-    indices[k++] = j;
-    indices[k++] = j + samples;
-    indices[k++] = j + samples;
-    indices[k++] = i + samples;
-    indices[k++] = i;
-  }
-  for (unsigned i = 1; i + 1 < samples; i++) {
-    indices[k++] = 2 * samples + 0;
-    indices[k++] = 2 * samples + i + 1;
-    indices[k++] = 2 * samples + i;
-  }
-  for (unsigned i = 1; i + 1 < samples; i++) {
-    indices[k++] = 3 * samples + 0;
-    indices[k++] = 3 * samples + i;
-    indices[k++] = 3 * samples + i + 1;
+  if (cap1) {
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(normals, vertices, l, 0, 0, 1, t1[2 * i + 0], t1[2 * i + 1], h2);
+    }
   }
 
-  //triangles(affine, bbox, vertices, normals, indices);
+  l = 0;
+  unsigned o = 0;
+  indices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0)));
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      unsigned ii = (i + 1) % samples;
+      l = quadIndices(indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
+    }
+    o += 2 * samples;
+  }
+  if (cap0) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(indices, l, o, 0, i + 1, i);
+    }
+    o += samples;
+  }
+  if (cap1) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(indices, l, o, 0, i, i + 1);
+    }
+    o += samples;
+  }
+  assert(l == indices.size());
+  assert(3 * o == vertices.size());
+
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height)  { }
+void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height)
+{
+  //assert(false);
+
+
+}
 
 void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
 {
