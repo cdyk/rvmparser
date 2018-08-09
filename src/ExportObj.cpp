@@ -55,33 +55,23 @@ void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vec
     auto px = P[i + 0];
     auto py = P[i + 1];
     auto pz = P[i + 2];
-    auto nx = P[i + 0];
-    auto ny = P[i + 1];
-    auto nz = P[i + 2];
+    auto nx = N[i + 0];
+    auto ny = N[i + 1];
+    auto nz = N[i + 2];
 
     float Px, Py, Pz, Nx, Ny, Nz;
-    if (false) { // fixme: no idea whether matrix is row-major or column major.
-      Px = M[0] * px + M[1] * py + M[ 2] * pz + M[ 3] + curr_translation[0];
-      Py = M[4] * px + M[5] * py + M[ 6] * pz + M[ 7] + curr_translation[1];
-      Pz = M[8] * px + M[9] * py + M[10] * pz + M[11] + curr_translation[2];
-      Nx = M[0] * nx + M[1] * ny + M[ 2] * nz;
-      Ny = M[4] * nx + M[5] * ny + M[ 6] * nz;
-      Nz = M[8] * nx + M[9] * ny + M[10] * nz;
-    }
-    else {
-      Px = M[0] * px + M[3] * py + M[6] * pz + M[ 9] + curr_translation[0];
-      Py = M[1] * px + M[4] * py + M[7] * pz + M[10] + curr_translation[1];
-      Pz = M[2] * px + M[5] * py + M[8] * pz + M[11] + curr_translation[2];
-      Nx = M[0] * nx + M[3] * ny + M[6] * nz;
-      Ny = M[1] * nx + M[4] * ny + M[7] * nz;
-      Nz = M[2] * nx + M[5] * ny + M[8] * nz;
-    }
+    Px = M[0] * px + M[3] * py + M[6] * pz + M[9] + curr_translation[0];
+    Py = M[1] * px + M[4] * py + M[7] * pz + M[10] + curr_translation[1];
+    Pz = M[2] * px + M[5] * py + M[8] * pz + M[11] + curr_translation[2];
+    Nx = M[0] * nx + M[3] * ny + M[6] * nz;
+    Ny = M[1] * nx + M[4] * ny + M[7] * nz;
+    Nz = M[2] * nx + M[5] * ny + M[8] * nz;
 
-    fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-    fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+    //fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+    //fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
 
-    //fprintf(out, "v %f %f %f\n", px, py, pz);
-    //fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+    fprintf(out, "v %f %f %f\n", px, py, pz);
+    fprintf(out, "vn %f %f %f\n", nx, ny, nz);
 
   }
   for (size_t i = 0; i < indices.size(); i += 3) {
