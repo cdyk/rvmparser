@@ -164,96 +164,105 @@ void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inn
   assert(3 * o == vertices.size());
   assert(l == indices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
 {
-  unsigned samples_u = 10;
-  unsigned samples_v = 10;
+  unsigned samples_l = 7; // large radius, toroidal direction
+  unsigned samples_s = 5; // small radius, poloidal direction
 
-  t0.resize(2 * samples_u);
-  for (unsigned i = 0; i < samples_u; i++) {
-    t0[2 * i + 0] = std::cos((angle / (samples_u - 1.f))*i);
-    t0[2 * i + 1] = std::sin((angle / (samples_u - 1.f))*i);
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+
+  t0.resize(2 * samples_l);
+  for (unsigned i = 0; i < samples_l; i++) {
+    t0[2 * i + 0] = std::cos((angle / (samples_l - 1.f))*i);
+    t0[2 * i + 1] = std::sin((angle / (samples_l - 1.f))*i);
   }
 
-  t1.resize(2 * samples_v);
-  for (unsigned i = 0; i < samples_v; i++) {
-    t1[2 * i + 0] = std::cos((twopi / samples_v)*i);
-    t1[2 * i + 1] = std::sin((twopi / samples_v)*i);
+  t1.resize(2 * samples_s);
+  for (unsigned i = 0; i < samples_s; i++) {
+    t1[2 * i + 0] = std::cos((twopi / samples_s)*i);
+    t1[2 * i + 1] = std::sin((twopi / samples_s)*i);
   }
 
-  vertices.resize(3 * (samples_u + 2) * samples_v);
+  // generate vertices
+  unsigned l = 0;
+  vertices.resize(3 * ((shell ? samples_l : 0) + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)) * samples_s);
   normals.resize(vertices.size());
+  if (shell) {
+    for (unsigned u = 0; u < samples_l; u++) {
+      for (unsigned v = 0; v < samples_s; v++) {
+        normals[l] = t1[2 * v + 0] * t0[2 * u + 0]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
+        normals[l] = t1[2 * v + 0] * t0[2 * u + 1]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
+        normals[l] = t1[2 * v + 1]; vertices[l++] = radius * t1[2 * v + 1];
+      }
+    }
+  }
+  if (cap0) {
+    for (unsigned v = 0; v < samples_s; v++) {
+      normals[l] = 0.f; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[0]);
+      normals[l] = -1.f; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[1]);
+      normals[l] = 0.f; vertices[l++] = radius * t1[2 * v + 1];
+    }
+  }
+  if (cap1) {
+    unsigned m = 2 * (samples_l - 1);
+    for (unsigned v = 0; v < samples_s; v++) {
+      normals[l] = -t0[m + 1]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[m + 0]);
+      normals[l] = t0[m + 0]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[m + 1]);
+      normals[l] = 0.f; vertices[l++] = radius * t1[2 * v + 1];
+    }
+  }
+  assert(l == vertices.size());
 
-  unsigned k = 0;
-  for (unsigned u = 0; u < samples_u; u++) {
-    for (unsigned v = 0; v < samples_v; v++) {
-      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
-      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
-      vertices[k++] = radius * t1[2 * v + 1];
-    }
-  }
-  for (unsigned e = 0; e < 2; e++) {
-    auto u = e == 0 ? 0 : samples_v - 1;
-    for (unsigned v = 0; v < samples_v; v++) {
-      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
-      vertices[k++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
-      vertices[k++] = radius * t1[2 * v + 1];
-    }
-  }
+  // generate indices
+  l = 0;
+  unsigned o = 0;
+  indices.resize((shell ? 6 * (samples_l - 1)*samples_s : 0) + 3 * (samples_s - 2) *((cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
+  if (shell) {
+    for (unsigned u = 0; u + 1 < samples_l; u++) {
+      for (unsigned v = 0; v + 1 < samples_s; v++) {
+        indices[l++] = samples_s * (u + 0) + (v + 0);
+        indices[l++] = samples_s * (u + 1) + (v + 0);
+        indices[l++] = samples_s * (u + 1) + (v + 1);
 
-  k = 0;
-  for (unsigned u = 0; u < samples_u; u++) {
-    for (unsigned v = 0; v < samples_v; v++) {
-      normals[k++] = t1[2 * v + 0] * t0[2 * u + 0];
-      normals[k++] = t1[2 * v + 0] * t0[2 * u + 1];
-      normals[k++] = t1[2 * v + 1];
+        indices[l++] = samples_s * (u + 1) + (v + 1);
+        indices[l++] = samples_s * (u + 0) + (v + 1);
+        indices[l++] = samples_s * (u + 0) + (v + 0);
+      }
+      indices[l++] = samples_s * (u + 0) + (samples_s - 1);
+      indices[l++] = samples_s * (u + 1) + (samples_s - 1);
+      indices[l++] = samples_s * (u + 1) + 0;
+      indices[l++] = samples_s * (u + 1) + 0;
+      indices[l++] = samples_s * (u + 0) + 0;
+      indices[l++] = samples_s * (u + 0) + (samples_s - 1);
     }
+    o += samples_l * samples_s;
   }
-  for (unsigned v = 0; v < samples_v; v++) {
-    normals[k++] = 0.f;
-    normals[k++] = -1.f;
-    normals[k++] = 0.f;
+  if (cap0) {
+    for (unsigned i = 1; i + 1 < samples_s; i++) {
+      indices[l++] = o + 0;
+      indices[l++] = o + i;
+      indices[l++] = o + i + 1;
+    }
+    o += samples_s;
   }
-  for (unsigned v = 0; v < samples_v; v++) {
-    normals[k++] = -t0[2 * (samples_u - 1) + 1];
-    normals[k++] = t0[2 * (samples_u - 1) + 0];
-    normals[k++] = 0.f;
+  if (cap1) {
+    for (unsigned i = 1; i + 1 < samples_s; i++) {
+      indices[l++] = o + 0;
+      indices[l++] = o + i + 1;
+      indices[l++] = o + i;
+    }
+    o += samples_s;
   }
-  k = 0;
-  indices.resize(6 * (samples_u - 1)*samples_v + 2 * 3 * (samples_v - 2));
-  for (unsigned u = 0; u + 1 < samples_u; u++) {
-    for (unsigned v = 0; v + 1 < samples_v; v++) {
-      indices[k++] = samples_v * (u + 0) + (v + 0);
-      indices[k++] = samples_v * (u + 1) + (v + 0);
-      indices[k++] = samples_v * (u + 1) + (v + 1);
+  assert(l == indices.size());
+  assert(3 * o == vertices.size());
 
-      indices[k++] = samples_v * (u + 1) + (v + 1);
-      indices[k++] = samples_v * (u + 0) + (v + 1);
-      indices[k++] = samples_v * (u + 0) + (v + 0);
-    }
-    indices[k++] = samples_v * (u + 0) + (samples_v - 1);
-    indices[k++] = samples_v * (u + 1) + (samples_v - 1);
-    indices[k++] = samples_v * (u + 1) + 0;
-    indices[k++] = samples_v * (u + 1) + 0;
-    indices[k++] = samples_v * (u + 0) + 0;
-    indices[k++] = samples_v * (u + 0) + (samples_v - 1);
-  }
-  unsigned t = samples_u * samples_v;
-  for (unsigned i = 1; i + 1 < samples_v; i++) {
-    indices[k++] = t + 0;
-    indices[k++] = t + i;
-    indices[k++] = t + i + 1;
-  }
-  t = (samples_u+1) * samples_v;
-  for (unsigned i = 1; i + 1 < samples_v; i++) {
-    indices[k++] = t + 0;
-    indices[k++] = t + i + 1;
-    indices[k++] = t + i;
-  }
-  //triangles(affine, bbox, vertices, normals, indices);
+  triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)  { }
