@@ -38,6 +38,6 @@ private:
   std::vector<float> t1;
   std::vector<float> t2;
 
-  void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z);
+  void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z, float scale_z);
 
 };
