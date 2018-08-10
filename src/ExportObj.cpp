@@ -60,9 +60,9 @@ void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vec
     auto nz = N[i + 2];
 
     float Px, Py, Pz, Nx, Ny, Nz;
-    Px = M[0] * px + M[3] * py + M[6] * pz + M[9] + curr_translation[0];
-    Py = M[1] * px + M[4] * py + M[7] * pz + M[10] + curr_translation[1];
-    Pz = M[2] * px + M[5] * py + M[8] * pz + M[11] + curr_translation[2];
+    Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+    Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+    Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
     Nx = M[0] * nx + M[3] * ny + M[6] * nz;
     Ny = M[1] * nx + M[4] * ny + M[7] * nz;
     Nz = M[2] * nx + M[5] * ny + M[8] * nz;

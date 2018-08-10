@@ -292,6 +292,9 @@ const char* parse_cntb(Context* ctx, const char* p, const char* e)
   std::string name;
   p = parse_string(name, p, e);
 
+  // Translation seems to be a reference point that can be used as a local frame for objects in the group.
+  // The transform is not relative to this reference point.
+
   float translation[3];
   p = read_float32_be(translation[0], p, e);
   p = read_float32_be(translation[1], p, e);
