@@ -40,11 +40,28 @@ void ExportObj::beginGroup(const std::string& name, const float* translation, co
 {
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i];
 
-  fprintf(out, "o %s\n", name.c_str());
+  //fprintf(out, "o %s\n", name.c_str());
 
 }
 
 void ExportObj::EndGroup() { }
+
+void ExportObj::line(float* M, float* bbox, float x0, float x1)
+{
+  auto p0_x = M[0] * x0 + M[3] * 0.f + M[6] * 0.f + M[9];
+  auto p0_y = M[1] * x0 + M[4] * 0.f + M[7] * 0.f + M[10];
+  auto p0_z = M[2] * x0 + M[5] * 0.f + M[8] * 0.f + M[11];
+
+  auto p1_x = M[0] * x1 + M[3] * 0.f + M[6] * 0.f + M[9];
+  auto p1_y = M[1] * x1 + M[4] * 0.f + M[7] * 0.f + M[10];
+  auto p1_z = M[2] * x1 + M[5] * 0.f + M[8] * 0.f + M[11];
+
+  fprintf(out, "v %f %f %f\n", p0_x, p0_y, p0_z);
+  fprintf(out, "v %f %f %f\n", p1_x, p1_y, p1_z);
+  fprintf(out, "l -1 -2\n");
+
+  off += 2;
+}
 
 void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices)
 {

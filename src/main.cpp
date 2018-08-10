@@ -66,6 +66,11 @@ namespace {
       --indent;
     }
 
+    void line(float* affine, float* bbox, float x0, float x1) override
+    {
+      fprintf(stderr, "%s+- line: [%f, %f]\n", istr(), x0, x1);
+    }
+
     void pyramid(float* affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) override
     {
       fprintf(stderr, "%s+- pyramid: b=[%f, %f], t=[%f, %f], h=%f, o=[%f,%f]\n", istr(),
@@ -130,36 +135,37 @@ namespace {
 
 int main(int argc, char** argv)
 {
-  assert(argc == 2);
+  for (int i = 1; i < argc; i++) {
+    auto outfile = std::string(argv[i]) + ".obj";
 
-  HANDLE h = CreateFileA(argv[1], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  assert(h != INVALID_HANDLE_VALUE);
+    fprintf(stderr, "Converting '%s' -> '%s'\n", argv[i], outfile.c_str());
 
-  DWORD hiSize;
-  DWORD loSize = GetFileSize(h, &hiSize);
-  size_t fileSize = (size_t(hiSize) << 32u) + loSize;
+    HANDLE h = CreateFileA(argv[i], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    assert(h != INVALID_HANDLE_VALUE);
 
-  HANDLE m = CreateFileMappingA(h, 0, PAGE_READONLY, 0, 0, NULL);
-  assert(m != INVALID_HANDLE_VALUE);
+    DWORD hiSize;
+    DWORD loSize = GetFileSize(h, &hiSize);
+    size_t fileSize = (size_t(hiSize) << 32u) + loSize;
 
-  const void * ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
-  assert(ptr != nullptr);
+    HANDLE m = CreateFileMappingA(h, 0, PAGE_READONLY, 0, 0, NULL);
+    assert(m != INVALID_HANDLE_VALUE);
 
-  if (false) {
-    DummyVisitor visitor;
-    parseRVM(&visitor, ptr, fileSize);
+    const void * ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
+    assert(ptr != nullptr);
+
+    if (false) {
+      DummyVisitor visitor;
+      parseRVM(&visitor, ptr, fileSize);
+    }
+    else if (true) {
+      ExportObj visitor(outfile);
+      parseRVM(&visitor, ptr, fileSize);
+    }
+
+    UnmapViewOfFile(ptr);
+    CloseHandle(m);
+    CloseHandle(h);
   }
-  else if (true) {
-    ExportObj visitor("output.obj");
-    parseRVM(&visitor, ptr, fileSize);
-  }
-    
-
-  UnmapViewOfFile(ptr);
-
-  CloseHandle(m);
-
-  CloseHandle(h);
 
   //auto a = getc(stdin);
  

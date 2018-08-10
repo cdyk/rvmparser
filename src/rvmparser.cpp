@@ -225,10 +225,13 @@ const char* parse_prim(Context* ctx, const char* p, const char* e)
     ctx->v->sphere(M, bbox, diameter);
     break;
   }
-  case 10:
-    fprintf(stderr, "  +- line\n");
-    p += 4 * 2;
+  case 10: {
+    float a, b;
+    p = read_float32_be(a, p, e);
+    p = read_float32_be(b, p, e);
+    ctx->v->line(M, bbox, a, b);
     break;
+  }
   case 11:
   {
     ctx->P.clear();

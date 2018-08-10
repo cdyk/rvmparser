@@ -17,6 +17,8 @@ public:
 
   virtual void EndGroup() = 0;
 
+  virtual void line(float* affine, float* bbox, float x0, float x1) = 0;
+
   virtual void pyramid(float* M_affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) = 0;
 
   virtual void box(float* affine, float* bbox, float* lengths) = 0;

@@ -23,6 +23,8 @@ public:
 
   void EndGroup() override;
 
+  void line(float* affine, float* bbox, float x0, float x1) override;
+
   void triangles(float* affine, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices) override;
 
 private:
