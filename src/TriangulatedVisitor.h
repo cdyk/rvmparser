@@ -33,7 +33,11 @@ private:
   std::vector<float> normals;
   std::vector<uint32_t> indices;
 
+  std::vector<unsigned> u0;
   std::vector<float> t0;
   std::vector<float> t1;
   std::vector<float> t2;
+
+  void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z);
+
 };

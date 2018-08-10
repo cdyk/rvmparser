@@ -9,6 +9,9 @@
 
 namespace {
 
+  const float pi = float(M_PI);
+  const float half_pi = float(0.5*M_PI);
+  const float one_over_pi = float(1.0 / M_PI);
   const float twopi = float(2.0*M_PI);
 
   unsigned triIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2)
@@ -129,7 +132,7 @@ void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, 
   assert(l == indices.size());
   assert(3*o == vertices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
@@ -171,13 +174,12 @@ void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
     4 * 5 + 0, 4 * 5 + 2, 4 * 5 + 3,
   };
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
 {
-  assert(false);
-
+  sphereBasedShape(affine, bbox, 0.5f*diameter, pi, 0.f);
 }
 
 void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inner_radius, float outer_radius, float height, float angle)
@@ -281,7 +283,7 @@ void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inn
   assert(3 * o == vertices.size());
   assert(l == indices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
@@ -379,12 +381,128 @@ void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset
   assert(l == indices.size());
   assert(3 * o == vertices.size());
 
+  //triangles(affine, bbox, vertices, normals, indices);
+}
+
+void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius) { }
+
+void TriangulatedVisitor::sphericalDish(float* affine, float* bbox, float diameter, float height)
+{
+  float r_circ = 0.5f*diameter;
+  float r_sphere = (r_circ*r_circ + height * height) / (2.f*height);
+  float arc = asin(r_circ / r_sphere);
+  if (r_circ < height) { arc = pi - arc; }
+
+  sphereBasedShape(affine, bbox, r_sphere, arc, height - r_sphere);
+}
+
+
+void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z)
+{
+  unsigned samples = 40;
+
+  bool is_sphere = false;
+  if (pi - 1e-3 <= arc) {
+    arc = pi;
+    is_sphere = true;
+  }
+
+  unsigned min_rings = arc <= half_pi ? 2 : 3;
+  unsigned rings = unsigned(std::max(float(min_rings), samples*arc*(1.f/twopi)));
+  
+  u0.resize(rings);
+  t0.resize(2 * rings);
+  auto theta_scale = arc / (rings - 1);
+  for (unsigned r = 0; r < rings; r++) {
+    float theta = theta_scale * r;
+    t0[2 * r + 0] = std::cos(theta);
+    t0[2 * r + 1] = std::sin(theta);
+    u0[r] = unsigned(std::max(3.f, t0[2 * r + 1] * samples));  // samples in this ring
+  }
+  u0[0] = 1;
+  if (is_sphere) {
+    u0[rings - 1] = 1;
+  }
+
+  unsigned s = 0;
+  for (unsigned r = 0; r < rings; r++) {
+    s += u0[r];
+  }
+
+  unsigned l = 0;
+  vertices.resize(3 * s);
+  normals.resize(vertices.size());
+  for (unsigned r = 0; r < rings; r++) {
+    auto nz = t0[2 * r + 0];
+    auto z = radius * nz + shift_z;
+    auto w = t0[2 * r + 1];
+    auto n = u0[r];
+
+    auto phi_scale = twopi / n;
+    for (unsigned i = 0; i < n; i++) {
+      auto phi = phi_scale * i;
+      auto nx = w * std::cos(phi);
+      auto ny = w * std::sin(phi);
+      l = vertex(normals, vertices, l, nx, ny, nz, radius*nx, radius*ny, z);
+    }
+  }
+  assert(l == 3 * s);
+
+  unsigned o_c = 0;
+  indices.clear();
+  for (unsigned r = 0; r + 1 < rings; r++) {
+    auto n_c = u0[r];
+    auto n_n = u0[r + 1];
+    auto o_n = o_c + n_c;
+
+    if (n_c < n_n) {
+      for (unsigned i_n = 0; i_n < n_n; i_n++) {
+        unsigned ii_n = (i_n + 1);
+        unsigned i_c = (n_c*(i_n + 1)) / n_n;
+        unsigned ii_c = (n_c*(ii_n + 1)) / n_n;
+
+        i_c %= n_c;
+        ii_c %= n_c;
+        ii_n %= n_n;
+
+        if (i_c != ii_c) {
+          indices.push_back(o_c + i_c);
+          indices.push_back(o_n + ii_n);
+          indices.push_back(o_c + ii_c);
+        }
+        assert(i_n != ii_n);
+        indices.push_back(o_c + i_c);
+        indices.push_back(o_n + i_n);
+        indices.push_back(o_n + ii_n);
+      }
+    }
+    else {
+      for (unsigned i_c = 0; i_c < n_c; i_c++) {
+        auto ii_c = (i_c + 1);
+        unsigned i_n = (n_n*(i_c + 0)) / n_c;
+        unsigned ii_n = (n_n*(ii_c + 0)) / n_c;
+
+        i_n %= n_n;
+        ii_n %= n_n;
+        ii_c %= n_c;
+
+        assert(i_c != ii_c);
+        indices.push_back(o_c + i_c);
+        indices.push_back(o_n + ii_n);
+        indices.push_back(o_c + ii_c);
+
+        if (i_n != ii_n) {
+          indices.push_back(o_c + i_c);
+          indices.push_back(o_n + i_n);
+          indices.push_back(o_n + ii_n);
+        }
+      }
+    }
+    o_c = o_n;
+  }
   triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)  { }
-
-void TriangulatedVisitor::sphericalDish(float* affine, float* bbox, float diameter, float height)  { }
 
 void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, float height)
 { 
@@ -453,7 +571,7 @@ void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, flo
   assert(l == indices.size());
   assert(3 * o == vertices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, float* bshear, float* tshear, float radius_b, float radius_t, float height)
@@ -553,7 +671,7 @@ void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, flo
   assert(l == indices.size());
   assert(3 * o == vertices.size());
 
-  triangles(affine, bbox, vertices, normals, indices);
+  //triangles(affine, bbox, vertices, normals, indices);
 }
 
 void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
@@ -614,7 +732,7 @@ void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uin
     tessDeleteTess(tess);
 
     if (!indices.empty()) {
-      triangles(affine, bbox, vertices, normals, indices);
+      //triangles(affine, bbox, vertices, normals, indices);
     }
   }
 
