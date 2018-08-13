@@ -40,7 +40,7 @@ void ExportObj::beginGroup(const std::string& name, const float* translation, co
 {
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i];
 
-  //fprintf(out, "o %s\n", name.c_str());
+  fprintf(out, "o %s\n", name.c_str());
 
 }
 

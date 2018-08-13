@@ -6,6 +6,7 @@
 #include "RVMParser.h"
 #include "RVMVisitor.h"
 #include "ExportObj.h"
+#include "Store.h"
 
 namespace {
 
@@ -131,14 +132,94 @@ namespace {
 
   };
 
+
+  class NullVisitor : public RVMVisitor
+  {
+
+  public:
+    void beginFile(const std::string info, const std::string& note, const std::string& date, const std::string& user, const std::string& encoding) override
+    {
+    }
+
+    void endFile() override { }
+
+    void beginModel(const std::string& project, const std::string& name) override
+    {
+    }
+
+    void endModel() override
+    {
+    }
+
+    void beginGroup(const std::string& name, const float* translation, const uint32_t material)
+    {
+    }
+
+    void EndGroup()
+    {
+    }
+
+    void line(float* affine, float* bbox, float x0, float x1) override
+    {
+    }
+
+    void pyramid(float* affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) override
+    {
+    }
+
+    void box(float* affine, float* box, float* lengths) override
+    {
+    }
+
+    void sphere(float* affine, float* bbox, float diameter)
+    {
+    }
+
+    void rectangularTorus(float* M_affine, float* bbox, float inner_radius, float outer_radius, float height, float angle) override
+    {
+    }
+
+    void circularTorus(float* M_affine, float* bbox, float offset, float radius, float angle) override
+    {
+    }
+
+    void ellipticalDish(float* affine, float* bbox, float diameter, float radius) override
+    {
+    }
+
+    void sphericalDish(float* affine, float* bbox, float diameter, float height) override
+    {
+    }
+
+    void cylinder(float* affine, float* bbox, float radius, float height) override
+    {
+    }
+
+    void snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height) override
+    {
+    }
+
+    void facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
+    {
+    }
+
+
+
+  };
+
+
 }
 
 int main(int argc, char** argv)
 {
+
+
+  Store* store = new Store();
+
   for (int i = 1; i < argc; i++) {
     auto outfile = std::string(argv[i]) + ".obj";
 
-    fprintf(stderr, "Converting '%s' -> '%s'\n", argv[i], outfile.c_str());
+    fprintf(stderr, "Reading '%s'\n", argv[i]);
 
     HANDLE h = CreateFileA(argv[i], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     assert(h != INVALID_HANDLE_VALUE);
@@ -155,17 +236,22 @@ int main(int argc, char** argv)
 
     if (false) {
       DummyVisitor visitor;
-      parseRVM(&visitor, ptr, fileSize);
+      parseRVM(store, &visitor, ptr, fileSize);
     }
     else if (true) {
-      ExportObj visitor(outfile);
-      parseRVM(&visitor, ptr, fileSize);
+      NullVisitor visitor;
+      parseRVM(store, &visitor, ptr, fileSize);
     }
 
     UnmapViewOfFile(ptr);
     CloseHandle(m);
     CloseHandle(h);
   }
+
+  ExportObj visitor("output.obj");
+  store->apply(&visitor);
+
+  delete store;
 
   //auto a = getc(stdin);
  

@@ -9,18 +9,9 @@ Rvmparser is written completely from scratch with a minimum amount of dependenci
 
 The file format was dechiphered by inspecting hex-dumps of RVM-files and reading through the source of [pmoc](https://github.com/benvautrin/pmuc). Currently it depends on [libtess2](https://github.com/memononen/libtess2) to triangulate facet groups. 
 
-## Status
-
-Most fields are recognized and handled, so the code parses the files I have tested.
-
-Triangulation is currently implemented for pyramid, box, circular/rectangular torus, cylinder, snout, and facet group.
-
-
 ## Todo
-- Triangulate all primitive types.
 - Make triangle tessellation driven by approximation error.
 - Parse attribute files.
-
 
 ## Building
 

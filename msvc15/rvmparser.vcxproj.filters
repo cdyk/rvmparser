@@ -46,6 +46,9 @@
     <ClInclude Include="..\src\ExportObj.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Store.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\RVMParser.cpp">
@@ -79,6 +82,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ExportObj.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Store.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,5 +1,6 @@
 #include "RVMParser.h"
 #include "RVMVisitor.h"
+#include "Store.h"
 
 #include <iostream>
 #include <string>
@@ -9,26 +10,21 @@
 
 #include <cassert>
 
-
-
-
 namespace {
 
   struct Context
   {
     RVMVisitor* v;
+    Store* store;
+
+    std::vector<Group*> group_stack;
 
     // scratch for reading facet groups
     std::vector<uint32_t> polygons;
     std::vector<uint32_t> contours;
     std::vector<float> P;
     std::vector<float> N;
-
-
   };
-
-  
-
 
 
   const char* read_uint32_be(uint32_t& rv, const char* p, const char* e)
@@ -51,14 +47,23 @@ namespace {
     return p + 4;
   }
 
-
-
   constexpr uint32_t id(const char* str)
   {
     return str[3] << 24 | str[2] << 16 | str[1] << 8 | str[0];
   }
 
-
+  void copyString(const char** dst, Store* store, const std::string& src)
+  {
+    auto l = src.length();
+    if (l == 0) {
+      *dst = nullptr;
+    }
+    else {
+      auto * d = (char*)store->alloc(l + 1);
+      strcpy_s(d, l + 1, src.c_str());
+      *dst = d;
+    }
+  }
 
 
 const char* parse_chunk_header(char* id, uint32_t& len, uint32_t& dunno, const char* p, const char* e)
@@ -116,6 +121,17 @@ const char* parse_head(Context* ctx, const char* p, const char* e)
     p = parse_string(encoding, p, e);
   }
   ctx->v->beginFile(info, note, date, user, encoding);
+
+  assert(ctx->group_stack.empty());
+  auto * g = ctx->store->newGroup(nullptr, Group::Kind::File);
+  ctx->group_stack.push_back(g);
+
+  copyString(&g->file.info, ctx->store, info);
+  copyString(&g->file.note, ctx->store, note);
+  copyString(&g->file.date, ctx->store, date);
+  copyString(&g->file.user, ctx->store, user);
+  copyString(&g->file.encoding, ctx->store, encoding);
+
   return p;
 }
 
@@ -127,6 +143,14 @@ const char* parse_modl(Context* ctx, const char* p, const char* e)
   p = parse_string(project, p, e);
   p = parse_string(name, p, e);
   ctx->v->beginModel(project, name);
+
+  assert(!ctx->group_stack.empty());
+  auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Model);
+  ctx->group_stack.push_back(g);
+
+  copyString(&g->model.project, ctx->store, project);
+  copyString(&g->model.name, ctx->store, name);
+
   return p;
 }
 
@@ -308,6 +332,18 @@ const char* parse_cntb(Context* ctx, const char* p, const char* e)
   p = read_uint32_be(material_id, p, e);
   ctx->v->beginGroup(name, translation, material_id);
 
+  assert(!ctx->group_stack.empty());
+  auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Group);
+  ctx->group_stack.push_back(g);
+  copyString(&g->group.name, ctx->store, name);
+  g->group.material = material_id;
+  g->group.translation[0] = translation[0];
+  g->group.translation[1] = translation[1];
+  g->group.translation[2] = translation[2];
+
+  //copyString(&g->model.project, ctx->store, project);
+  //copyString(&g->model.name, ctx->store, name);
+
 
   // process children
   char chunk_id[5] = { 0, 0, 0, 0, 0 };
@@ -337,15 +373,17 @@ const char* parse_cntb(Context* ctx, const char* p, const char* e)
     p = read_uint32_be(a, p, e);
   }
 
+  ctx->group_stack.pop_back();
+
   ctx->v->EndGroup();
   return p;
 }
 
 }
 
-void parseRVM(RVMVisitor* v, const void * ptr, size_t size)
+void parseRVM(class Store* store, RVMVisitor* v, const void * ptr, size_t size)
 {
-  Context ctx = { v };
+  Context ctx = { v , store };
 
   auto * p = reinterpret_cast<const char*>(ptr);
   auto * e = p + size;
@@ -383,6 +421,10 @@ void parseRVM(RVMVisitor* v, const void * ptr, size_t size)
     p = parse_chunk_header(chunk_id, len, dunno, p, e);
     id_chunk_id = id(chunk_id);
   }
+
+  assert(ctx.group_stack.size() == 2);
+  ctx.group_stack.pop_back();
+  ctx.group_stack.pop_back();
 
   v->endModel();
   v->endFile();
