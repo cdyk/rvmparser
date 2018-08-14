@@ -40,13 +40,13 @@
     <ClInclude Include="..\libs\libtess2\Source\tess.h">
       <Filter>libtess2</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\TriangulatedVisitor.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\ExportObj.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Store.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tessellator.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
@@ -78,13 +78,13 @@
     <ClCompile Include="..\libs\libtess2\Source\tess.c">
       <Filter>libtess2</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\TriangulatedVisitor.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\ExportObj.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Store.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Tessellator.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

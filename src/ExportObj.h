@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdio>
 
-#include "TriangulatedVisitor.h"
+#include "Tessellator.h"
 
 class ExportObj : public RVMVisitor
 {

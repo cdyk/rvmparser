@@ -6,7 +6,7 @@
 #include "tesselator.h"
 
 #include "Store.h"
-#include "TriangulatedVisitor.h"
+#include "Tessellator.h"
 
 namespace {
 
@@ -54,7 +54,7 @@ namespace {
 
 }
 
-void Triangulator::init(class Store& store)
+void Tessellator::init(class Store& store)
 {
   arena = &store.arenaTriangulation;
 
@@ -62,7 +62,7 @@ void Triangulator::init(class Store& store)
 }
 
 
-void Triangulator::geometry(Geometry* geo)
+void Tessellator::geometry(Geometry* geo)
 {
   switch (geo->kind) {
   case Geometry::Kind::Pyramid:
@@ -86,7 +86,7 @@ void Triangulator::geometry(Geometry* geo)
 }
 
 
-void Triangulator::pyramid(Geometry* geo)
+void Tessellator::pyramid(Geometry* geo)
 {
   bool cap0 = 1e-7f <= std::min(std::abs(geo->pyramid.bottom[0]), std::abs(geo->pyramid.bottom[1]));
   bool cap1 = 1e-7f <= std::min(std::abs(geo->pyramid.top[0]), std::abs(geo->pyramid.top[1]));
@@ -172,7 +172,7 @@ void Triangulator::pyramid(Geometry* geo)
 }
 
 
-void Triangulator::box(Geometry* geo)
+void Tessellator::box(Geometry* geo)
 {
   auto & box = geo->box;
 
@@ -750,7 +750,7 @@ void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, flo
 
 #endif
 
-void Triangulator::facetGroup(struct Geometry* geo)
+void Tessellator::facetGroup(struct Geometry* geo)
 {
   auto & fg = geo->facetGroup;
 

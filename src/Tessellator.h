@@ -2,7 +2,7 @@
 
 #include "RVMVisitor.h"
 
-class Triangulator : public RVMVisitor
+class Tessellator : public RVMVisitor
 {
 public:
 
