@@ -80,7 +80,15 @@ void Tessellator::geometry(Geometry* geo)
     break;
 
   case Geometry::Kind::RectangularTorus:
-    rectangularTorus(geo, scale);
+    //rectangularTorus(geo, scale);
+    break;
+    
+  case Geometry::Kind::CircularTorus:
+    //circularTorus(geo, scale);
+    break;
+
+  case Geometry::Kind::Snout:
+    snout(geo, scale);
     break;
 
   case Geometry::Kind::FacetGroup:
@@ -269,10 +277,16 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
 {
   auto & tor = geo->rectangularTorus;
 
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+
+  if (cullTiny && std::max(tor.outer_radius-tor.inner_radius, tor.height)*scale < tolerance) {
+    tri->error = std::max(tor.outer_radius - tor.inner_radius, tor.height)*scale;
+    return;
+  }
 
   auto samples = sagittaBasedSampleCount(tor.angle, tor.outer_radius, scale);
 
-  //unsigned samples = 7;
   bool shell = true;
   bool cap0 = true;
   bool cap1 = true;
@@ -293,8 +307,6 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
 
   unsigned l = 0;
 
-  auto * tri = arena->alloc<Triangulation>();
-  geo->triangulation = tri;
   tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, samples);
 
   tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0);
@@ -381,6 +393,237 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
   assert(l == 3*tri->triangles_n);
 }
 
+void Tessellator::circularTorus(struct Geometry* geo, float scale)
+{
+  auto & ct = geo->circularTorus;
+
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+
+  if (cullTiny && ct.radius*scale < tolerance) {
+    tri->error = ct.radius*scale;
+    return;
+  }
+
+  unsigned samples_l = sagittaBasedSampleCount(ct.angle, ct.offset + ct.radius, scale); // large radius, toroidal direction
+  unsigned samples_s = sagittaBasedSampleCount(twopi, ct.radius, scale); // small radius, poloidal direction
+
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+
+  t0.resize(2 * samples_l);
+  for (unsigned i = 0; i < samples_l; i++) {
+    t0[2 * i + 0] = std::cos((ct.angle / (samples_l - 1.f))*i);
+    t0[2 * i + 1] = std::sin((ct.angle / (samples_l - 1.f))*i);
+  }
+
+  t1.resize(2 * samples_s);
+  for (unsigned i = 0; i < samples_s; i++) {
+    t1[2 * i + 0] = std::cos((twopi / samples_s)*i);
+    t1[2 * i + 1] = std::sin((twopi / samples_s)*i);
+  }
+
+  tri->error = std::max(sagittaBasedError(ct.angle, ct.offset + ct.radius, scale, samples_l),
+                        sagittaBasedError(twopi, ct.radius, scale, samples_s));
+
+  tri->vertices_n = ((shell ? samples_l : 0) + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)) * samples_s;
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
+  tri->triangles_n = (shell ? 2 * (samples_l - 1)*samples_s : 0) + (samples_s - 2) *((cap0 ? 1 : 0) + (cap1 ? 1 : 0));
+  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+
+  // generate vertices
+  unsigned l = 0;
+
+  if (shell) {
+    for (unsigned u = 0; u < samples_l; u++) {
+      for (unsigned v = 0; v < samples_s; v++) {
+        tri->normals[l] = t1[2 * v + 0] * t0[2 * u + 0]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[2 * u + 0]);
+        tri->normals[l] = t1[2 * v + 0] * t0[2 * u + 1]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[2 * u + 1]);
+        tri->normals[l] = t1[2 * v + 1];                 tri->vertices[l++] = ct.radius * t1[2 * v + 1];
+      }
+    }
+  }
+  if (cap0) {
+    for (unsigned v = 0; v < samples_s; v++) {
+      tri->normals[l] =  0.f; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[0]);
+      tri->normals[l] = -1.f; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[1]);
+      tri->normals[l] =  0.f; tri->vertices[l++] = ct.radius * t1[2 * v + 1];
+    }
+  }
+  if (cap1) {
+    unsigned m = 2 * (samples_l - 1);
+    for (unsigned v = 0; v < samples_s; v++) {
+      tri->normals[l] = -t0[m + 1]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[m + 0]);
+      tri->normals[l] =  t0[m + 0]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[m + 1]);
+      tri->normals[l] =        0.f; tri->vertices[l++] = ct.radius * t1[2 * v + 1];
+    }
+  }
+  assert(l == 3*tri->vertices_n);
+
+  // generate indices
+  l = 0;
+  unsigned o = 0;
+  if (shell) {
+    for (unsigned u = 0; u + 1 < samples_l; u++) {
+      for (unsigned v = 0; v + 1 < samples_s; v++) {
+        tri->indices[l++] = samples_s * (u + 0) + (v + 0);
+        tri->indices[l++] = samples_s * (u + 1) + (v + 0);
+        tri->indices[l++] = samples_s * (u + 1) + (v + 1);
+
+        tri->indices[l++] = samples_s * (u + 1) + (v + 1);
+        tri->indices[l++] = samples_s * (u + 0) + (v + 1);
+        tri->indices[l++] = samples_s * (u + 0) + (v + 0);
+      }
+      tri->indices[l++] = samples_s * (u + 0) + (samples_s - 1);
+      tri->indices[l++] = samples_s * (u + 1) + (samples_s - 1);
+      tri->indices[l++] = samples_s * (u + 1) + 0;
+      tri->indices[l++] = samples_s * (u + 1) + 0;
+      tri->indices[l++] = samples_s * (u + 0) + 0;
+      tri->indices[l++] = samples_s * (u + 0) + (samples_s - 1);
+    }
+    o += samples_l * samples_s;
+  }
+  if (cap0) {
+    for (unsigned i = 1; i + 1 < samples_s; i++) {
+      tri->indices[l++] = o + 0;
+      tri->indices[l++] = o + i;
+      tri->indices[l++] = o + i + 1;
+    }
+    o += samples_s;
+  }
+  if (cap1) {
+    for (unsigned i = 1; i + 1 < samples_s; i++) {
+      tri->indices[l++] = o + 0;
+      tri->indices[l++] = o + i + 1;
+      tri->indices[l++] = o + i;
+    }
+    o += samples_s;
+  }
+  assert(l == 3*tri->triangles_n);
+  assert(o == tri->vertices_n);
+}
+
+
+void Tessellator::snout(struct Geometry* geo, float scale)
+{
+  auto & sn = geo->snout;
+
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+
+  auto radius_max = std::max(sn.radius_b, sn.radius_t);
+  if (cullTiny && radius_max*scale < tolerance) {
+    tri->error = radius_max *scale;
+    return;
+  }
+  unsigned samples = sagittaBasedSampleCount(twopi, radius_max, scale);
+
+
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+  t0.resize(2 * samples);
+  for (unsigned i = 0; i < samples; i++) {
+    t0[2 * i + 0] = std::cos((twopi / samples)*i);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+  }
+  t1.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t1[i] = sn.radius_b * t0[i];
+  }
+  t2.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t2[i] = sn.radius_t * t0[i];
+  }
+
+  float h2 = 0.5f*sn.height;
+  unsigned l = 0;
+  auto ox = 0.5f*sn.offset[0];
+  auto oy = 0.5f*sn.offset[1];
+  float mb[2] = { std::tan(sn.bshear[0]), std::tan(sn.bshear[1]) };
+  float mt[2] = { std::tan(sn.tshear[0]), std::tan(sn.tshear[1]) };
+
+  tri->vertices_n = (shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0);
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
+  tri->triangles_n = (shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0);
+  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      float xb = t1[2 * i + 0] - ox;
+      float yb = t1[2 * i + 1] - oy;
+      float zb = -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1];
+
+      float xt = t2[2 * i + 0] + ox;
+      float yt = t2[2 * i + 1] + oy;
+      float zt = h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1];
+
+      float s = (sn.offset[0] * t0[2 * i + 0] + sn.offset[1] * t0[2 * i + 1]);
+      float nx = t0[2 * i + 0];
+      float ny = t0[2 * i + 1];
+      float nz = -(sn.radius_t - sn.radius_b + s) / sn.height;
+
+      l = vertex(tri->normals, tri->vertices, l, nx, ny, nz, xb, yb, zb);
+      l = vertex(tri->normals, tri->vertices, l, nx, ny, nz, xt, yt, zt);
+    }
+  }
+  if (cap0) {
+    auto nx = std::sin(sn.bshear[0])*std::cos(sn.bshear[1]);
+    auto ny = std::sin(sn.bshear[1]);
+    auto nz = -std::cos(sn.bshear[0])*std::cos(sn.bshear[1]);
+    for (unsigned i = 0; cap0 && i < samples; i++) {
+      l = vertex(tri->normals, tri->vertices, l, nx, ny, nz,
+                 t1[2 * i + 0] - ox,
+                 t1[2 * i + 1] - oy,
+                 -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1]);
+    }
+  }
+  if (cap1) {
+    auto nx = -std::sin(sn.tshear[0])*std::cos(sn.tshear[1]);
+    auto ny = -std::sin(sn.tshear[1]);
+    auto nz = std::cos(sn.tshear[0])*std::cos(sn.tshear[1]);
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(tri->normals, tri->vertices, l, nx, ny, nz,
+                 t2[2 * i + 0] + ox,
+                 t2[2 * i + 1] + oy,
+                 h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1]);
+    }
+  }
+  assert(l == 3 * tri->vertices_n);
+
+  l = 0;
+  unsigned o = 0;
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      unsigned ii = (i + 1) % samples;
+      l = quadIndices(tri->indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
+    }
+    o += 2 * samples;
+  }
+  if (cap0) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(tri->indices, l, o, 0, i + 1, i);
+    }
+    o += samples;
+  }
+  if (cap1) {
+    for (unsigned i = 1; i + 1 < samples; i++) {
+      l = triIndices(tri->indices, l, o, 0, i, i + 1);
+    }
+    o += samples;
+  }
+  assert(l == 3*tri->triangles_n);
+  assert(o == tri->vertices_n);
+}
+
+
 #if 0
 
 
@@ -392,103 +635,6 @@ void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
 void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inner_radius, float outer_radius, float height, float angle)
 {
 
-void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
-{
-  unsigned samples_l = 7; // large radius, toroidal direction
-  unsigned samples_s = 5; // small radius, poloidal direction
-
-  bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
-
-
-  t0.resize(2 * samples_l);
-  for (unsigned i = 0; i < samples_l; i++) {
-    t0[2 * i + 0] = std::cos((angle / (samples_l - 1.f))*i);
-    t0[2 * i + 1] = std::sin((angle / (samples_l - 1.f))*i);
-  }
-
-  t1.resize(2 * samples_s);
-  for (unsigned i = 0; i < samples_s; i++) {
-    t1[2 * i + 0] = std::cos((twopi / samples_s)*i);
-    t1[2 * i + 1] = std::sin((twopi / samples_s)*i);
-  }
-
-  // generate vertices
-  unsigned l = 0;
-  vertices.resize(3 * ((shell ? samples_l : 0) + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)) * samples_s);
-  normals.resize(vertices.size());
-  if (shell) {
-    for (unsigned u = 0; u < samples_l; u++) {
-      for (unsigned v = 0; v < samples_s; v++) {
-        normals[l] = t1[2 * v + 0] * t0[2 * u + 0]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 0]);
-        normals[l] = t1[2 * v + 0] * t0[2 * u + 1]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[2 * u + 1]);
-        normals[l] = t1[2 * v + 1]; vertices[l++] = radius * t1[2 * v + 1];
-      }
-    }
-  }
-  if (cap0) {
-    for (unsigned v = 0; v < samples_s; v++) {
-      normals[l] = 0.f; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[0]);
-      normals[l] = -1.f; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[1]);
-      normals[l] = 0.f; vertices[l++] = radius * t1[2 * v + 1];
-    }
-  }
-  if (cap1) {
-    unsigned m = 2 * (samples_l - 1);
-    for (unsigned v = 0; v < samples_s; v++) {
-      normals[l] = -t0[m + 1]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[m + 0]);
-      normals[l] = t0[m + 0]; vertices[l++] = ((radius * t1[2 * v + 0] + offset) * t0[m + 1]);
-      normals[l] = 0.f; vertices[l++] = radius * t1[2 * v + 1];
-    }
-  }
-  assert(l == vertices.size());
-
-  // generate indices
-  l = 0;
-  unsigned o = 0;
-  indices.resize((shell ? 6 * (samples_l - 1)*samples_s : 0) + 3 * (samples_s - 2) *((cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
-  if (shell) {
-    for (unsigned u = 0; u + 1 < samples_l; u++) {
-      for (unsigned v = 0; v + 1 < samples_s; v++) {
-        indices[l++] = samples_s * (u + 0) + (v + 0);
-        indices[l++] = samples_s * (u + 1) + (v + 0);
-        indices[l++] = samples_s * (u + 1) + (v + 1);
-
-        indices[l++] = samples_s * (u + 1) + (v + 1);
-        indices[l++] = samples_s * (u + 0) + (v + 1);
-        indices[l++] = samples_s * (u + 0) + (v + 0);
-      }
-      indices[l++] = samples_s * (u + 0) + (samples_s - 1);
-      indices[l++] = samples_s * (u + 1) + (samples_s - 1);
-      indices[l++] = samples_s * (u + 1) + 0;
-      indices[l++] = samples_s * (u + 1) + 0;
-      indices[l++] = samples_s * (u + 0) + 0;
-      indices[l++] = samples_s * (u + 0) + (samples_s - 1);
-    }
-    o += samples_l * samples_s;
-  }
-  if (cap0) {
-    for (unsigned i = 1; i + 1 < samples_s; i++) {
-      indices[l++] = o + 0;
-      indices[l++] = o + i;
-      indices[l++] = o + i + 1;
-    }
-    o += samples_s;
-  }
-  if (cap1) {
-    for (unsigned i = 1; i + 1 < samples_s; i++) {
-      indices[l++] = o + 0;
-      indices[l++] = o + i + 1;
-      indices[l++] = o + i;
-    }
-    o += samples_s;
-  }
-  assert(l == indices.size());
-  assert(3 * o == vertices.size());
-
-  triangles(affine, bbox, vertices, normals, indices);
-}
 
 void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)
 {
@@ -683,105 +829,7 @@ void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, flo
   triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, float* bshear, float* tshear, float radius_b, float radius_t, float height)
-{
-  unsigned samples = 5;
 
-  bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
-
-  t0.resize(2 * samples);
-  for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((twopi / samples)*i);
-    t0[2 * i + 1] = std::sin((twopi / samples)*i);
-  }
-  t1.resize(2 * samples);
-  for (unsigned i = 0; i < 2 * samples; i++) {
-    t1[i] = radius_b * t0[i];
-  }
-  t2.resize(2 * samples);
-  for (unsigned i = 0; i < 2 * samples; i++) {
-    t2[i] = radius_t * t0[i];
-  }
-
-  float h2 = height;
-  unsigned l = 0;
-  auto ox = 0.5f*offset_xy[0];
-  auto oy = 0.5f*offset_xy[1];
-  float mb[2] = { std::tan(bshear[0]), std::tan(bshear[1]) };
-  float mt[2] = { std::tan(tshear[0]), std::tan(tshear[1]) };
-  vertices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0)));
-  normals.resize(vertices.size());
-  if (shell) {
-    for (unsigned i = 0; i < samples; i++) {
-      float xb = t1[2 * i + 0] - ox;
-      float yb = t1[2 * i + 1] - oy;
-      float zb = -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1];
-
-      float xt = t2[2 * i + 0] + ox;
-      float yt = t2[2 * i + 1] + oy;
-      float zt = h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1];
-
-      float s = (offset_xy[0] * t0[2 * i + 0] + offset_xy[1] * t0[2 * i + 1]);
-      float nx = t0[2 * i + 0];
-      float ny = t0[2 * i + 1];
-      float nz = -(radius_t - radius_b + s) / height;
-
-      l = vertex(normals, vertices, l, nx, ny, nz, xb, yb, zb);
-      l = vertex(normals, vertices, l, nx, ny, nz, xt, yt, zt);
-    }
-  }
-  if (cap0) {
-    auto nx = std::sin(bshear[0])*std::cos(bshear[1]);
-    auto ny = std::sin(bshear[1]);
-    auto nz = -std::cos(bshear[0])*std::cos(bshear[1]);
-    for (unsigned i = 0; cap0 && i < samples; i++) {
-      l = vertex(normals, vertices, l, nx, ny, nz,
-                 t1[2 * i + 0] - ox,
-                 t1[2 * i + 1] - oy,
-                 -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1]);
-    }
-  }
-  if (cap1) {
-    auto nx = -std::sin(tshear[0])*std::cos(tshear[1]);
-    auto ny = -std::sin(tshear[1]);
-    auto nz = std::cos(tshear[0])*std::cos(tshear[1]);
-    for (unsigned i = 0; i < samples; i++) {
-      l = vertex(normals, vertices, l, nx, ny, nz,
-                 t2[2 * i + 0] + ox,
-                 t2[2 * i + 1] + oy,
-                 h2 + mt[0] * t2[2 * i + 0] + mt[1] * t2[2 * i + 1]);
-    }
-  }
-
-  l = 0;
-  unsigned o = 0;
-  indices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0)));
-  if (shell) {
-    for (unsigned i = 0; i < samples; i++) {
-      unsigned ii = (i + 1) % samples;
-      l = quadIndices(indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
-    }
-    o += 2 * samples;
-  }
-  if (cap0) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(indices, l, o, 0, i + 1, i);
-    }
-    o += samples;
-  }
-  if (cap1) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(indices, l, o, 0, i, i + 1);
-    }
-    o += samples;
-  }
-  assert(l == indices.size());
-  assert(3 * o == vertices.size());
-
-  triangles(affine, bbox, vertices, normals, indices);
-}
 
 
 #endif

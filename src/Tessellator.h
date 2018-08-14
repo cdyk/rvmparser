@@ -24,6 +24,7 @@ public:
 
 private:
   float tolerance = 0.01f;
+  bool cullTiny = true;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;
 
@@ -47,6 +48,10 @@ private:
   void box(struct Geometry* geo, float scale);
 
   void rectangularTorus(struct Geometry* geo, float scale);
+
+  void circularTorus(struct Geometry* geo, float scale);
+
+  void snout(struct Geometry* geo, float scale);
 
   void facetGroup(struct Geometry* geo, float scale);
 
