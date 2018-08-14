@@ -39,6 +39,9 @@ int main(int argc, char** argv)
     CloseHandle(h);
   }
 
+  Triangulator triangulator;
+  store->apply(&triangulator);
+
   ExportObj visitor("output.obj");
   store->apply(&visitor);
 

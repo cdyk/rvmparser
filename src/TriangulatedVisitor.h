@@ -2,33 +2,29 @@
 
 #include "RVMVisitor.h"
 
-class TriangulatedVisitor : public RVMVisitor
+class Triangulator : public RVMVisitor
 {
 public:
 
-  virtual void triangles(float* affine, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices) = 0;
+  void init(class Store& store) override;
 
-  void pyramid(float* M_affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) override;
+  void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) {}
 
-  void box(float* affine, float* bbox, float* lengths) override;
+  void endFile() {}
 
-  void sphere(float* affine, float* bbox, float diameter) override;
+  void beginModel(const char* project, const char* name) {}
 
-  void rectangularTorus(float* M_affine, float* bbox, float inner_radius, float outer_radius, float height, float angle) override;
+  void endModel() {}
 
-  void circularTorus(float* M_affine, float* bbox, float offset, float radius, float angle) override;
+  void beginGroup(const char* name, const float* translation, const uint32_t material) {}
 
-  void ellipticalDish(float* affine, float* bbox, float diameter, float radius) override;
+  void EndGroup() {}
 
-  void sphericalDish(float* affine, float* bbox, float diameter, float height) override;
-
-  void cylinder(float* affine, float* bbox, float radius, float height) override;
-
-  void snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height) override;
-
-  void facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N) override;
+  void geometry(struct Geometry* geometry) override;
 
 private:
+  struct Arena * arena = nullptr;
+
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<uint32_t> indices;
@@ -37,6 +33,12 @@ private:
   std::vector<float> t0;
   std::vector<float> t1;
   std::vector<float> t2;
+
+  void pyramid(struct Geometry* geometry);
+
+  void box(struct Geometry* geometry);
+
+  void facetGroup(struct Geometry* geometry);
 
   void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z, float scale_z);
 

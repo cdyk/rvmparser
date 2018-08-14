@@ -3,13 +3,15 @@
 
 #include "TriangulatedVisitor.h"
 
-class ExportObj : public TriangulatedVisitor
+class ExportObj : public RVMVisitor
 {
 public:
 
   ExportObj(const char* path);
 
   ~ExportObj();
+
+  void init(class Store& store) override {}
 
   void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) override;
 
@@ -23,9 +25,7 @@ public:
 
   void EndGroup() override;
 
-  void line(float* affine, float* bbox, float x0, float x1) override;
-
-  void triangles(float* affine, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices) override;
+  void geometry(struct Geometry* geometry) override;
 
 private:
   FILE* out = nullptr;

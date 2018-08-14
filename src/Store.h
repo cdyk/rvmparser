@@ -19,6 +19,15 @@ struct Polygon
   uint32_t contours_n;
 };
 
+struct Triangulation {
+  float* vertices = nullptr;
+  float* normals = nullptr;
+  uint32_t* indices = 0;
+  uint32_t vertices_n = 0;
+  uint32_t triangles_n = 0;
+};
+
+
 struct Geometry
 {
   enum struct Kind
@@ -36,6 +45,7 @@ struct Geometry
     FacetGroup
   };
   Geometry* next = nullptr;
+  Triangulation* triangulation = nullptr;
   Kind kind;
 
   float M_3x4[12];
@@ -93,7 +103,6 @@ struct Geometry
       uint32_t polygons_n;
     } facetGroup;
   };
-
 };
 
 template<typename T>
@@ -139,23 +148,38 @@ struct Group
 
 };
 
+struct Arena
+{
+  ~Arena() { clear(); }
+
+  uint8_t * first = nullptr;
+  uint8_t * curr = nullptr;
+  size_t fill = 0;
+  size_t size = 0;
+
+  void* alloc(size_t bytes);
+  void* dup(void* src, size_t bytes);
+  void clear();
+
+  template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
+};
+
 
 class Store
 {
 public:
   Store();
-  ~Store();
 
   Geometry* newGeometry(Group* parent);
 
   Group* newGroup(Group * parent, Group::Kind kind);
 
-  void* alloc(size_t bytes);
 
   void apply(RVMVisitor* visitor);
 
+  Arena arena;
+  Arena arenaTriangulation;
 private:
-  void* arena;
 
   void apply(RVMVisitor* visitor, Group* group);
 

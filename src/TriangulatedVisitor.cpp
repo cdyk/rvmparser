@@ -5,6 +5,7 @@
 #include <cassert>
 #include "tesselator.h"
 
+#include "Store.h"
 #include "TriangulatedVisitor.h"
 
 namespace {
@@ -14,7 +15,7 @@ namespace {
   const float one_over_pi = float(1.0 / M_PI);
   const float twopi = float(2.0*M_PI);
 
-  unsigned triIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2)
+  unsigned triIndices(uint32_t* indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2)
   {
     indices[l++] = o + v0;
     indices[l++] = o + v1;
@@ -23,7 +24,7 @@ namespace {
   }
 
 
-  unsigned quadIndices(std::vector<uint32_t>& indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2, unsigned v3)
+  unsigned quadIndices(uint32_t* indices, unsigned  l, unsigned o, unsigned v0, unsigned v1, unsigned v2, unsigned v3)
   {
     indices[l++] = o + v0;
     indices[l++] = o + v1;
@@ -35,7 +36,7 @@ namespace {
     return l;
   }
 
-  unsigned vertex(std::vector<float>& normals, std::vector<float>& vertices, unsigned l, float* n, float* p)
+  unsigned vertex(float* normals, float* vertices, unsigned l, float* n, float* p)
   {
     normals[l] = n[0]; vertices[l++] = p[0];
     normals[l] = n[1]; vertices[l++] = p[1];
@@ -43,7 +44,7 @@ namespace {
     return l;
   }
 
-  unsigned vertex(std::vector<float>& normals, std::vector<float>& vertices, unsigned l, float nx, float ny, float nz, float px, float py, float pz)
+  unsigned vertex(float* normals, float* vertices, unsigned l, float nx, float ny, float nz, float px, float py, float pz)
   {
     normals[l] = nx; vertices[l++] = px;
     normals[l] = ny; vertices[l++] = py;
@@ -53,19 +54,50 @@ namespace {
 
 }
 
-
-void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, float* top_xy, float* offset_xy, float height) 
+void Triangulator::init(class Store& store)
 {
-  bool cap0 = 1e-7f <= std::min(std::abs(bottom_xy[0]), std::abs(bottom_xy[1]));
-  bool cap1 = 1e-7f <= std::min(std::abs(top_xy[0]), std::abs(top_xy[1]));
+  arena = &store.arenaTriangulation;
 
-  auto bx = 0.5f*bottom_xy[0];
-  auto by = 0.5f*bottom_xy[1];
-  auto tx = 0.5f*top_xy[0];
-  auto ty = 0.5f*top_xy[1];
-  auto ox = 0.5f*offset_xy[0];
-  auto oy = 0.5f*offset_xy[1];
-  auto h2 = 0.5f*height;
+  arena->clear();
+}
+
+
+void Triangulator::geometry(Geometry* geo)
+{
+  switch (geo->kind) {
+  case Geometry::Kind::Pyramid:
+    //pyramid(geometry);
+    break;
+
+  case Geometry::Kind::Box:
+    box(geo);
+    break;
+
+  case Geometry::Kind::FacetGroup:
+    //facetGroup(geometry);
+    break;
+
+  default:
+    geo->triangulation = nullptr;
+    break;
+  }
+
+
+}
+
+
+void Triangulator::pyramid(Geometry* geo)
+{
+  bool cap0 = 1e-7f <= std::min(std::abs(geo->pyramid.bottom[0]), std::abs(geo->pyramid.bottom[1]));
+  bool cap1 = 1e-7f <= std::min(std::abs(geo->pyramid.top[0]), std::abs(geo->pyramid.top[1]));
+
+  auto bx = 0.5f * geo->pyramid.bottom[0];
+  auto by = 0.5f * geo->pyramid.bottom[1];
+  auto tx = 0.5f * geo->pyramid.top[0];
+  auto ty = 0.5f * geo->pyramid.top[1];
+  auto ox = 0.5f * geo->pyramid.offset[0];
+  auto oy = 0.5f * geo->pyramid.offset[1];
+  auto h2 = 0.5f * geo->pyramid.height;
 
   float quad[2][4][3] =
   {
@@ -90,92 +122,130 @@ void TriangulatedVisitor::pyramid(float* affine, float* bbox, float* bottom_xy, 
     { -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) },
   };
 
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+
+  tri->vertices_n = 4 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
+  tri->triangles_n = 2 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
+
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
   unsigned l = 0;
-  vertices.resize(3 * 4 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
-  normals.resize(vertices.size());
   for (unsigned i = 0; i < 4; i++) {
     unsigned ii = (i + 1) & 3;
-    l = vertex(normals, vertices, l, n[i], quad[0][i]);
-    l = vertex(normals, vertices, l, n[i], quad[0][ii]);
-    l = vertex(normals, vertices, l, n[i], quad[1][ii]);
-    l = vertex(normals, vertices, l, n[i], quad[1][i]);
+    l = vertex(tri->normals, tri->vertices, l, n[i], quad[0][i]);
+    l = vertex(tri->normals, tri->vertices, l, n[i], quad[0][ii]);
+    l = vertex(tri->normals, tri->vertices, l, n[i], quad[1][ii]);
+    l = vertex(tri->normals, tri->vertices, l, n[i], quad[1][i]);
   }
   if (cap0) {
     float n[3] = { 0, 0, -1 };
     for (unsigned i = 0; i < 4; i++) {
-      l = vertex(normals, vertices, l, n, quad[0][i]);
+      l = vertex(tri->normals, tri->vertices, l, n, quad[0][i]);
     }
   }
   if (cap1) {
     float n[3] = { 0, 0, 1 };
     for (unsigned i = 0; i < 4; i++) {
-      l = vertex(normals, vertices, l, n, quad[1][i]);
+      l = vertex(tri->normals, tri->vertices, l, n, quad[1][i]);
     }
   }
-  assert(l == vertices.size());
-
+  assert(l == 3*tri->vertices_n);
 
   l = 0;
-  indices.resize(6 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)));
+  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t) * tri->triangles_n);
   for (unsigned i = 0; i < 4; i++) {
-    l = quadIndices(indices, l, 4 * i, 0, 1, 2, 3);
+    l = quadIndices(tri->indices, l, 4 * i, 0, 1, 2, 3);
   }
   unsigned o = 4 * 4;
   if (cap0) {
-    l = quadIndices(indices, l, o, 3, 2, 1, 0);
+    l = quadIndices(tri->indices, l, o, 3, 2, 1, 0);
     o += 4;
   }
   if (cap1) {
-    l = quadIndices(indices, l, o, 0, 1, 2, 3);
+    l = quadIndices(tri->indices, l, o, 0, 1, 2, 3);
     o += 4;
   }
-  assert(l == indices.size());
-  assert(3*o == vertices.size());
-
-  triangles(affine, bbox, vertices, normals, indices);
+  assert(l == 3 * tri->triangles_n);
+  assert(o == tri->vertices_n);
 }
 
-void TriangulatedVisitor::box(float* affine, float* bbox, float* lengths)
+
+void Triangulator::box(Geometry* geo)
 {
-  auto xp = 0.5f * lengths[0]; auto xm = -xp;
-  auto yp = 0.5f * lengths[1]; auto ym = -yp;
-  auto zp = 0.5f * lengths[2]; auto zm = -zp;
+  auto & box = geo->box;
 
-  vertices = {
-    xm, ym, zm,  xp, ym, zm,  xp, yp, zm,  xm, yp, zm,
-    xm, ym, zp,  xp, ym, zp,  xp, yp, zp,  xm, yp, zp,
-    xm, ym, zm,  xm, yp, zm,  xm, yp, zp,  xm, ym, zp,
-    xp, ym, zm,  xp, yp, zm,  xp, yp, zp,  xp, ym, zp,
-    xm, ym, zm,  xm, ym, zp,  xp, ym, zp,  xp, ym, zm,
-    xm, yp, zm,  xm, yp, zp,  xp, yp, zp,  xp, yp, zm,
+
+  auto xp = 0.5f * box.lengths[0]; auto xm = -xp;
+  auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
+  auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
+
+  bool faces[6] = {
+    1e-5 <= box.lengths[0],
+    1e-5 <= box.lengths[0],
+    1e-5 <= box.lengths[1],
+    1e-5 <= box.lengths[1],
+    1e-5 <= box.lengths[2],
+    1e-5 <= box.lengths[2],
   };
 
-  normals = {
-    0, 0, -1,  0, 0, -1,  0, 0, -1,  0, 0, -1,
-    0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
-    -1, 0, 0,  -1, 0, 0,  -1, 0, 0,  -1, 0, 0,
-    1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,
-    0, -1, 0,  0, -1, 0,  0, -1, 0,  0, -1, 0,
-    0, 1, 0,  0, 1, 0,  0, 1, 0,  0, 1, 0
+  float V[6][4][3] = {
+    { { xm, ym, zp }, { xm, yp, zp }, { xm, yp, zm }, { xm, ym, zm } },
+    { { xp, ym, zm }, { xp, yp, zm }, { xp, yp, zp }, { xp, ym, zp } },
+    { { xp, ym, zm }, { xp, ym, zp }, { xm, ym, zp }, { xm, ym, zm } },
+    { { xm, yp, zm }, { xm, yp, zp }, { xp, yp, zp }, { xp, yp, zm } },
+    { { xm, yp, zm }, { xp, yp, zm }, { xp, ym, zm }, { xm, ym, zm } },
+    { { xm, ym, zp }, { xp, ym, zp }, { xp, yp, zp }, { xm, yp, zp } }
   };
 
-  indices = {
-    4 * 0 + 2, 4 * 0 + 1, 4 * 0 + 0,
-    4 * 0 + 3, 4 * 0 + 2, 4 * 0 + 0,
-    4 * 1 + 0, 4 * 1 + 1, 4 * 1 + 2,
-    4 * 1 + 0, 4 * 1 + 2, 4 * 1 + 3,
-    4 * 2 + 2, 4 * 2 + 1, 4 * 2 + 0,
-    4 * 2 + 3, 4 * 2 + 2, 4 * 2 + 0,
-    4 * 3 + 0, 4 * 3 + 1, 4 * 3 + 2,
-    4 * 3 + 0, 4 * 3 + 2, 4 * 3 + 3,
-    4 * 4 + 2, 4 * 4 + 1, 4 * 4 + 0,
-    4 * 4 + 3, 4 * 4 + 2, 4 * 4 + 0,
-    4 * 5 + 0, 4 * 5 + 1, 4 * 5 + 2,
-    4 * 5 + 0, 4 * 5 + 2, 4 * 5 + 3,
+  float N[6][3] = {
+    { -1,  0,  0 },
+    {  1,  0,  0 },
+    {  0, -1,  0 },
+    {  0,  1,  0 },
+    {  0,  0, -1 },
+    {  0,  0,  1 }
   };
 
-  triangles(affine, bbox, vertices, normals, indices);
+  unsigned faces_n = 0;
+  for(unsigned i=0; i<6; i++) {
+    if (faces[i]) faces_n++;
+  }
+  Triangulation* tri = nullptr;
+  if (faces_n) {
+    tri = arena->alloc<Triangulation>();
+    tri->vertices_n = 4 * faces_n;
+    tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+    tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
+    tri->triangles_n = 2 * faces_n;
+    tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+
+    unsigned o = 0;
+    unsigned i_v = 0;
+    unsigned i_p = 0;
+    for (unsigned f = 0; f < 6; f++) {
+      if (!faces[f]) continue;
+
+      for (unsigned i = 0; i < 4; i++) {
+        i_v = vertex(tri->normals, tri->vertices, i_v, N[f], V[f][i]);
+      }
+      i_p = quadIndices(tri->indices, i_p, o, 0, 1, 2, 3);
+
+      o += 4;
+    }
+    assert(i_v == 3 * tri->vertices_n);
+    assert(i_p == 3 * tri->triangles_n);
+    assert(o == tri->vertices_n);
+  }
+
+
+  geo->triangulation = tri;
 }
+
+#if 0
+
 
 void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
 {
@@ -677,68 +747,76 @@ void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, flo
   triangles(affine, bbox, vertices, normals, indices);
 }
 
-void TriangulatedVisitor::facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N)
+
+#endif
+
+void Triangulator::facetGroup(struct Geometry* geo)
 {
-  //fprintf(stderr, "* Group %zd\n", polygons.size() - 1);
+  auto & fg = geo->facetGroup;
 
   vertices.clear();
   indices.clear();
-  for (unsigned p = 0; p + 1 < polygons.size(); p++) {
-    unsigned ca = polygons[p];
-    unsigned cb = polygons[p + 1];
-    //fprintf(stderr, "  * Polygon %d %d .. %d\n", ca, cb, (cb - ca - 1));
+  for (unsigned p = 0; p < fg.polygons_n; p++) {
+    auto & poly = fg.polygons[p];
 
     auto tess = tessNewTess(nullptr);
-    unsigned va = ~0;
-    unsigned vb = ~0;
-    for (unsigned c = ca; c + 1 < cb; c++) {
-      va = contours[c];
-      vb = contours[c + 1];
-
-      tessAddContour(tess, 3, P.data() + va, 3 * sizeof(float), (vb - va) / 3);
-
-     //fprintf(stderr, "    * Contour %d %d .. %f\n", va, vb, (vb - va)/3.0);
+    for (unsigned c = 0; c < poly.contours_n; c++) {
+      auto & cont = poly.coutours[c];
+      tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
     }
 
     if (tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, nullptr)) {
-      auto vo = uint32_t(vertices.size())/3;
+      auto vo = uint32_t(vertices.size()) / 3;
       auto vn = unsigned(tessGetVertexCount(tess));
-      
+ 
       vertices.resize(vertices.size() + 3 * vn);
       std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
 
-      // Try to remap normals
       auto * remap = tessGetVertexIndices(tess);
       normals.resize(vertices.size());
       for (unsigned i = 0; i < vn; i++) {
+
         if (remap[i] != TESS_UNDEF) {
-          normals[3 * (vo + i) + 0] = N[contours[ca] + 3*remap[i] + 0];
-          normals[3 * (vo + i) + 1] = N[contours[ca] + 3*remap[i] + 1];
-          normals[3 * (vo + i) + 2] = N[contours[ca] + 3*remap[i] + 2];
+          unsigned ix = remap[i];
+          for (unsigned c = 0; c < poly.contours_n; c++) {
+            auto & cont = poly.coutours[c];
+            if (ix < cont.vertices_n) {
+              normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
+              normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];
+              normals[3 * (vo + i) + 2] = cont.normals[3 * ix + 2];
+              break;
+            }
+            ix -= cont.vertices_n;
+          }
+        }
+
+        auto io = uint32_t(indices.size());
+        auto * elements = tessGetElements(tess);
+        auto elements_n = unsigned(tessGetElementCount(tess));
+        for (unsigned e = 0; e < elements_n; e++) {
+          auto ix = elements + 3 * e;
+          if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
+            indices.push_back(ix[0] + vo);
+            indices.push_back(ix[1] + vo);
+            indices.push_back(ix[2] + vo);
+          }
         }
       }
-
-      auto io = uint32_t(indices.size());
-      auto elements_n = unsigned(tessGetElementCount(tess));
-      indices.resize(indices.size() + 3 * elements_n);
-      
-      auto * elements = tessGetElements(tess);
-      for (unsigned e = 0; e < elements_n; e++) {
-        auto ix = elements + 3 * e;
-        if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
-          indices[io + 3 * e + 0] = ix[0] + vo;
-          indices[io + 3 * e + 1] = ix[1] + vo;
-          indices[io + 3 * e + 2] = ix[2] + vo;
-        }
-      }
-    }
-    tessDeleteTess(tess);
-
-    if (!indices.empty()) {
-      triangles(affine, bbox, vertices, normals, indices);
     }
   }
 
+  assert(vertices.size() == normals.size());
 
+  Triangulation* tri = nullptr;
+  if (!indices.empty()) {
+    tri = arena->alloc<Triangulation>();
+    tri->vertices_n = uint32_t(vertices.size() / 3);
+    tri->triangles_n =  uint32_t(indices.size() / 3);
 
+    tri->vertices = (float*)arena->dup(vertices.data(), sizeof(float)*vertices.size());
+    tri->normals = (float*)arena->dup(normals.data(), sizeof(float)*normals.size());
+    tri->indices = (uint32_t*)arena->dup(indices.data(), sizeof(uint32_t)*indices.size());
+  }
+  geo->triangulation = tri;
 }
+

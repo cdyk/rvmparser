@@ -57,7 +57,7 @@ namespace {
       }
     }
 
-    auto * str = (char*)store->alloc(l + 1);
+    auto * str = (char*)store->arena.alloc(l + 1);
     *dst = str;
 
     std::memcpy(str, p, l);
@@ -109,7 +109,7 @@ namespace {
       p = read_string(&g->file.encoding, ctx->store, p, e);
     }
     else {
-      auto * encoding = (char*)ctx->store->alloc(1);
+      auto * encoding = (char*)ctx->store->arena.alloc(1);
       encoding[0] = '\0';
       g->file.encoding = encoding;
     }
@@ -230,19 +230,19 @@ namespace {
       g->kind = Geometry::Kind::FacetGroup;
 
       p = read_uint32_be(g->facetGroup.polygons_n, p, e);
-      g->facetGroup.polygons = (Polygon*)ctx->store->alloc(sizeof(Polygon)*g->facetGroup.polygons_n);
+      g->facetGroup.polygons = (Polygon*)ctx->store->arena.alloc(sizeof(Polygon)*g->facetGroup.polygons_n);
 
       for (unsigned pi = 0; pi < g->facetGroup.polygons_n; pi++) {
         auto & poly = g->facetGroup.polygons[pi];
 
         p = read_uint32_be(poly.contours_n, p, e);
-        poly.coutours = (Contour*)ctx->store->alloc(sizeof(Contour)*poly.contours_n);
+        poly.coutours = (Contour*)ctx->store->arena.alloc(sizeof(Contour)*poly.contours_n);
         for (unsigned gi = 0; gi < poly.contours_n; gi++) {
           auto & cont = poly.coutours[gi];
 
           p = read_uint32_be(cont.vertices_n, p, e);
-          cont.vertices = (float*)ctx->store->alloc(3 * sizeof(float)*cont.vertices_n);
-          cont.normals = (float*)ctx->store->alloc(3 * sizeof(float)*cont.vertices_n);
+          cont.vertices = (float*)ctx->store->arena.alloc(3 * sizeof(float)*cont.vertices_n);
+          cont.normals = (float*)ctx->store->arena.alloc(3 * sizeof(float)*cont.vertices_n);
 
           for (unsigned vi = 0; vi < cont.vertices_n; vi++) {
             for (unsigned i = 0; i < 3; i++) {

@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdio>
 #include "ExportObj.h"
+#include "Store.h"
 
 ExportObj::ExportObj(const char* path)
 {
@@ -46,56 +47,62 @@ void ExportObj::beginGroup(const char* name, const float* translation, const uin
 
 void ExportObj::EndGroup() { }
 
-void ExportObj::line(float* M, float* bbox, float x0, float x1)
+void ExportObj::geometry(struct Geometry* geometry)
 {
-  auto p0_x = M[0] * x0 + M[3] * 0.f + M[6] * 0.f + M[9];
-  auto p0_y = M[1] * x0 + M[4] * 0.f + M[7] * 0.f + M[10];
-  auto p0_z = M[2] * x0 + M[5] * 0.f + M[8] * 0.f + M[11];
+  const auto & M = geometry->M_3x4;
 
-  auto p1_x = M[0] * x1 + M[3] * 0.f + M[6] * 0.f + M[9];
-  auto p1_y = M[1] * x1 + M[4] * 0.f + M[7] * 0.f + M[10];
-  auto p1_z = M[2] * x1 + M[5] * 0.f + M[8] * 0.f + M[11];
+  if (geometry->kind == Geometry::Kind::Line) {
+    auto x0 = geometry->line.a;
+    auto x1 = geometry->line.b;
 
-  fprintf(out, "v %f %f %f\n", p0_x, p0_y, p0_z);
-  fprintf(out, "v %f %f %f\n", p1_x, p1_y, p1_z);
-  fprintf(out, "l -1 -2\n");
+    auto p0_x = M[0] * x0 + M[3] * 0.f + M[6] * 0.f + M[9];
+    auto p0_y = M[1] * x0 + M[4] * 0.f + M[7] * 0.f + M[10];
+    auto p0_z = M[2] * x0 + M[5] * 0.f + M[8] * 0.f + M[11];
 
-  off += 2;
-}
+    auto p1_x = M[0] * x1 + M[3] * 0.f + M[6] * 0.f + M[9];
+    auto p1_y = M[1] * x1 + M[4] * 0.f + M[7] * 0.f + M[10];
+    auto p1_z = M[2] * x1 + M[5] * 0.f + M[8] * 0.f + M[11];
 
-void ExportObj::triangles(float* M, float* bbox, std::vector<float>& P, std::vector<float>& N, std::vector<uint32_t>& indices)
-{
+    fprintf(out, "v %f %f %f\n", p0_x, p0_y, p0_z);
+    fprintf(out, "v %f %f %f\n", p1_x, p1_y, p1_z);
+    fprintf(out, "l -1 -2\n");
 
-  assert(P.size() == N.size());
-  fprintf(out, "g\n");
-  for (size_t i = 0; i < P.size(); i += 3) {
-    auto px = P[i + 0];
-    auto py = P[i + 1];
-    auto pz = P[i + 2];
-    auto nx = N[i + 0];
-    auto ny = N[i + 1];
-    auto nz = N[i + 2];
-
-    float Px, Py, Pz, Nx, Ny, Nz;
-    Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
-    Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
-    Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
-    Nx = M[0] * nx + M[3] * ny + M[6] * nz;
-    Ny = M[1] * nx + M[4] * ny + M[7] * nz;
-    Nz = M[2] * nx + M[5] * ny + M[8] * nz;
-
-    fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-    fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
-
-    //fprintf(out, "v %f %f %f\n", px, py, pz);
-    //fprintf(out, "vn %f %f %f\n", nx, ny, nz);
-
+    off += 2;
   }
-  for (size_t i = 0; i < indices.size(); i += 3) {
-    fprintf(out, "f %zd//%zd %zd//%zd %zd//%zd\n",
-            indices[i + 0] + off, indices[i + 0] + off,
-            indices[i + 1] + off, indices[i + 1] + off,
-            indices[i + 2] + off, indices[i + 2] + off);
+  else if (geometry->triangulation != nullptr) {
+    auto * tri = geometry->triangulation;
+
+    fprintf(out, "g\n");
+    for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
+      auto px = tri->vertices[i + 0];
+      auto py = tri->vertices[i + 1];
+      auto pz = tri->vertices[i + 2];
+      auto nx = tri->normals[i + 0];
+      auto ny = tri->normals[i + 1];
+      auto nz = tri->normals[i + 2];
+
+      float Px, Py, Pz, Nx, Ny, Nz;
+      Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+      Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+      Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
+      Nx = M[0] * nx + M[3] * ny + M[6] * nz;
+      Ny = M[1] * nx + M[4] * ny + M[7] * nz;
+      Nz = M[2] * nx + M[5] * ny + M[8] * nz;
+
+      //fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+      //fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+
+      fprintf(out, "v %f %f %f\n", px, py, pz);
+      fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+
+    }
+    for (size_t i = 0; i < 3*tri->triangles_n; i += 3) {
+      fprintf(out, "f %zd//%zd %zd//%zd %zd//%zd\n",
+              tri->indices[i + 0] + off, tri->indices[i + 0] + off,
+              tri->indices[i + 1] + off, tri->indices[i + 1] + off,
+              tri->indices[i + 2] + off, tri->indices[i + 2] + off);
+    }
+    off += tri->vertices_n;
   }
-  off += P.size() / 3;
+
 }

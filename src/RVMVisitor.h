@@ -4,6 +4,8 @@
 class RVMVisitor
 {
 public:
+  virtual void init(class Store& store) = 0;
+
   virtual void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) = 0;
 
   virtual void endFile() = 0;
@@ -15,6 +17,10 @@ public:
   virtual void beginGroup(const char* name, const float* translation, const uint32_t material) = 0;
 
   virtual void EndGroup() = 0;
+
+  virtual void geometry(struct Geometry* geometry) = 0;
+
+#if 0
 
   virtual void line(float* affine, float* bbox, float x0, float x1) = 0;
 
@@ -37,4 +43,7 @@ public:
   virtual void snout(float* affine, float*bbox, float* offset, float* bshear, float* tshear, float bottom, float top, float height) = 0;
 
   virtual void facetGroup(float* affine, float* bbox, std::vector<uint32_t>& polygons, std::vector<uint32_t>& contours, std::vector<float>& P, std::vector<float>& N) = 0;
+
+#endif
+
 };
