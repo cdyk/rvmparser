@@ -1,19 +1,18 @@
 #pragma once
-#include <string>
 #include <vector>
 
 class RVMVisitor
 {
 public:
-  virtual void beginFile(const std::string info, const std::string& note, const std::string& date, const std::string& user, const std::string& encoding) = 0;
+  virtual void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) = 0;
 
   virtual void endFile() = 0;
 
-  virtual void beginModel(const std::string& project, const std::string& name) = 0;
+  virtual void beginModel(const char* project, const char* name) = 0;
 
   virtual void endModel() = 0;
 
-  virtual void beginGroup(const std::string& name, const float* translation, const uint32_t material) = 0;
+  virtual void beginGroup(const char* name, const float* translation, const uint32_t material) = 0;
 
   virtual void EndGroup() = 0;
 

@@ -7,19 +7,19 @@ class ExportObj : public TriangulatedVisitor
 {
 public:
 
-  ExportObj(const std::string& path);
+  ExportObj(const char* path);
 
   ~ExportObj();
 
-  void beginFile(const std::string info, const std::string& note, const std::string& date, const std::string& user, const std::string& encoding) override;
+  void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) override;
 
   void endFile() override;
 
-  void beginModel(const std::string& project, const std::string& name) override;
+  void beginModel(const char* project, const char* name) override;
 
   void endModel() override;
 
-  void beginGroup(const std::string& name, const float* translation, const uint32_t material) override;
+  void beginGroup(const char* name, const float* translation, const uint32_t material) override;
 
   void EndGroup() override;
 

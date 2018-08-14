@@ -2,9 +2,9 @@
 #include <cstdio>
 #include "ExportObj.h"
 
-ExportObj::ExportObj(const std::string& path)
+ExportObj::ExportObj(const char* path)
 {
-  auto err = fopen_s(&out, path.c_str(), "w");
+  auto err = fopen_s(&out, path, "w");
   assert(err == 0);
 
 }
@@ -17,30 +17,30 @@ ExportObj::~ExportObj()
 }
 
 
-void ExportObj::beginFile(const std::string info, const std::string& note, const std::string& date, const std::string& user, const std::string& encoding)
+void ExportObj::beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding)
 {
-  fprintf(out, "# %s\n", info.c_str());
-  fprintf(out, "# %s\n", note.c_str());
-  fprintf(out, "# %s\n", date.c_str());
-  fprintf(out, "# %s\n", user.c_str());
+  fprintf(out, "# %s\n", info);
+  fprintf(out, "# %s\n", note);
+  fprintf(out, "# %s\n", date);
+  fprintf(out, "# %s\n", user);
 }
 
 void ExportObj::endFile() {
   fprintf(out, "# End of file\n");
 }
 
-void ExportObj::beginModel(const std::string& project, const std::string& name)
+void ExportObj::beginModel(const char* project, const char* name)
 {
-  fprintf(out, "# Model project=%s, name=%s\n", project.c_str(), name.c_str());
+  fprintf(out, "# Model project=%s, name=%s\n", project, name);
 }
 
 void ExportObj::endModel() { }
 
-void ExportObj::beginGroup(const std::string& name, const float* translation, const uint32_t material)
+void ExportObj::beginGroup(const char* name, const float* translation, const uint32_t material)
 {
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i];
 
-  fprintf(out, "o %s\n", name.c_str());
+  fprintf(out, "o %s\n", name);
 
 }
 

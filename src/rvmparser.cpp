@@ -14,7 +14,6 @@ namespace {
 
   struct Context
   {
-    RVMVisitor* v;
     Store* store;
 
     std::vector<Group*> group_stack;
@@ -30,7 +29,7 @@ namespace {
   const char* read_uint32_be(uint32_t& rv, const char* p, const char* e)
   {
     auto * q = reinterpret_cast<const uint8_t*>(p);
-    rv = q[0]<<24 | q[1]<<16 | q[2]<<8 | q[3];
+    rv = q[0] << 24 | q[1] << 16 | q[2] << 8 | q[3];
     return p + 4;
   }
 
@@ -52,338 +51,309 @@ namespace {
     return str[3] << 24 | str[2] << 16 | str[1] << 8 | str[0];
   }
 
-  void copyString(const char** dst, Store* store, const std::string& src)
+  const char* read_string(const char** dst, Store* store, const char* p, const char* e)
   {
-    auto l = src.length();
-    if (l == 0) {
-      *dst = nullptr;
+    uint32_t len;
+    p = read_uint32_be(len, p, e);
+
+    unsigned l = 4 * len;
+    for (unsigned i = 0; i < l; i++) {
+      if (p[i] == 0) {
+        l = i;
+        break;
+      }
+    }
+
+    auto * str = (char*)store->alloc(l + 1);
+    *dst = str;
+
+    std::memcpy(str, p, l);
+    str[l] = '\0';
+
+    return p + 4 * len;
+  }
+
+  const char* parse_chunk_header(char* id, uint32_t& len, uint32_t& dunno, const char* p, const char* e)
+  {
+    unsigned i = 0;
+    for (i = 0; i < 4 && p + 4 <= e; i++) {
+      assert(p[0] == 0);
+      assert(p[1] == 0);
+      assert(p[2] == 0);
+      id[i] = p[3];
+      p += 4;
+    }
+    for (; i < 4; i++) {
+      id[i] = ' ';
+    }
+    if (p + 8 <= e) {
+      p = read_uint32_be(len, p, e);
+      p = read_uint32_be(dunno, p, e);
     }
     else {
-      auto * d = (char*)store->alloc(l + 1);
-      strcpy_s(d, l + 1, src.c_str());
-      *dst = d;
+      len = ~0;
+      dunno = ~0;
+      fprintf(stderr, "Chunk '%s' EOF after %zd bytes\n", id, e - p);
+      p = e;
     }
+    return p;
   }
 
 
-const char* parse_chunk_header(char* id, uint32_t& len, uint32_t& dunno, const char* p, const char* e)
-{
-  unsigned i = 0;
-  for (i = 0; i < 4 && p + 4 <= e; i++) {
-    assert(p[0] == 0);
-    assert(p[1] == 0);
-    assert(p[2] == 0);
-    id[i] = p[3];
-    p += 4;
-  }
-  for (; i < 4; i++) {
-    id[i] = ' ';
-  }
-  if (p + 8 <= e) {
-    p = read_uint32_be(len, p, e);
-    p = read_uint32_be(dunno, p, e);
-  }
-  else {
-    len = ~0;
-    dunno = ~0;
-    fprintf(stderr, "Chunk '%s' EOF after %zd bytes\n", id, e-p);
-    p = e;
-  }
-  return p;
-}
-
-const char* parse_string(std::string& str, const char* p, const char* e)
-{
-  uint32_t len;
-  p = read_uint32_be(len, p, e);
-  str.resize(4 * len);
-  unsigned i;
-  for (i = 0; i < 4 * len; i++) {
-    if (p[i] == 0) break;
-    str[i] = p[i];
-  }
-  str.resize(i);
-  return p + 4 * len;
-}
-
-
-
-const char* parse_head(Context* ctx, const char* p, const char* e)
-{
-  uint32_t version;
-  p = read_uint32_be(version, p, e);
-  std::string info, note, date, user, encoding;
-  p = parse_string(info, p, e);
-  p = parse_string(note, p, e);
-  p = parse_string(date, p, e);
-  p = parse_string(user, p, e);
-  if (2 <= version) {
-    p = parse_string(encoding, p, e);
-  }
-  ctx->v->beginFile(info, note, date, user, encoding);
-
-  assert(ctx->group_stack.empty());
-  auto * g = ctx->store->newGroup(nullptr, Group::Kind::File);
-  ctx->group_stack.push_back(g);
-
-  copyString(&g->file.info, ctx->store, info);
-  copyString(&g->file.note, ctx->store, note);
-  copyString(&g->file.date, ctx->store, date);
-  copyString(&g->file.user, ctx->store, user);
-  copyString(&g->file.encoding, ctx->store, encoding);
-
-  return p;
-}
-
-const char* parse_modl(Context* ctx, const char* p, const char* e)
-{
-  uint32_t version;
-  p = read_uint32_be(version, p, e);
-  std::string project, name;
-  p = parse_string(project, p, e);
-  p = parse_string(name, p, e);
-  ctx->v->beginModel(project, name);
-
-  assert(!ctx->group_stack.empty());
-  auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Model);
-  ctx->group_stack.push_back(g);
-
-  copyString(&g->model.project, ctx->store, project);
-  copyString(&g->model.name, ctx->store, name);
-
-  return p;
-}
-
-const char* parse_prim(Context* ctx, const char* p, const char* e)
-{
-  uint32_t version, kind;
-  p = read_uint32_be(version, p, e);
-  p = read_uint32_be(kind, p, e);
-
-  float M[12];
-  for (unsigned i = 0; i < 12; i++) {
-    p = read_float32_be(M[i], p, e);
-  }
-
-  float bbox[6];
-  for (unsigned i = 0; i < 6; i++) {
-    p = read_float32_be(bbox[i], p, e);
-  }
-
-  switch (kind) {
-  case 1: {
-    float bottom[2], top[2], offset[2], height;
-    p = read_float32_be(bottom[0], p, e);
-    p = read_float32_be(bottom[1], p, e);
-    p = read_float32_be(top[0], p, e);
-    p = read_float32_be(top[1], p, e);
-    p = read_float32_be(offset[0], p, e);
-    p = read_float32_be(offset[1], p, e);
-    p = read_float32_be(height, p, e);
-    ctx->v->pyramid(M, bbox, bottom, top, offset, height);
-    break;
-  }
-  case 2: {
-    float lengths[3];
-    p = read_float32_be(lengths[0], p, e);
-    p = read_float32_be(lengths[1], p, e);
-    p = read_float32_be(lengths[2], p, e);
-    ctx->v->box(M, bbox, lengths);
-    break;
-  }
-  case 3: {
-    float inner_radius, outer_radius, height, angle;
-    p = read_float32_be(inner_radius, p, e);
-    p = read_float32_be(outer_radius, p, e);
-    p = read_float32_be(height, p, e);
-    p = read_float32_be(angle, p, e);
-    ctx->v->rectangularTorus(M, bbox, inner_radius, outer_radius, height, angle);
-    break;
-  }
-  case 4: {
-    float offset, radius, angle;
-    p = read_float32_be(offset, p, e);
-    p = read_float32_be(radius, p, e);
-    p = read_float32_be(angle, p, e);
-    ctx->v->circularTorus(M, bbox, offset, radius, angle);
-    break;
-  }
-  case 5: {
-    float diameter, radius;
-    p = read_float32_be(diameter, p, e);
-    p = read_float32_be(radius, p, e);
-    ctx->v->ellipticalDish(M, bbox, diameter, radius);
-    break;
-  }
-  case 6: {
-    float diameter, height;
-    p = read_float32_be(diameter, p, e);
-    p = read_float32_be(height, p, e);
-    ctx->v->sphericalDish(M, bbox, diameter, height);
-    break;
-  }
-  case 7: {
-    float radius_b, radius_t, height, offset[2], bshear[2], tshear[2];
-    p = read_float32_be(radius_b, p, e);
-    p = read_float32_be(radius_t, p, e);
-    p = read_float32_be(height, p, e);
-    p = read_float32_be(offset[0], p, e);
-    p = read_float32_be(offset[1], p, e);
-    p = read_float32_be(bshear[0], p, e);
-    p = read_float32_be(bshear[1], p, e);
-    p = read_float32_be(tshear[0], p, e);
-    p = read_float32_be(tshear[1], p, e);
-    ctx->v->snout(M, bbox, offset, bshear, tshear, radius_b, radius_t, height);
-    break;
-  }
-  case 8: {
-    float radius, height;
-    p = read_float32_be(radius, p, e);
-    p = read_float32_be(height, p, e);
-    ctx->v->cylinder(M, bbox, radius, height);
-    break;
-  }
-  case 9: {
-    float diameter;
-    p = read_float32_be(diameter, p, e);
-    ctx->v->sphere(M, bbox, diameter);
-    break;
-  }
-  case 10: {
-    float a, b;
-    p = read_float32_be(a, p, e);
-    p = read_float32_be(b, p, e);
-    ctx->v->line(M, bbox, a, b);
-    break;
-  }
-  case 11:
+  const char* parse_head(Context* ctx, const char* p, const char* e)
   {
-    ctx->P.clear();
-    ctx->N.clear();
+    assert(ctx->group_stack.empty());
+    auto * g = ctx->store->newGroup(nullptr, Group::Kind::File);
+    ctx->group_stack.push_back(g);
 
-    ctx->polygons.clear();
+    uint32_t version;
+    p = read_uint32_be(version, p, e);
+    p = read_string(&g->file.info, ctx->store, p, e);
+    p = read_string(&g->file.note, ctx->store, p, e);
+    p = read_string(&g->file.date, ctx->store, p, e);
+    p = read_string(&g->file.user, ctx->store, p, e);
+    if (2 <= version) {
+      p = read_string(&g->file.encoding, ctx->store, p, e);
+    }
+    else {
+      auto * encoding = (char*)ctx->store->alloc(1);
+      encoding[0] = '\0';
+      g->file.encoding = encoding;
+    }
 
-    ctx->contours.clear();
+    return p;
+  }
+
+  const char* parse_modl(Context* ctx, const char* p, const char* e)
+  {
+    assert(!ctx->group_stack.empty());
+    auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Model);
+    ctx->group_stack.push_back(g);
+
+    uint32_t version;
+    p = read_uint32_be(version, p, e);
+
+    p = read_string(&g->model.project, ctx->store, p, e);
+    p = read_string(&g->model.name, ctx->store, p, e);
+
+    return p;
+  }
+
+  const char* parse_prim(Context* ctx, const char* p, const char* e)
+  {
+    uint32_t version, kind;
+    p = read_uint32_be(version, p, e);
+    p = read_uint32_be(kind, p, e);
+
+    float M[12];
+    for (unsigned i = 0; i < 12; i++) {
+      p = read_float32_be(M[i], p, e);
+    }
+
+    float bbox[6];
+    for (unsigned i = 0; i < 6; i++) {
+      p = read_float32_be(bbox[i], p, e);
+    }
+
+    switch (kind) {
+    case 1: {
+      float bottom[2], top[2], offset[2], height;
+      p = read_float32_be(bottom[0], p, e);
+      p = read_float32_be(bottom[1], p, e);
+      p = read_float32_be(top[0], p, e);
+      p = read_float32_be(top[1], p, e);
+      p = read_float32_be(offset[0], p, e);
+      p = read_float32_be(offset[1], p, e);
+      p = read_float32_be(height, p, e);
+      //ctx->v->pyramid(M, bbox, bottom, top, offset, height);
+      break;
+    }
+    case 2: {
+      float lengths[3];
+      p = read_float32_be(lengths[0], p, e);
+      p = read_float32_be(lengths[1], p, e);
+      p = read_float32_be(lengths[2], p, e);
+      //ctx->v->box(M, bbox, lengths);
+      break;
+    }
+    case 3: {
+      float inner_radius, outer_radius, height, angle;
+      p = read_float32_be(inner_radius, p, e);
+      p = read_float32_be(outer_radius, p, e);
+      p = read_float32_be(height, p, e);
+      p = read_float32_be(angle, p, e);
+      //ctx->v->rectangularTorus(M, bbox, inner_radius, outer_radius, height, angle);
+      break;
+    }
+    case 4: {
+      float offset, radius, angle;
+      p = read_float32_be(offset, p, e);
+      p = read_float32_be(radius, p, e);
+      p = read_float32_be(angle, p, e);
+      //ctx->v->circularTorus(M, bbox, offset, radius, angle);
+      break;
+    }
+    case 5: {
+      float diameter, radius;
+      p = read_float32_be(diameter, p, e);
+      p = read_float32_be(radius, p, e);
+      //ctx->v->ellipticalDish(M, bbox, diameter, radius);
+      break;
+    }
+    case 6: {
+      float diameter, height;
+      p = read_float32_be(diameter, p, e);
+      p = read_float32_be(height, p, e);
+      //ctx->v->sphericalDish(M, bbox, diameter, height);
+      break;
+    }
+    case 7: {
+      float radius_b, radius_t, height, offset[2], bshear[2], tshear[2];
+      p = read_float32_be(radius_b, p, e);
+      p = read_float32_be(radius_t, p, e);
+      p = read_float32_be(height, p, e);
+      p = read_float32_be(offset[0], p, e);
+      p = read_float32_be(offset[1], p, e);
+      p = read_float32_be(bshear[0], p, e);
+      p = read_float32_be(bshear[1], p, e);
+      p = read_float32_be(tshear[0], p, e);
+      p = read_float32_be(tshear[1], p, e);
+      //ctx->v->snout(M, bbox, offset, bshear, tshear, radius_b, radius_t, height);
+      break;
+    }
+    case 8: {
+      float radius, height;
+      p = read_float32_be(radius, p, e);
+      p = read_float32_be(height, p, e);
+      //ctx->v->cylinder(M, bbox, radius, height);
+      break;
+    }
+    case 9: {
+      float diameter;
+      p = read_float32_be(diameter, p, e);
+      //ctx->v->sphere(M, bbox, diameter);
+      break;
+    }
+    case 10: {
+      float a, b;
+      p = read_float32_be(a, p, e);
+      p = read_float32_be(b, p, e);
+      //ctx->v->line(M, bbox, a, b);
+      break;
+    }
+    case 11:
+    {
+      ctx->P.clear();
+      ctx->N.clear();
+
+      ctx->polygons.clear();
+
+      ctx->contours.clear();
 
 
-    uint32_t polygons_n;
-    p = read_uint32_be(polygons_n, p, e);
-    //fprintf(stderr, "= Group, polygons_n=%d\n", polygons_n);
+      uint32_t polygons_n;
+      p = read_uint32_be(polygons_n, p, e);
+      //fprintf(stderr, "= Group, polygons_n=%d\n", polygons_n);
 
-    for (unsigned pi = 0; pi < polygons_n; pi++) {
-      uint32_t countours_n;
-      p = read_uint32_be(countours_n, p, e);
-      //fprintf(stderr, "  = Polygon, countours_n=%d\n", countours_n);
+      for (unsigned pi = 0; pi < polygons_n; pi++) {
+        uint32_t countours_n;
+        p = read_uint32_be(countours_n, p, e);
+        //fprintf(stderr, "  = Polygon, countours_n=%d\n", countours_n);
 
-      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
-      for (unsigned gi = 0; gi < countours_n; gi++) {
-        uint32_t vertices_n;
-        p = read_uint32_be(vertices_n, p, e);
-        //fprintf(stderr, "    = Countour, vertices_n=%d\n", vertices_n);
+        ctx->polygons.push_back(uint32_t(ctx->contours.size()));
+        for (unsigned gi = 0; gi < countours_n; gi++) {
+          uint32_t vertices_n;
+          p = read_uint32_be(vertices_n, p, e);
+          //fprintf(stderr, "    = Countour, vertices_n=%d\n", vertices_n);
 
-        ctx->contours.push_back(uint32_t(ctx->P.size()));
-        for (unsigned vi = 0; vi < vertices_n; vi++) {
-          float t;
-          for (unsigned i = 0; i < 3; i++) {
-            p = read_float32_be(t, p, e);
-            ctx->P.push_back(t);
-          }
-          for (unsigned i = 0; i < 3; i++) {
-            p = read_float32_be(t, p, e);
-            ctx->N.push_back(t);
+          ctx->contours.push_back(uint32_t(ctx->P.size()));
+          for (unsigned vi = 0; vi < vertices_n; vi++) {
+            float t;
+            for (unsigned i = 0; i < 3; i++) {
+              p = read_float32_be(t, p, e);
+              ctx->P.push_back(t);
+            }
+            for (unsigned i = 0; i < 3; i++) {
+              p = read_float32_be(t, p, e);
+              ctx->N.push_back(t);
+            }
           }
         }
+        ctx->contours.push_back(uint32_t(ctx->P.size()));
+
       }
-      ctx->contours.push_back(uint32_t(ctx->P.size()));
+      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
 
+
+      //ctx->v->facetGroup(M, bbox, ctx->polygons, ctx->contours, ctx->P, ctx->N);
+      break;
     }
-    ctx->polygons.push_back(uint32_t(ctx->contours.size()));
-
-
-    ctx->v->facetGroup(M, bbox, ctx->polygons, ctx->contours, ctx->P, ctx->N);
-    break;
-  }
-  default:
-    fprintf(stderr, "Unknown primitive kind %d\n", kind);
-    assert(false);
-    break;
-  }
-  return p;
-}
-
-const char* parse_cntb(Context* ctx, const char* p, const char* e)
-{
-  uint32_t version;
-  p = read_uint32_be(version, p, e);
-
-  std::string name;
-  p = parse_string(name, p, e);
-
-  // Translation seems to be a reference point that can be used as a local frame for objects in the group.
-  // The transform is not relative to this reference point.
-
-  float translation[3];
-  p = read_float32_be(translation[0], p, e);
-  p = read_float32_be(translation[1], p, e);
-  p = read_float32_be(translation[2], p, e);
-  for (unsigned i = 0; i < 3; i++) translation[i] *= 0.001f;  // appears that matrices have a factor of 1/1000 baked in them.
-
-  uint32_t material_id;
-  p = read_uint32_be(material_id, p, e);
-  ctx->v->beginGroup(name, translation, material_id);
-
-  assert(!ctx->group_stack.empty());
-  auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Group);
-  ctx->group_stack.push_back(g);
-  copyString(&g->group.name, ctx->store, name);
-  g->group.material = material_id;
-  g->group.translation[0] = translation[0];
-  g->group.translation[1] = translation[1];
-  g->group.translation[2] = translation[2];
-
-  //copyString(&g->model.project, ctx->store, project);
-  //copyString(&g->model.name, ctx->store, name);
-
-
-  // process children
-  char chunk_id[5] = { 0, 0, 0, 0, 0 };
-  auto l = p;
-  uint32_t len, dunno;
-  p = parse_chunk_header(chunk_id, len, dunno, p, e);
-  auto id_chunk_id = id(chunk_id);
-  while (p < e && id_chunk_id != id("CNTE")) {
-    switch (id_chunk_id) {
-    case id("CNTB"):
-      p = parse_cntb(ctx, p, e);
-      break;
-    case id("PRIM"):
-      p = parse_prim(ctx, p, e);
-      break;
     default:
-      fprintf(stderr, "Unknown chunk id '%s", chunk_id);
+      fprintf(stderr, "Unknown primitive kind %d\n", kind);
       assert(false);
+      break;
     }
-    l = p;
+    return p;
+  }
+
+  const char* parse_cntb(Context* ctx, const char* p, const char* e)
+  {
+    assert(!ctx->group_stack.empty());
+    auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Group);
+    ctx->group_stack.push_back(g);
+
+    uint32_t version;
+    p = read_uint32_be(version, p, e);
+    p = read_string(&g->group.name, ctx->store, p, e);
+
+    // Translation seems to be a reference point that can be used as a local frame for objects in the group.
+    // The transform is not relative to this reference point.
+    for (unsigned i = 0; i < 3; i++) {
+      p = read_float32_be(g->group.translation[i], p, e);
+      g->group.translation[i] *= 0.001f;
+    }
+
+    p = read_uint32_be(g->group.material, p, e);
+
+    // process children
+    char chunk_id[5] = { 0, 0, 0, 0, 0 };
+    auto l = p;
+    uint32_t len, dunno;
     p = parse_chunk_header(chunk_id, len, dunno, p, e);
-    id_chunk_id = id(chunk_id);
+    auto id_chunk_id = id(chunk_id);
+    while (p < e && id_chunk_id != id("CNTE")) {
+      switch (id_chunk_id) {
+      case id("CNTB"):
+        p = parse_cntb(ctx, p, e);
+        break;
+      case id("PRIM"):
+        p = parse_prim(ctx, p, e);
+        break;
+      default:
+        fprintf(stderr, "Unknown chunk id '%s", chunk_id);
+        assert(false);
+      }
+      l = p;
+      p = parse_chunk_header(chunk_id, len, dunno, p, e);
+      id_chunk_id = id(chunk_id);
+    }
+
+    if (id_chunk_id == id("CNTE")) {
+      uint32_t a; // no idea of what this flag is.
+      p = read_uint32_be(a, p, e);
+    }
+
+    ctx->group_stack.pop_back();
+
+    //ctx->v->EndGroup();
+    return p;
   }
 
-  if (id_chunk_id == id("CNTE")) {
-    uint32_t a; // no idea of what this flag is.
-    p = read_uint32_be(a, p, e);
-  }
-
-  ctx->group_stack.pop_back();
-
-  ctx->v->EndGroup();
-  return p;
 }
 
-}
-
-void parseRVM(class Store* store, RVMVisitor* v, const void * ptr, size_t size)
+void parseRVM(class Store* store, const void * ptr, size_t size)
 {
-  Context ctx = { v , store };
+  Context ctx = { store };
 
   auto * p = reinterpret_cast<const char*>(ptr);
   auto * e = p + size;
@@ -426,8 +396,8 @@ void parseRVM(class Store* store, RVMVisitor* v, const void * ptr, size_t size)
   ctx.group_stack.pop_back();
   ctx.group_stack.pop_back();
 
-  v->endModel();
-  v->endFile();
+  //v->endModel();
+  //v->endFile();
 
 }
 

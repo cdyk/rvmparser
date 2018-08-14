@@ -80,16 +80,6 @@ namespace {
     }
   }
 
-  std::string wrap(const char* p) {
-    if (p == nullptr) {
-      return "";
-    }
-    else {
-      return p;
-    }
-  }
-
-
 }
 
 
@@ -143,7 +133,7 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
 void Store::apply(RVMVisitor* visitor, Group* group)
 {
   assert(group->kind == Group::Kind::Group);
-  visitor->beginGroup(wrap(group->group.name),
+  visitor->beginGroup(group->group.name,
                       group->group.translation,
                       group->group.material);
 
@@ -160,11 +150,11 @@ void Store::apply(RVMVisitor* visitor)
 {
   for(auto * file = roots.first; file != nullptr; file = file->next) {
     assert(file->kind == Group::Kind::File);
-    visitor->beginFile(wrap(file->file.info),
-                       wrap(file->file.note),
-                       wrap(file->file.date),
-                       wrap(file->file.user),
-                       wrap(file->file.encoding));
+    visitor->beginFile(file->file.info,
+                       file->file.note,
+                       file->file.date,
+                       file->file.user,
+                       file->file.encoding);
 
     for(auto * model = file->groups.first; model != nullptr; model = model->next) {
       assert(model->kind == Group::Kind::Model);
