@@ -23,6 +23,10 @@ public:
   void geometry(struct Geometry* geometry) override;
 
 private:
+  float tolerance = 0.01f;
+  unsigned minSamples = 3;
+  unsigned maxSamples = 100;
+
   struct Arena * arena = nullptr;
 
   std::vector<float> vertices;
@@ -34,11 +38,17 @@ private:
   std::vector<float> t1;
   std::vector<float> t2;
 
-  void pyramid(struct Geometry* geometry);
+  unsigned sagittaBasedSampleCount(float arc, float radius, float scale);
+ 
+  float sagittaBasedError(float arc, float radius, float scale, unsigned samples);
 
-  void box(struct Geometry* geometry);
+  void pyramid(struct Geometry* geo, float scale);
 
-  void facetGroup(struct Geometry* geometry);
+  void box(struct Geometry* geo, float scale);
+
+  void rectangularTorus(struct Geometry* geo, float scale);
+
+  void facetGroup(struct Geometry* geo, float scale);
 
   void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z, float scale_z);
 

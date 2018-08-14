@@ -25,6 +25,7 @@ struct Triangulation {
   uint32_t* indices = 0;
   uint32_t vertices_n = 0;
   uint32_t triangles_n = 0;
+  float error = 0.f;
 };
 
 

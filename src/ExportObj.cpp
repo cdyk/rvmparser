@@ -73,6 +73,9 @@ void ExportObj::geometry(struct Geometry* geometry)
     auto * tri = geometry->triangulation;
 
     fprintf(out, "g\n");
+    if(geometry->triangulation->error != 0.f) {
+      fprintf(out, "# error=%f\n", geometry->triangulation->error);
+    }
     for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
       auto px = tri->vertices[i + 0];
       auto py = tri->vertices[i + 1];

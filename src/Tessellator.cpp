@@ -64,17 +64,27 @@ void Tessellator::init(class Store& store)
 
 void Tessellator::geometry(Geometry* geo)
 {
+  auto & M = geo->M_3x4;
+  float sx = std::sqrt(M[0] * M[0] + M[1] * M[1] + M[2] * M[2]);
+  float sy = std::sqrt(M[3] * M[3] + M[4] * M[4] + M[5] * M[5]);
+  float sz = std::sqrt(M[6] * M[6] + M[7] * M[7] + M[8] * M[8]);
+  float scale = std::max(std::max(sx, sy), sz);
+
   switch (geo->kind) {
   case Geometry::Kind::Pyramid:
-    //pyramid(geometry);
+    //pyramid(geo, scale);
     break;
 
   case Geometry::Kind::Box:
-    box(geo);
+    //box(geo, scale);
+    break;
+
+  case Geometry::Kind::RectangularTorus:
+    rectangularTorus(geo, scale);
     break;
 
   case Geometry::Kind::FacetGroup:
-    //facetGroup(geometry);
+    //facetGroup(geo);
     break;
 
   default:
@@ -86,7 +96,7 @@ void Tessellator::geometry(Geometry* geo)
 }
 
 
-void Tessellator::pyramid(Geometry* geo)
+void Tessellator::pyramid(Geometry* geo, float scale)
 {
   bool cap0 = 1e-7f <= std::min(std::abs(geo->pyramid.bottom[0]), std::abs(geo->pyramid.bottom[1]));
   bool cap1 = 1e-7f <= std::min(std::abs(geo->pyramid.top[0]), std::abs(geo->pyramid.top[1]));
@@ -172,10 +182,9 @@ void Tessellator::pyramid(Geometry* geo)
 }
 
 
-void Tessellator::box(Geometry* geo)
+void Tessellator::box(Geometry* geo, float scale)
 {
   auto & box = geo->box;
-
 
   auto xp = 0.5f * box.lengths[0]; auto xm = -xp;
   auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
@@ -244,6 +253,134 @@ void Tessellator::box(Geometry* geo)
   geo->triangulation = tri;
 }
 
+unsigned Tessellator::sagittaBasedSampleCount(float arc, float radius, float scale)
+{
+  float samples = arc / std::acos(std::max(0.f, 1.f - tolerance / (scale*radius)));
+  return std::min(maxSamples, unsigned(std::max(float(minSamples), std::ceil(samples))));
+}
+
+float Tessellator::sagittaBasedError(float arc, float radius, float scale, unsigned samples)
+{
+  return scale * radius*(1.f - std::cos(arc / (samples - 1.f)));  // Length of sagitta
+}
+
+
+void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
+{
+  auto & tor = geo->rectangularTorus;
+
+
+  auto samples = sagittaBasedSampleCount(tor.angle, tor.outer_radius, scale);
+
+  //unsigned samples = 7;
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+  auto h2 = 0.5f*tor.height;
+  float square[4][2] = {
+    { tor.outer_radius, -h2 },
+    { tor.inner_radius, -h2 },
+    { tor.inner_radius, h2 },
+    { tor.outer_radius, h2 },
+  };
+
+  t0.resize(2 * samples);
+  for (unsigned i = 0; i < samples; i++) {
+    t0[2 * i + 0] = std::cos((tor.angle / (samples - 1.f))*i);
+    t0[2 * i + 1] = std::sin((tor.angle / (samples - 1.f))*i);
+  }
+
+  unsigned l = 0;
+
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+  tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, samples);
+
+  tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0);
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      float n[4][3] = {
+        { 0.f, 0.f, -1.f },
+        { -t0[2 * i + 0], -t0[2 * i + 1], 0.f },
+        { 0.f, 0.f, 1.f },
+        { t0[2 * i + 0], t0[2 * i + 1], 0.f },
+      };
+
+      for (unsigned k = 0; k < 4; k++) {
+        unsigned kk = (k + 1) & 3;
+
+        tri->normals[l] = n[k][0]; tri->vertices[l++] = square[k][0] * t0[2 * i + 0];
+        tri->normals[l] = n[k][1]; tri->vertices[l++] = square[k][0] * t0[2 * i + 1];
+        tri->normals[l] = n[k][2]; tri->vertices[l++] = square[k][1];
+
+        tri->normals[l] = n[k][0]; tri->vertices[l++] = square[kk][0] * t0[2 * i + 0];
+        tri->normals[l] = n[k][1]; tri->vertices[l++] = square[kk][0] * t0[2 * i + 1];
+        tri->normals[l] = n[k][2]; tri->vertices[l++] = square[kk][1];
+      }
+    }
+  }
+  if (cap0) {
+    for (unsigned k = 0; k < 4; k++) {
+      tri->normals[l] =  0.f; tri->vertices[l++] = square[k][0] * t0[0];
+      tri->normals[l] = -1.f; tri->vertices[l++] = square[k][0] * t0[1];
+      tri->normals[l] =  0.f; tri->vertices[l++] = square[k][1];
+    }
+  }
+  if (cap1) {
+    for (unsigned k = 0; k < 4; k++) {
+      tri->normals[l] = -t0[2 * (samples - 1) + 1]; tri->vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 0];
+      tri->normals[l] =  t0[2 * (samples - 1) + 0]; tri->vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 1];
+      tri->normals[l] =                        0.f; tri->vertices[l++] = square[k][1];
+    }
+  }
+  assert(l == 3*tri->vertices_n);
+
+  l = 0;
+  unsigned o = 0;
+
+  tri->triangles_n = (shell ? 4 * 2 * (samples - 1) : 0) + (cap0 ? 2 : 0) + (cap1 ? 2 : 0);
+  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+
+  if (shell) {
+    for (unsigned i = 0; i + 1 < samples; i++) {
+      for (unsigned k = 0; k < 4; k++) {
+        tri->indices[l++] = 4 * 2 * (i + 0) + 0 + 2 * k;
+        tri->indices[l++] = 4 * 2 * (i + 0) + 1 + 2 * k;
+        tri->indices[l++] = 4 * 2 * (i + 1) + 0 + 2 * k;
+
+        tri->indices[l++] = 4 * 2 * (i + 1) + 0 + 2 * k;
+        tri->indices[l++] = 4 * 2 * (i + 0) + 1 + 2 * k;
+        tri->indices[l++] = 4 * 2 * (i + 1) + 1 + 2 * k;
+      }
+    }
+    o += 4 * 2 * samples;
+  }
+  if (cap0) {
+    tri->indices[l++] = o + 0;
+    tri->indices[l++] = o + 2;
+    tri->indices[l++] = o + 1;
+    tri->indices[l++] = o + 2;
+    tri->indices[l++] = o + 0;
+    tri->indices[l++] = o + 3;
+    o += 4;
+  }
+  if (cap1) {
+    tri->indices[l++] = o + 0;
+    tri->indices[l++] = o + 1;
+    tri->indices[l++] = o + 2;
+    tri->indices[l++] = o + 2;
+    tri->indices[l++] = o + 3;
+    tri->indices[l++] = o + 0;
+    o += 4;
+  }
+  assert(o == tri->vertices_n);
+  assert(l == 3*tri->triangles_n);
+}
+
 #if 0
 
 
@@ -254,107 +391,6 @@ void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
 
 void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inner_radius, float outer_radius, float height, float angle)
 {
-  unsigned samples = 7;
-  bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
-
-  auto h2 = 0.5f*height;
-  float square[4][2] = {
-    { outer_radius, -h2 },
-    { inner_radius, -h2 },
-    { inner_radius, h2 },
-    { outer_radius, h2 },
-  };
-
-
-  t0.resize(2 * samples);
-  for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((angle / (samples - 1.f))*i);
-    t0[2 * i + 1] = std::sin((angle / (samples - 1.f))*i);
-  }
-
-  unsigned l = 0;
-  vertices.resize(3 * ((shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0)));
-  normals.resize(vertices.size());
-  if (shell) {
-    for (unsigned i = 0; i < samples; i++) {
-      float n[4][3] = {
-        {0.f, 0.f, -1.f},
-        {-t0[2 * i + 0], -t0[2 * i + 1], 0.f},
-        {0.f, 0.f, 1.f},
-        { t0[2 * i + 0], t0[2 * i + 1], 0.f},
-      };
-
-      for (unsigned k = 0; k < 4; k++) {
-        unsigned kk = (k + 1) & 3;
-
-        normals[l] = n[k][0]; vertices[l++] = square[k][0] * t0[2 * i + 0];
-        normals[l] = n[k][1]; vertices[l++] = square[k][0] * t0[2 * i + 1];
-        normals[l] = n[k][2]; vertices[l++] = square[k][1];
-
-        normals[l] = n[k][0]; vertices[l++] = square[kk][0] * t0[2 * i + 0];
-        normals[l] = n[k][1]; vertices[l++] = square[kk][0] * t0[2 * i + 1];
-        normals[l] = n[k][2]; vertices[l++] = square[kk][1];
-      }
-    }
-  }
-  if (cap0) {
-    for (unsigned k = 0; k < 4; k++) {
-      normals[l] =  0.f; vertices[l++] = square[k][0] * t0[0];
-      normals[l] = -1.f; vertices[l++] = square[k][0] * t0[1];
-      normals[l] =  0.f; vertices[l++] = square[k][1];
-    }
-  }
-  if (cap1) {
-    for (unsigned k = 0; k < 4; k++) {
-      normals[l] = -t0[2 * (samples - 1) + 1]; vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 0];
-      normals[l] =  t0[2 * (samples - 1) + 0]; vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 1];
-      normals[l] = 0.f; vertices[l++] = square[k][1];
-    }
-  }
-  assert(l == vertices.size());
-
-  l = 0;
-  unsigned o = 0;
-  indices.resize(3 * ((shell ? 4 * 2 * (samples - 1) : 0) + (cap0 ? 2 : 0) + (cap1 ? 2 : 0)));
-  if (shell) {
-    for (unsigned i = 0; i + 1 < samples; i++) {
-      for (unsigned k = 0; k < 4; k++) {
-        indices[l++] = 4 * 2 * (i + 0) + 0 + 2 * k;
-        indices[l++] = 4 * 2 * (i + 0) + 1 + 2 * k;
-        indices[l++] = 4 * 2 * (i + 1) + 0 + 2 * k;
-
-        indices[l++] = 4 * 2 * (i + 1) + 0 + 2 * k;
-        indices[l++] = 4 * 2 * (i + 0) + 1 + 2 * k;
-        indices[l++] = 4 * 2 * (i + 1) + 1 + 2 * k;
-      }
-    }
-    o += 4 * 2 * samples;
-  }
-  if (cap0) {
-    indices[l++] = o + 0;
-    indices[l++] = o + 2;
-    indices[l++] = o + 1;
-    indices[l++] = o + 2;
-    indices[l++] = o + 0;
-    indices[l++] = o + 3;
-    o += 4;
-  }
-  if (cap1) {
-    indices[l++] = o + 0;
-    indices[l++] = o + 1;
-    indices[l++] = o + 2;
-    indices[l++] = o + 2;
-    indices[l++] = o + 3;
-    indices[l++] = o + 0;
-    o += 4;
-  }
-  assert(3 * o == vertices.size());
-  assert(l == indices.size());
-
-  triangles(affine, bbox, vertices, normals, indices);
-}
 
 void TriangulatedVisitor::circularTorus(float* affine, float* bbox, float offset, float radius, float angle)
 {
@@ -750,7 +786,7 @@ void TriangulatedVisitor::snout(float* affine, float*bbox, float* offset_xy, flo
 
 #endif
 
-void Tessellator::facetGroup(struct Geometry* geo)
+void Tessellator::facetGroup(struct Geometry* geo, float scale)
 {
   auto & fg = geo->facetGroup;
 
