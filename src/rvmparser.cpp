@@ -15,14 +15,7 @@ namespace {
   struct Context
   {
     Store* store;
-
     std::vector<Group*> group_stack;
-
-    // scratch for reading facet groups
-    std::vector<uint32_t> polygons;
-    std::vector<uint32_t> contours;
-    std::vector<float> P;
-    std::vector<float> N;
   };
 
 
@@ -141,153 +134,128 @@ namespace {
 
   const char* parse_prim(Context* ctx, const char* p, const char* e)
   {
+    assert(!ctx->group_stack.empty());
+    assert(ctx->group_stack.back()->kind == Group::Kind::Group);
+
     uint32_t version, kind;
     p = read_uint32_be(version, p, e);
     p = read_uint32_be(kind, p, e);
 
-    float M[12];
-    for (unsigned i = 0; i < 12; i++) {
-      p = read_float32_be(M[i], p, e);
-    }
+    auto * g = ctx->store->newGeometry(ctx->group_stack.back());
 
-    float bbox[6];
+    for (unsigned i = 0; i < 12; i++) {
+      p = read_float32_be(g->M_3x4[i], p, e);
+    }
     for (unsigned i = 0; i < 6; i++) {
-      p = read_float32_be(bbox[i], p, e);
+      p = read_float32_be(g->bbox[i], p, e);
     }
 
     switch (kind) {
-    case 1: {
-      float bottom[2], top[2], offset[2], height;
-      p = read_float32_be(bottom[0], p, e);
-      p = read_float32_be(bottom[1], p, e);
-      p = read_float32_be(top[0], p, e);
-      p = read_float32_be(top[1], p, e);
-      p = read_float32_be(offset[0], p, e);
-      p = read_float32_be(offset[1], p, e);
-      p = read_float32_be(height, p, e);
-      //ctx->v->pyramid(M, bbox, bottom, top, offset, height);
+    case 1:
+      g->kind = Geometry::Kind::Pyramid;
+      p = read_float32_be(g->pyramid.bottom[0], p, e);
+      p = read_float32_be(g->pyramid.bottom[1], p, e);
+      p = read_float32_be(g->pyramid.top[0], p, e);
+      p = read_float32_be(g->pyramid.top[1], p, e);
+      p = read_float32_be(g->pyramid.offset[0], p, e);
+      p = read_float32_be(g->pyramid.offset[1], p, e);
+      p = read_float32_be(g->pyramid.height, p, e);
       break;
-    }
-    case 2: {
-      float lengths[3];
-      p = read_float32_be(lengths[0], p, e);
-      p = read_float32_be(lengths[1], p, e);
-      p = read_float32_be(lengths[2], p, e);
-      //ctx->v->box(M, bbox, lengths);
+
+    case 2:
+      g->kind = Geometry::Kind::Box;
+      p = read_float32_be(g->box.lengths[0], p, e);
+      p = read_float32_be(g->box.lengths[1], p, e);
+      p = read_float32_be(g->box.lengths[2], p, e);
       break;
-    }
-    case 3: {
-      float inner_radius, outer_radius, height, angle;
-      p = read_float32_be(inner_radius, p, e);
-      p = read_float32_be(outer_radius, p, e);
-      p = read_float32_be(height, p, e);
-      p = read_float32_be(angle, p, e);
-      //ctx->v->rectangularTorus(M, bbox, inner_radius, outer_radius, height, angle);
+
+    case 3:
+      g->kind = Geometry::Kind::RectangularTorus;
+      p = read_float32_be(g->rectangularTorus.inner_radius, p, e);
+      p = read_float32_be(g->rectangularTorus.outer_radius, p, e);
+      p = read_float32_be(g->rectangularTorus.height, p, e);
+      p = read_float32_be(g->rectangularTorus.angle, p, e);
       break;
-    }
-    case 4: {
-      float offset, radius, angle;
-      p = read_float32_be(offset, p, e);
-      p = read_float32_be(radius, p, e);
-      p = read_float32_be(angle, p, e);
-      //ctx->v->circularTorus(M, bbox, offset, radius, angle);
+
+    case 4:
+      g->kind = Geometry::Kind::CircularTorus;
+      p = read_float32_be(g->circularTorus.offset, p, e);
+      p = read_float32_be(g->circularTorus.radius, p, e);
+      p = read_float32_be(g->circularTorus.angle, p, e);
       break;
-    }
-    case 5: {
-      float diameter, radius;
-      p = read_float32_be(diameter, p, e);
-      p = read_float32_be(radius, p, e);
-      //ctx->v->ellipticalDish(M, bbox, diameter, radius);
+
+    case 5:
+      g->kind = Geometry::Kind::EllipticalDish;
+      p = read_float32_be(g->ellipticalDish.diameter, p, e);
+      p = read_float32_be(g->ellipticalDish.radius, p, e);
       break;
-    }
-    case 6: {
-      float diameter, height;
-      p = read_float32_be(diameter, p, e);
-      p = read_float32_be(height, p, e);
-      //ctx->v->sphericalDish(M, bbox, diameter, height);
+
+    case 6:
+      g->kind = Geometry::Kind::SphericalDish;
+      p = read_float32_be(g->sphericalDish.diameter, p, e);
+      p = read_float32_be(g->sphericalDish.height, p, e);
       break;
-    }
-    case 7: {
-      float radius_b, radius_t, height, offset[2], bshear[2], tshear[2];
-      p = read_float32_be(radius_b, p, e);
-      p = read_float32_be(radius_t, p, e);
-      p = read_float32_be(height, p, e);
-      p = read_float32_be(offset[0], p, e);
-      p = read_float32_be(offset[1], p, e);
-      p = read_float32_be(bshear[0], p, e);
-      p = read_float32_be(bshear[1], p, e);
-      p = read_float32_be(tshear[0], p, e);
-      p = read_float32_be(tshear[1], p, e);
-      //ctx->v->snout(M, bbox, offset, bshear, tshear, radius_b, radius_t, height);
+
+    case 7:
+      g->kind = Geometry::Kind::Snout;
+      p = read_float32_be(g->snout.radius_b, p, e);
+      p = read_float32_be(g->snout.radius_t, p, e);
+      p = read_float32_be(g->snout.height, p, e);
+      p = read_float32_be(g->snout.offset[0], p, e);
+      p = read_float32_be(g->snout.offset[1], p, e);
+      p = read_float32_be(g->snout.bshear[0], p, e);
+      p = read_float32_be(g->snout.bshear[1], p, e);
+      p = read_float32_be(g->snout.tshear[0], p, e);
+      p = read_float32_be(g->snout.tshear[1], p, e);
       break;
-    }
-    case 8: {
-      float radius, height;
-      p = read_float32_be(radius, p, e);
-      p = read_float32_be(height, p, e);
-      //ctx->v->cylinder(M, bbox, radius, height);
+
+    case 8:
+      g->kind = Geometry::Kind::Cylinder;
+      p = read_float32_be(g->cylinder.radius, p, e);
+      p = read_float32_be(g->cylinder.height, p, e);
       break;
-    }
-    case 9: {
-      float diameter;
-      p = read_float32_be(diameter, p, e);
-      //ctx->v->sphere(M, bbox, diameter);
+
+    case 9:
+      g->kind = Geometry::Kind::Cylinder;
+      p = read_float32_be(g->sphere.diameter, p, e);
       break;
-    }
-    case 10: {
-      float a, b;
-      p = read_float32_be(a, p, e);
-      p = read_float32_be(b, p, e);
-      //ctx->v->line(M, bbox, a, b);
+
+    case 10:
+      g->kind = Geometry::Kind::Line;
+      p = read_float32_be(g->line.a, p, e);
+      p = read_float32_be(g->line.b, p, e);
       break;
-    }
+
     case 11:
-    {
-      ctx->P.clear();
-      ctx->N.clear();
+      g->kind = Geometry::Kind::FacetGroup;
 
-      ctx->polygons.clear();
+      p = read_uint32_be(g->facetGroup.polygons_n, p, e);
+      g->facetGroup.polygons = (Polygon*)ctx->store->alloc(sizeof(Polygon)*g->facetGroup.polygons_n);
 
-      ctx->contours.clear();
+      for (unsigned pi = 0; pi < g->facetGroup.polygons_n; pi++) {
+        auto & poly = g->facetGroup.polygons[pi];
 
+        p = read_uint32_be(poly.contours_n, p, e);
+        poly.coutours = (Contour*)ctx->store->alloc(sizeof(Contour)*poly.contours_n);
+        for (unsigned gi = 0; gi < poly.contours_n; gi++) {
+          auto & cont = poly.coutours[gi];
 
-      uint32_t polygons_n;
-      p = read_uint32_be(polygons_n, p, e);
-      //fprintf(stderr, "= Group, polygons_n=%d\n", polygons_n);
+          p = read_uint32_be(cont.vertices_n, p, e);
+          cont.vertices = (float*)ctx->store->alloc(3 * sizeof(float)*cont.vertices_n);
+          cont.normals = (float*)ctx->store->alloc(3 * sizeof(float)*cont.vertices_n);
 
-      for (unsigned pi = 0; pi < polygons_n; pi++) {
-        uint32_t countours_n;
-        p = read_uint32_be(countours_n, p, e);
-        //fprintf(stderr, "  = Polygon, countours_n=%d\n", countours_n);
-
-        ctx->polygons.push_back(uint32_t(ctx->contours.size()));
-        for (unsigned gi = 0; gi < countours_n; gi++) {
-          uint32_t vertices_n;
-          p = read_uint32_be(vertices_n, p, e);
-          //fprintf(stderr, "    = Countour, vertices_n=%d\n", vertices_n);
-
-          ctx->contours.push_back(uint32_t(ctx->P.size()));
-          for (unsigned vi = 0; vi < vertices_n; vi++) {
-            float t;
+          for (unsigned vi = 0; vi < cont.vertices_n; vi++) {
             for (unsigned i = 0; i < 3; i++) {
-              p = read_float32_be(t, p, e);
-              ctx->P.push_back(t);
+              p = read_float32_be(cont.vertices[3 * vi + i], p, e);
             }
             for (unsigned i = 0; i < 3; i++) {
-              p = read_float32_be(t, p, e);
-              ctx->N.push_back(t);
+              p = read_float32_be(cont.normals[3 * vi + i], p, e);
             }
           }
         }
-        ctx->contours.push_back(uint32_t(ctx->P.size()));
-
       }
-      ctx->polygons.push_back(uint32_t(ctx->contours.size()));
-
-
-      //ctx->v->facetGroup(M, bbox, ctx->polygons, ctx->contours, ctx->P, ctx->N);
       break;
-    }
+
     default:
       fprintf(stderr, "Unknown primitive kind %d\n", kind);
       assert(false);
@@ -339,8 +307,8 @@ namespace {
     }
 
     if (id_chunk_id == id("CNTE")) {
-      uint32_t a; // no idea of what this flag is.
-      p = read_uint32_be(a, p, e);
+      uint32_t version;
+      p = read_uint32_be(version, p, e);
     }
 
     ctx->group_stack.pop_back();
