@@ -7,10 +7,11 @@ Code that reads binary RVM files from AVEVA PDMS and optionally triangulates pri
 
 Rvmparser is written completely from scratch with a minimum amount of dependencies. The goal is to provide a lean and fast parser that is trivial to include into existing projects.
 
+Various shapes are optionally tessellated to triangles, guided by max-distance error threshold.
+
 The file format was dechiphered by inspecting hex-dumps of RVM-files and reading through the source of [pmoc](https://github.com/benvautrin/pmuc). Currently it depends on [libtess2](https://github.com/memononen/libtess2) to triangulate facet groups. 
 
 ## Todo
-- Make triangle tessellation driven by approximation error.
 - Parse attribute files.
 
 ## Building

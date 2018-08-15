@@ -92,12 +92,14 @@ void ExportObj::geometry(struct Geometry* geometry)
       Ny = M[1] * nx + M[4] * ny + M[7] * nz;
       Nz = M[2] * nx + M[5] * ny + M[8] * nz;
 
-      //fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-      //fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
-
-      fprintf(out, "v %f %f %f\n", px, py, pz);
-      fprintf(out, "vn %f %f %f\n", nx, ny, nz);
-
+      if (true) {
+        fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+        fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+      }
+      else {
+        fprintf(out, "v %f %f %f\n", px, py, pz);
+        fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+      }
     }
     for (size_t i = 0; i < 3*tri->triangles_n; i += 3) {
       fprintf(out, "f %zd//%zd %zd//%zd %zd//%zd\n",

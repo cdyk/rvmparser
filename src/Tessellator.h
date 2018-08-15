@@ -30,11 +30,14 @@ private:
 
   struct Arena * arena = nullptr;
 
+
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<uint32_t> indices;
 
   std::vector<unsigned> u0;
+  std::vector<uint32_t> u1;
+  std::vector<uint32_t> u2;
   std::vector<float> t0;
   std::vector<float> t1;
   std::vector<float> t2;
@@ -53,8 +56,10 @@ private:
 
   void snout(struct Geometry* geo, float scale);
 
+  void cylinder(struct Geometry* geo, float scale);
+
   void facetGroup(struct Geometry* geo, float scale);
 
-  void sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z, float scale_z);
+  void sphereBasedShape(struct Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale);
 
 };

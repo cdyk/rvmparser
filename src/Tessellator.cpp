@@ -52,6 +52,27 @@ namespace {
     return l;
   }
 
+  unsigned tessellateCircle(uint32_t* indices, unsigned  l, uint32_t* t, uint32_t* src, unsigned N)
+  {
+    while (3 <= N) {
+      unsigned m = 0;
+      unsigned i;
+      for (i = 0; i + 2 < N; i += 2) {
+        indices[l++] = src[i];
+        indices[l++] = src[i + 1];
+        indices[l++] = src[i + 2];
+        t[m++] = src[i];
+      }
+      for (; i < N; i++) {
+        t[m++] = src[i];
+      }
+      N = m;
+      std::swap(t, src);
+    }
+    return l;
+
+  }
+
 }
 
 void Tessellator::init(class Store& store)
@@ -72,31 +93,56 @@ void Tessellator::geometry(Geometry* geo)
 
   switch (geo->kind) {
   case Geometry::Kind::Pyramid:
-    //pyramid(geo, scale);
+    pyramid(geo, scale);
     break;
 
   case Geometry::Kind::Box:
-    //box(geo, scale);
+    box(geo, scale);
     break;
 
   case Geometry::Kind::RectangularTorus:
-    //rectangularTorus(geo, scale);
+    rectangularTorus(geo, scale);
     break;
     
   case Geometry::Kind::CircularTorus:
-    //circularTorus(geo, scale);
+    circularTorus(geo, scale);
     break;
 
+  case Geometry::Kind::EllipticalDish:
+    sphereBasedShape(geo, 0.5f*geo->ellipticalDish.diameter, half_pi, 0.f, 2.f * geo->ellipticalDish.radius / geo->ellipticalDish.diameter, scale);
+    break;
+
+  case Geometry::Kind::SphericalDish: {
+    float r_circ = 0.5f * geo->sphericalDish.diameter;
+    auto h = geo->sphericalDish.height;
+    float r_sphere = (r_circ*r_circ + h * h) / (2.f*h);
+    float arc = asin(r_circ / r_sphere);
+    if (r_circ < h) { arc = pi - arc; }
+    sphereBasedShape(geo, r_sphere, arc, h - r_sphere, 1.f, scale);
+    break;
+  }
   case Geometry::Kind::Snout:
     snout(geo, scale);
     break;
 
+  case Geometry::Kind::Cylinder:
+    cylinder(geo, scale);
+    break;
+
+  case Geometry::Kind::Sphere:
+    sphereBasedShape(geo, 0.5f*geo->sphere.diameter, pi, 0.f, 1.f, scale);
+    break;
+
   case Geometry::Kind::FacetGroup:
-    //facetGroup(geo);
+    facetGroup(geo, scale);
+    break;
+
+  case Geometry::Kind::Line:
+    geo->triangulation = nullptr;
     break;
 
   default:
-    geo->triangulation = nullptr;
+    assert(false && "Unhandled primitive type");
     break;
   }
 
@@ -487,20 +533,21 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
     }
     o += samples_l * samples_s;
   }
+
+  u1.resize(samples_s);
+  u2.resize(samples_s);
   if (cap0) {
-    for (unsigned i = 1; i + 1 < samples_s; i++) {
-      tri->indices[l++] = o + 0;
-      tri->indices[l++] = o + i;
-      tri->indices[l++] = o + i + 1;
+    for (unsigned i = 0; i < samples_s; i++) {
+      u1[i] = o + i;
     }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples_s);
     o += samples_s;
   }
   if (cap1) {
-    for (unsigned i = 1; i + 1 < samples_s; i++) {
-      tri->indices[l++] = o + 0;
-      tri->indices[l++] = o + i + 1;
-      tri->indices[l++] = o + i;
+    for (unsigned i = 0; i < samples_s; i++) {
+      u1[i] = o + (samples_s - 1) - i;
     }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples_s);
     o += samples_s;
   }
   assert(l == 3*tri->triangles_n);
@@ -607,16 +654,21 @@ void Tessellator::snout(struct Geometry* geo, float scale)
     }
     o += 2 * samples;
   }
+
+  u1.resize(samples);
+  u2.resize(samples);
   if (cap0) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(tri->indices, l, o, 0, i + 1, i);
+    for (unsigned i = 0; i < samples; i++) {
+      u1[i] = o + (samples - 1) - i;
     }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
     o += samples;
   }
   if (cap1) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(tri->indices, l, o, 0, i, i + 1);
+    for (unsigned i = 0; i < samples; i++) {
+      u1[i] = o + i;
     }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
     o += samples;
   }
   assert(l == 3*tri->triangles_n);
@@ -624,37 +676,102 @@ void Tessellator::snout(struct Geometry* geo, float scale)
 }
 
 
-#if 0
 
-
-void TriangulatedVisitor::sphere(float* affine, float* bbox, float diameter)
+void Tessellator::cylinder(struct Geometry* geo, float scale)
 {
-  sphereBasedShape(affine, bbox, 0.5f*diameter, pi, 0.f, 1.f);
+  const auto & cy = geo->cylinder;
+
+
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
+
+  if (cullTiny && cy.radius*scale < tolerance) {
+    tri->error = cy.radius * scale;
+    return;
+  }
+  unsigned samples = sagittaBasedSampleCount(twopi, cy.radius, scale);
+
+  bool shell = true;
+  bool cap0 = true;
+  bool cap1 = true;
+
+  tri->vertices_n = (shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0);
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
+  tri->triangles_n = (shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0);
+  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+
+  t0.resize(2 * samples);
+  for (unsigned i = 0; i < samples; i++) {
+    t0[2 * i + 0] = std::cos((twopi / samples)*i);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+  }
+  t1.resize(2 * samples);
+  for (unsigned i = 0; i < 2 * samples; i++) {
+    t1[i] = cy.radius * t0[i];
+  }
+
+  float h2 = 0.5f*cy.height;
+  unsigned l = 0;
+
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(tri->normals, tri->vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], -h2);
+      l = vertex(tri->normals, tri->vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
+    }
+  }
+  if (cap0) {
+    for (unsigned i = 0; cap0 && i < samples; i++) {
+      l = vertex(tri->normals, tri->vertices, l, 0, 0, -1, t1[2 * i + 0], t1[2 * i + 1], -h2);
+    }
+  }
+  if (cap1) {
+    for (unsigned i = 0; i < samples; i++) {
+      l = vertex(tri->normals, tri->vertices, l, 0, 0, 1, t1[2 * i + 0], t1[2 * i + 1], h2);
+    }
+  }
+  assert(l == 3 * tri->vertices_n);
+
+  l = 0;
+  unsigned o = 0;
+  if (shell) {
+    for (unsigned i = 0; i < samples; i++) {
+      unsigned ii = (i + 1) % samples;
+      l = quadIndices(tri->indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
+    }
+    o += 2 * samples;
+  }
+  u1.resize(samples);
+  u2.resize(samples);
+  if (cap0) {
+    for (unsigned i = 0; i < samples; i++) {
+      u1[i] = o + (samples - 1) - i;
+    }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
+    o += samples;
+  }
+  if (cap1) {
+    for (unsigned i = 0; i < samples; i++) {
+      u1[i] = o + i;
+    }
+    l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
+    o += samples;
+  }
+  assert(l == 3*tri->triangles_n);
+  assert(o == tri->vertices_n);
 }
 
-void TriangulatedVisitor::rectangularTorus(float* affine, float* bbox, float inner_radius, float outer_radius, float height, float angle)
+
+
+
+
+void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale)
 {
+  auto * tri = arena->alloc<Triangulation>();
+  geo->triangulation = tri;
 
-
-void TriangulatedVisitor::ellipticalDish(float* affine, float* bbox, float diameter, float radius)
-{
-  sphereBasedShape(affine, bbox, 0.5f*diameter, half_pi, 0.f, 2.f * radius / diameter);
-}
-
-void TriangulatedVisitor::sphericalDish(float* affine, float* bbox, float diameter, float height)
-{
-  float r_circ = 0.5f*diameter;
-  float r_sphere = (r_circ*r_circ + height * height) / (2.f*height);
-  float arc = asin(r_circ / r_sphere);
-  if (r_circ < height) { arc = pi - arc; }
-
-  sphereBasedShape(affine, bbox, r_sphere, arc, height - r_sphere, 1.f);
-}
-
-
-void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float radius, float arc, float shift_z, float scale_z)
-{
-  unsigned samples = 5;
+  unsigned samples = sagittaBasedSampleCount(twopi, radius, scale);
 
   bool is_sphere = false;
   if (pi - 1e-3 <= arc) {
@@ -664,7 +781,7 @@ void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float rad
 
   unsigned min_rings = 3;// arc <= half_pi ? 2 : 3;
   unsigned rings = unsigned(std::max(float(min_rings), scale_z * samples*arc*(1.f / twopi)));
-  
+
   u0.resize(rings);
   t0.resize(2 * rings);
   auto theta_scale = arc / (rings - 1);
@@ -684,9 +801,13 @@ void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float rad
     s += u0[r];
   }
 
+  tri->error = sagittaBasedError(twopi, radius, scale, samples);
+
+  tri->vertices_n = 3 * s;
+  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+
   unsigned l = 0;
-  vertices.resize(3 * s);
-  normals.resize(vertices.size());
   for (unsigned r = 0; r < rings; r++) {
     auto nz = t0[2 * r + 0];
     auto z = radius * scale_z * nz + shift_z;
@@ -698,7 +819,7 @@ void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float rad
       auto phi = phi_scale * i;
       auto nx = w * std::cos(phi);
       auto ny = w * std::sin(phi);
-      l = vertex(normals, vertices, l, nx, ny, nz / scale_z, radius*nx, radius*ny, z);
+      l = vertex(tri->normals, tri->vertices, l, nx, ny, nz / scale_z, radius*nx, radius*ny, z);
     }
   }
   assert(l == 3 * s);
@@ -755,84 +876,10 @@ void TriangulatedVisitor::sphereBasedShape(float* affine, float* bbox, float rad
     }
     o_c = o_n;
   }
-  triangles(affine, bbox, vertices, normals, indices);
+
+  tri->triangles_n = unsigned(indices.size() / 3);
+  tri->indices = (uint32_t*)arena->dup(indices.data(), 3 * sizeof(uint32_t)*tri->triangles_n);
 }
-
-
-void TriangulatedVisitor::cylinder(float* affine, float* bbox, float radius, float height)
-{ 
-  unsigned samples = 5;
-
-  bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
-
-  vertices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0)));
-  normals.resize(vertices.size());
-
-
-  t0.resize(2 * samples);
-  for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((twopi / samples)*i);
-    t0[2 * i + 1] = std::sin((twopi / samples)*i);
-  }
-  t1.resize(2 * samples);
-  for (unsigned i = 0; i < 2 * samples; i++) {
-    t1[i] = radius * t0[i];
-  }
-
-  float h2 = 0.5f*height;
-  unsigned l = 0;
-
-  if (shell) {
-    for (unsigned i = 0; i < samples; i++) {
-      l = vertex(normals, vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], -h2);
-      l = vertex(normals, vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
-    }
-  }
-  if (cap0) {
-    for (unsigned i = 0; cap0 && i < samples; i++) {
-      l = vertex(normals, vertices, l, 0, 0, -1, t1[2 * i + 0], t1[2 * i + 1], -h2);
-    }
-  }
-  if (cap1) {
-    for (unsigned i = 0; i < samples; i++) {
-      l = vertex(normals, vertices, l, 0, 0, 1, t1[2 * i + 0], t1[2 * i + 1], h2);
-    }
-  }
-
-  l = 0;
-  unsigned o = 0;
-  indices.resize(3 * ((shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0)));
-  if (shell) {
-    for (unsigned i = 0; i < samples; i++) {
-      unsigned ii = (i + 1) % samples;
-      l = quadIndices(indices, l, 0, 2 * i, 2 * ii, 2 * ii + 1, 2 * i + 1);
-    }
-    o += 2 * samples;
-  }
-  if (cap0) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(indices, l, o, 0, i + 1, i);
-    }
-    o += samples;
-  }
-  if (cap1) {
-    for (unsigned i = 1; i + 1 < samples; i++) {
-      l = triIndices(indices, l, o, 0, i, i + 1);
-    }
-    o += samples;
-  }
-  assert(l == indices.size());
-  assert(3 * o == vertices.size());
-
-  triangles(affine, bbox, vertices, normals, indices);
-}
-
-
-
-
-#endif
 
 void Tessellator::facetGroup(struct Geometry* geo, float scale)
 {
