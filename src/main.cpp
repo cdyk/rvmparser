@@ -4,9 +4,11 @@
 #include <cassert>
 
 #include "RVMParser.h"
-#include "RVMVisitor.h"
+#include "FindConnections.h"
+#include "Tessellator.h"
 #include "ExportObj.h"
 #include "Store.h"
+#include "AddStats.h"
 
 int main(int argc, char** argv)
 {
@@ -38,6 +40,12 @@ int main(int argc, char** argv)
     CloseHandle(m);
     CloseHandle(h);
   }
+
+  AddStats addStats;
+  store->apply(&addStats);
+
+  FindConnections findConnections;
+  store->apply(&findConnections);
 
   Tessellator tessellator;
   store->apply(&tessellator);

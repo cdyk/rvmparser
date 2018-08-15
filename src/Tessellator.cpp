@@ -892,7 +892,7 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
 
     auto tess = tessNewTess(nullptr);
     for (unsigned c = 0; c < poly.contours_n; c++) {
-      auto & cont = poly.coutours[c];
+      auto & cont = poly.contours[c];
       tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
     }
 
@@ -910,7 +910,7 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
         if (remap[i] != TESS_UNDEF) {
           unsigned ix = remap[i];
           for (unsigned c = 0; c < poly.contours_n; c++) {
-            auto & cont = poly.coutours[c];
+            auto & cont = poly.contours[c];
             if (ix < cont.vertices_n) {
               normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
               normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];

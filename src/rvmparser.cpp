@@ -1,5 +1,5 @@
 #include "RVMParser.h"
-#include "RVMVisitor.h"
+#include "StoreVisitor.h"
 #include "Store.h"
 
 #include <iostream>
@@ -236,9 +236,9 @@ namespace {
         auto & poly = g->facetGroup.polygons[pi];
 
         p = read_uint32_be(poly.contours_n, p, e);
-        poly.coutours = (Contour*)ctx->store->arena.alloc(sizeof(Contour)*poly.contours_n);
+        poly.contours = (Contour*)ctx->store->arena.alloc(sizeof(Contour)*poly.contours_n);
         for (unsigned gi = 0; gi < poly.contours_n; gi++) {
-          auto & cont = poly.coutours[gi];
+          auto & cont = poly.contours[gi];
 
           p = read_uint32_be(cont.vertices_n, p, e);
           cont.vertices = (float*)ctx->store->arena.alloc(3 * sizeof(float)*cont.vertices_n);

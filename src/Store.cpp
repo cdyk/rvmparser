@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include "Store.h"
-
+#include "StoreVisitor.h"
 
 void* Arena::alloc(size_t bytes)
 {
@@ -114,7 +114,7 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   return grp;
 }
 
-void Store::apply(RVMVisitor* visitor, Group* group)
+void Store::apply(StoreVisitor* visitor, Group* group)
 {
   assert(group->kind == Group::Kind::Group);
   visitor->beginGroup(group->group.name,
@@ -136,29 +136,31 @@ void Store::apply(RVMVisitor* visitor, Group* group)
   visitor->EndGroup();
 }
 
-void Store::apply(RVMVisitor* visitor)
+void Store::apply(StoreVisitor* visitor)
 {
   visitor->init(*this);
-  for(auto * file = roots.first; file != nullptr; file = file->next) {
-    assert(file->kind == Group::Kind::File);
-    visitor->beginFile(file->file.info,
-                       file->file.note,
-                       file->file.date,
-                       file->file.user,
-                       file->file.encoding);
+  do {
+    for (auto * file = roots.first; file != nullptr; file = file->next) {
+      assert(file->kind == Group::Kind::File);
+      visitor->beginFile(file->file.info,
+                         file->file.note,
+                         file->file.date,
+                         file->file.user,
+                         file->file.encoding);
 
-    for(auto * model = file->groups.first; model != nullptr; model = model->next) {
-      assert(model->kind == Group::Kind::Model);
-      visitor->beginModel(model->model.project, model->model.name);
+      for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+        assert(model->kind == Group::Kind::Model);
+        visitor->beginModel(model->model.project, model->model.name);
 
-      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
-        apply(visitor, group);
+        for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+          apply(visitor, group);
+        }
+        visitor->endModel();
       }
-      visitor->endModel();
-    }
 
-    visitor->endFile();
-  }
+      visitor->endFile();
+    }
+  } while (visitor->done() == false);
 
 
 }

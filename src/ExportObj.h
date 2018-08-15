@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdio>
 
-#include "Tessellator.h"
+#include "StoreVisitor.h"
 
-class ExportObj : public RVMVisitor
+class ExportObj : public StoreVisitor
 {
 public:
 

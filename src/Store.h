@@ -1,8 +1,6 @@
 #pragma once
 #include <cstdint>
 
-#include "RVMVisitor.h"
-
 struct Group;
 struct Geometry;
 
@@ -15,7 +13,7 @@ struct Contour
 
 struct Polygon
 {
-  Contour* coutours;
+  Contour* contours;
   uint32_t contours_n;
 };
 
@@ -113,6 +111,25 @@ struct ListHeader
   T* last;
 };
 
+struct Stats
+{
+  unsigned group_n = 0;
+
+  unsigned pyramid_n = 0;
+  unsigned box_n = 0;
+  unsigned rectangular_torus_n = 0;
+  unsigned circular_torus_n = 0;
+  unsigned elliptical_dish_n = 0;
+  unsigned spherical_dish_n = 0;
+  unsigned snout_n = 0;
+  unsigned cylinder_n = 0;
+  unsigned sphere_n = 0;
+  unsigned facetgroup_n = 0;
+  unsigned facetgroup_polygon_n = 0;
+  unsigned facetgroup_polygon_n_contours_n = 0;
+  unsigned facetgroup_polygon_n_vertices_n = 0;
+  unsigned line_n = 0;
+};
 
 struct Group
 {
@@ -165,6 +182,7 @@ struct Arena
   template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
 };
 
+class StoreVisitor;
 
 class Store
 {
@@ -176,13 +194,14 @@ public:
   Group* newGroup(Group * parent, Group::Kind kind);
 
 
-  void apply(RVMVisitor* visitor);
+  void apply(StoreVisitor* visitor);
 
   Arena arena;
   Arena arenaTriangulation;
+  Stats* stats = nullptr;
 private:
 
-  void apply(RVMVisitor* visitor, Group* group);
+  void apply(StoreVisitor* visitor, Group* group);
 
   ListHeader<Group> roots;
 
