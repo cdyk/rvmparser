@@ -12,7 +12,7 @@ public:
 
 private:
   float tolerance = 0.01f;
-  bool cullTiny = true;
+  bool cullTiny = false;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;
 

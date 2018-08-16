@@ -1,12 +1,33 @@
 #include <cassert>
 #include <cstdio>
+#include <string>
 #include "ExportObj.h"
+#include "FindConnections.h"
 #include "Store.h"
 
 ExportObj::ExportObj(const char* path)
 {
   auto err = fopen_s(&out, path, "w");
   assert(err == 0);
+
+  std::string mtlpath(path);
+  auto l = mtlpath.rfind(".obj");
+  assert(l != std::string::npos);
+
+  mtlpath = mtlpath.substr(0, l) + ".mtl";
+  err = fopen_s(&mtl, mtlpath.c_str(), "w");
+  assert(err == 0);
+
+
+  fprintf(out, "mtllib %s\n", mtlpath.c_str());
+
+  fprintf(mtl, "newmtl default\n");
+  fprintf(mtl, "Kd 0.2 0.2 0.2\n");
+  fprintf(mtl, "Kd 1.0 1.0 1.0\n");
+
+  fprintf(mtl, "newmtl red_line\n");
+  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
+  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
 
 }
 
@@ -15,8 +36,16 @@ ExportObj::~ExportObj()
   if (out) {
     fclose(out);
   }
+  if (mtl) {
+    fclose(mtl);
+  }
 }
 
+void ExportObj::init(class Store& store)
+{
+  conn = store.conn;
+  assert(conn);
+}
 
 void ExportObj::beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding)
 {
@@ -27,6 +56,20 @@ void ExportObj::beginFile(const char* info, const char* note, const char* date, 
 }
 
 void ExportObj::endFile() {
+
+  fprintf(out, "usemtl red_line\n");
+
+  auto l = 0.05f;
+  for (unsigned i = 0; i < conn->anchor_n; i++) {
+    auto * p = conn->p + 3 * i;
+    auto * n = conn->anchors[i].n;
+
+    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+    fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
+    fprintf(out, "l %d %d\n", (int)off, (int)off + 1);
+    off += 2;
+  }
+
   fprintf(out, "# End of file\n");
 }
 
@@ -51,6 +94,7 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
+  fprintf(out, "usemtl default\n");
   if (geometry->kind == Geometry::Kind::Line) {
     auto x0 = geometry->line.a;
     auto x1 = geometry->line.b;
@@ -92,9 +136,12 @@ void ExportObj::geometry(struct Geometry* geometry)
       Ny = M[1] * nx + M[4] * ny + M[7] * nz;
       Nz = M[2] * nx + M[5] * ny + M[8] * nz;
 
+      float s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
+
+
       if (true) {
         fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-        fprintf(out, "vn %f %f %f\n", Nx, Ny, Nz);
+        fprintf(out, "vn %f %f %f\n", s*Nx, s*Ny, s*Nz);
       }
       else {
         fprintf(out, "v %f %f %f\n", px, py, pz);

@@ -1,14 +1,21 @@
 #pragma once
 #include "StoreVisitor.h"
-#include "Store.h"
 
 struct Anchor
 {
-  float p[3];
-  float n[3];
-  unsigned type;
-  float radius;
   struct Geometry* geo;
+  float n[3];
+  unsigned p_ix;
+};
+
+struct Connectivity
+{
+  float* p = nullptr;
+  unsigned p_n = 0;
+
+  Anchor* anchors = nullptr;
+  unsigned anchor_n = 0;
+
 };
 
 class FindConnections : public StoreVisitor
@@ -22,12 +29,7 @@ public:
   bool done() override;
 
 private:
-  Arena arena;
+  struct Connectivity* conn = nullptr;
+  unsigned anchor_i = 0;
 
-  Anchor* anchors = nullptr;
-  unsigned anchor_n;
-  unsigned anchor_i;
-
-
-  
 };
