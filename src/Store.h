@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "Arena.h"
 
 struct Group;
 struct Geometry;
@@ -46,6 +47,9 @@ struct Geometry
   };
   Geometry* next = nullptr;
   Triangulation* triangulation = nullptr;
+  Geometry* conn_geo[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+  unsigned conn_off[6];
+
   Kind kind;
 
   float M_3x4[12];
@@ -148,21 +152,6 @@ struct Group
 
 };
 
-struct Arena
-{
-  ~Arena() { clear(); }
-
-  uint8_t * first = nullptr;
-  uint8_t * curr = nullptr;
-  size_t fill = 0;
-  size_t size = 0;
-
-  void* alloc(size_t bytes);
-  void* dup(void* src, size_t bytes);
-  void clear();
-
-  template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
-};
 
 class StoreVisitor;
 

@@ -1,41 +1,42 @@
 #include <cstdio>
 #include <cassert>
+#include <algorithm>
 #include "FindConnections.h"
 #include "AddStats.h"
 #include "Store.h"
 
-namespace {
+void FindConnections::addAnchor(Geometry* geo, float* n, float* p, unsigned o)
+{
 
-  void addAnchor(Connectivity* conn, unsigned& anchor_i, Geometry* geo, float* n, float* p)
-  {
+  const auto & M = geo->M_3x4;
 
-    const auto & M = geo->M_3x4;
+  float Px, Py, Pz, Nx, Ny, Nz;
+  Px = M[0] * p[0] + M[3] * p[1] + M[6] * p[2] + M[9];
+  Py = M[1] * p[0] + M[4] * p[1] + M[7] * p[2] + M[10];
+  Pz = M[2] * p[0] + M[5] * p[1] + M[8] * p[2] + M[11];
+  Nx = M[0] * n[0] + M[3] * n[1] + M[6] * n[2];
+  Ny = M[1] * n[0] + M[4] * n[1] + M[7] * n[2];
+  Nz = M[2] * n[0] + M[5] * n[1] + M[8] * n[2];
 
-    float Px, Py, Pz, Nx, Ny, Nz;
-    Px = M[0] * p[0] + M[3] * p[1] + M[6] * p[2] + M[9];
-    Py = M[1] * p[0] + M[4] * p[1] + M[7] * p[2] + M[10];
-    Pz = M[2] * p[0] + M[5] * p[1] + M[8] * p[2] + M[11];
-    Nx = M[0] * n[0] + M[3] * n[1] + M[6] * n[2];
-    Ny = M[1] * n[0] + M[4] * n[1] + M[7] * n[2];
-    Nz = M[2] * n[0] + M[5] * n[1] + M[8] * n[2];
+  auto s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
+  assert(std::isfinite(s));
 
-    auto s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
-    assert(std::isfinite(s));
+  conn->p[3 * anchor_i + 0] = Px;
+  conn->p[3 * anchor_i + 1] = Py;
+  conn->p[3 * anchor_i + 2] = Pz;
 
-    conn->p[3 * anchor_i + 0] = Px;
-    conn->p[3 * anchor_i + 1] = Py;
-    conn->p[3 * anchor_i + 2] = Pz;
+  conn->anchors[anchor_i].geo = geo;
+  conn->anchors[anchor_i].n[0] = s * Nx;
+  conn->anchors[anchor_i].n[1] = s * Ny;
+  conn->anchors[anchor_i].n[2] = s * Nz;
+  conn->anchors[anchor_i].p_ix = anchor_i;
 
-    conn->anchors[anchor_i].geo = geo;
-    conn->anchors[anchor_i].n[0] = s * Nx;
-    conn->anchors[anchor_i].n[1] = s * Ny;
-    conn->anchors[anchor_i].n[2] = s * Nz;
-    conn->anchors[anchor_i].p_ix = anchor_i;
+  points[anchor_i] = { Px, Py, Pz, anchor_i };
+  anchors[anchor_i] = { geo, s*Nx, s*Ny, s*Nz, o };
 
-    anchor_i++;
-  }
-
+  anchor_i++;
 }
+
 
 void FindConnections::init(class Store& store)
 {
@@ -57,6 +58,11 @@ void FindConnections::init(class Store& store)
 
   conn->p_n = conn->anchor_n;
   conn->p = (float*)store.arena.alloc(3 * sizeof(float) * conn->p_n);
+
+  points = (Point*)arena.alloc(sizeof(Point)*conn->anchor_n);
+  anchors = (AnchorRef*)arena.alloc(sizeof(AnchorRef)*conn->anchor_n);
+
+  uscratch = (unsigned*)arena.alloc(sizeof(unsigned)*conn->anchor_n);
 
   anchor_i = 0;
 }
@@ -90,7 +96,7 @@ void FindConnections::geometry(struct Geometry* geo)
       { ox, oy, h2}
     };
     for (unsigned i = 0; i < 6; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -111,7 +117,7 @@ void FindConnections::geometry(struct Geometry* geo)
       { 0.f, 0.f, zm }, { 0.f, 0.f, zp }
     };
     for (unsigned i = 0; i < 6; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -124,7 +130,7 @@ void FindConnections::geometry(struct Geometry* geo)
     float n[2][3] = { { 0, -1, 0.f }, { -s, c, 0.f } };
     float p[2][3] = {{ geo->circularTorus.offset, 0, 0.f }, { m * c, m * s, 0.f }};
     for (unsigned i = 0; i < 2; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -136,7 +142,7 @@ void FindConnections::geometry(struct Geometry* geo)
     float n[2][3] = { { 0, -1, 0.f }, { -s, c, 0.f } };
     float p[2][3] = { { ct.offset, 0, 0.f }, { ct.offset * c, ct.offset * s, 0.f } };
     for (unsigned i = 0; i < 2; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -145,7 +151,7 @@ void FindConnections::geometry(struct Geometry* geo)
   case Geometry::Kind::SphericalDish: {
     float n[3] = { 0, 0, -1 };
     float p[3] = { 0, 0, 0.f };
-    addAnchor(conn, anchor_i, geo, n, p);
+    addAnchor(geo, n, p, 0);
     break;
   }
 
@@ -160,7 +166,7 @@ void FindConnections::geometry(struct Geometry* geo)
       { 0.5f*sn.offset[0], 0.5f*sn.offset[1], 0.5f*sn.height }
     };
     for (unsigned i = 0; i < 2; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -169,7 +175,7 @@ void FindConnections::geometry(struct Geometry* geo)
     float n[2][3] = { { 0, 0, -1 }, { 0, 0, 1 } };
     float p[2][3] = { { 0, 0, -0.5f * geo->cylinder.height }, { 0, 0, 0.5f * geo->cylinder.height } };
     for (unsigned i = 0; i < 2; i++) {
-      addAnchor(conn, anchor_i, geo, n[i], p[i]);
+      addAnchor(geo, n[i], p[i], i);
     }
     break;
   }
@@ -185,10 +191,167 @@ void FindConnections::geometry(struct Geometry* geo)
   }
 }
 
+void FindConnections::uniquePointsRecurse(Point* range, unsigned N)
+{
+  if (N == 0) return;
+
+  float cmin[3], cmax[3];
+  for (unsigned k = 0; k < 3; k++) {
+    cmin[k] = cmax[k] = range[0].p[k];
+  }
+  for (unsigned i = 1; i < N; i++) {
+    for (unsigned k = 0; k < 3; k++) {
+      cmin[k] = std::min(cmin[k], range[i].p[k]);
+      cmax[k] = std::max(cmax[k], range[i].p[k]);
+    }
+  }
+  float d[3];
+  for (unsigned k = 0; k < 3; k++) {
+    d[k] = cmax[k] - cmin[k];
+  }
+  unsigned axis = 0;
+  for (unsigned k = 1; k < 3; k++) {
+    if (d[axis] < d[k])  axis = k;
+  }
+  auto split = 0.5f*(cmin[axis] + cmax[axis]);
+  assert(cmin[axis] <= split);
+  assert(split <= cmax[axis]);
+
+  unsigned a = 0;
+  unsigned b = N;
+
+  while (true) {
+    bool progress = false;
+    while ((a < N) && (range[a].p[axis] < split)) a++;
+    while ((0 < b) && (split <= range[b - 1].p[axis])) b--;
+    if (a == b) break;
+
+    assert(split <= range[a].p[axis]);
+    assert(range[b - 1].p[axis] < split);
+
+    std::swap(range[a], range[b - 1]);
+
+    assert(range[a].p[axis] < split);
+    assert(split <= range[b - 1].p[axis]);
+  }
+
+  for (unsigned i = 0; i < a; i++) {
+    assert(range[i].p[axis] <= split);
+  }
+  for (unsigned i = a; i < N; i++) {
+    assert(split <= range[i].p[axis]);
+  }
+
+  if (d[axis] <= epsilon || a == 0 || b == N) {
+    registerUniquePoint(range, N, d[axis]);
+  }
+  else {
+    assert(a != 0 && b != N);
+    assert(range[a - 1].p[axis] < split);
+    assert(split <= range[a].p[axis]);
+
+    uniquePointsRecurse(range, a);
+    uniquePointsRecurse(range + a, N - a);
+  }
+}
+
+void FindConnections::registerUniquePoint(Point* range, unsigned N, float d)
+{
+  if (1e-7f < d) {
+    fprintf(stderr, "%d %f\n", N, d);
+  }
+
+  //if (N < 2) return;
+  //for (unsigned i = 0; i + 1 < N; i += 2) {
+  //  connect(anchors + range[i].ix, anchors + range[i+1].ix);
+  //}
+
+  auto * indices = uscratch;
+  for (unsigned i = 0; i < N; i++) {
+    indices[i] = range[i].ix;
+  }
+
+  for (unsigned i = 0; i < N; i++) {
+    float best_match = -1.f;
+    unsigned best_ix_j;
+
+    auto ix_i = indices[i];
+
+    for (unsigned j = i + 1; j < N; j++) {
+      auto ix_j = indices[j];
+
+      auto match = 0.f;
+      for (unsigned k = 0; k < 3; k++) {
+        match -= anchors[ix_i].n[k] * anchors[ix_j].n[k];
+        if (best_match < match) {
+          best_match = match;
+          best_ix_j = ix_j;
+        }
+      }
+    }
+    if (0.f <= best_match) {
+      connect(anchors + ix_i, anchors + best_ix_j);
+      std::swap(indices[best_ix_j], indices[N - 1]);
+      --N;
+    }
+  }
+
+  unique_points_i++;
+}
+
+
+void FindConnections::connect(AnchorRef* a0, AnchorRef* a1)
+{
+  a0->geo->conn_geo[a0->o] = a1->geo;
+  a0->geo->conn_off[a0->o] = a1->o;
+
+  a1->geo->conn_geo[a1->o] = a0->geo;
+  a1->geo->conn_off[a1->o] = a0->o;
+}
 
 
 bool FindConnections::done()
 {
+  conn->anchor_n = anchor_i;
+
   assert(conn->anchor_n == anchor_i);
+
+  auto N = conn->anchor_n;
+  for (unsigned j = 0; j < anchor_i; j++) {
+    auto * p0 = points[j].p;
+    auto * n0 = anchors[points[j].ix].n;
+    float best_dist = std::numeric_limits<float>::max();
+    unsigned best_ix = ~0;
+    for (unsigned i = j + 1; i < N; i++) {
+      auto * p1 = points[i].p;
+      auto * n1 = anchors[points[i].ix].n;
+      float dot = n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2];
+      if (0.9f < -dot) {
+        float dx = p0[0] - p1[0];
+        float dy = p0[1] - p1[1];
+        float dz = p0[2] - p1[2];
+        float dist = dx * dx + dy * dy + dz * dz;
+        if (dist < best_dist) {
+          best_dist = dist;
+          best_ix = i;
+        }
+      }
+    }
+
+    if (best_dist < epsilon*epsilon) {
+      connect(anchors + points[j].ix, anchors + points[best_ix].ix);
+      std::swap(points[best_ix], points[N - 1]);
+      --N;
+    }
+    else if (best_ix != ~0u) {
+      fprintf(stderr, "%f\n", std::sqrt(best_dist));
+    }
+
+  }
+
+  //uniquePointsRecurse(points, anchor_i);
+
+
+  fprintf(stderr, "unique points=%d of %d\n", unique_points_i, anchor_i);
   return true;
 }

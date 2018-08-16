@@ -30,7 +30,8 @@ public:
 private:
   FILE* out = nullptr;
   FILE* mtl = nullptr;
-  size_t off = 1;
+  unsigned off_v = 1;
+  unsigned off_n = 1;
   struct Connectivity* conn = nullptr;
   float curr_translation[3] = { 0,0,0 };
 

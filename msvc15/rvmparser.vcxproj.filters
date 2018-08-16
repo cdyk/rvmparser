@@ -55,6 +55,9 @@
     <ClInclude Include="..\src\AddStats.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Arena.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\RVMParser.cpp">
@@ -97,6 +100,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\AddStats.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Arena.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

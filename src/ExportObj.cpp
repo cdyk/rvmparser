@@ -25,10 +25,17 @@ ExportObj::ExportObj(const char* path)
   fprintf(mtl, "Kd 0.2 0.2 0.2\n");
   fprintf(mtl, "Kd 1.0 1.0 1.0\n");
 
+  fprintf(mtl, "newmtl green\n");
+  fprintf(mtl, "Kd 0.0 0.8 0.0\n");
+  fprintf(mtl, "Kd 0.0 1.0 0.0\n");
+
   fprintf(mtl, "newmtl red_line\n");
   fprintf(mtl, "Kd 1.0 0.0 0.0\n");
   fprintf(mtl, "Kd 1.0 0.0 0.0\n");
 
+  fprintf(mtl, "newmtl blue_line\n");
+  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
+  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
 }
 
 ExportObj::~ExportObj()
@@ -66,8 +73,8 @@ void ExportObj::endFile() {
 
     fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
     fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
-    fprintf(out, "l %d %d\n", (int)off, (int)off + 1);
-    off += 2;
+    fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
+    off_v += 2;
   }
 
   fprintf(out, "# End of file\n");
@@ -90,11 +97,54 @@ void ExportObj::beginGroup(const char* name, const float* translation, const uin
 
 void ExportObj::EndGroup() { }
 
+namespace {
+
+  void getMidpoint(float* p, Geometry* geo)
+  {
+    const auto & M = geo->M_3x4;
+
+    float px = 0.f;
+    float py = 0.f;
+    float pz = 0.f;
+
+    switch (geo->kind) {
+    case Geometry::Kind::CircularTorus: {
+      auto & ct = geo->circularTorus;
+      auto c = std::cos(0.5f * ct.angle);
+      auto s = std::sin(0.5f * ct.angle);
+      px = ct.offset * c;
+      py = ct.offset * s;
+      pz = 0.f;
+      break;
+    }
+
+    default:
+      break;
+    }
+
+    p[0] = M[0] * px + M[3] * py + M[6] * pz + M[9];
+    p[1] = M[1] * px + M[4] * py + M[7] * pz + M[10];
+    p[2] = M[2] * px + M[5] * py + M[8] * pz + M[11];
+
+  }
+
+}
+
 void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
-  fprintf(out, "usemtl default\n");
+  switch (geometry->kind)
+  {
+  case Geometry::Kind::EllipticalDish:
+  case Geometry::Kind::SphericalDish:
+    fprintf(out, "usemtl green\n");
+    break;
+  default:
+    fprintf(out, "usemtl default\n");
+    break;
+  }
+  
   if (geometry->kind == Geometry::Kind::Line) {
     auto x0 = geometry->line.a;
     auto x1 = geometry->line.b;
@@ -111,7 +161,7 @@ void ExportObj::geometry(struct Geometry* geometry)
     fprintf(out, "v %f %f %f\n", p1_x, p1_y, p1_z);
     fprintf(out, "l -1 -2\n");
 
-    off += 2;
+    off_v += 2;
   }
   else if (geometry->triangulation != nullptr) {
     auto * tri = geometry->triangulation;
@@ -149,12 +199,28 @@ void ExportObj::geometry(struct Geometry* geometry)
       }
     }
     for (size_t i = 0; i < 3*tri->triangles_n; i += 3) {
-      fprintf(out, "f %zd//%zd %zd//%zd %zd//%zd\n",
-              tri->indices[i + 0] + off, tri->indices[i + 0] + off,
-              tri->indices[i + 1] + off, tri->indices[i + 1] + off,
-              tri->indices[i + 2] + off, tri->indices[i + 2] + off);
+      fprintf(out, "f %d//%d %d//%d %d//%d\n",
+              tri->indices[i + 0] + off_v, tri->indices[i + 0] + off_n,
+              tri->indices[i + 1] + off_v, tri->indices[i + 1] + off_n,
+              tri->indices[i + 2] + off_v, tri->indices[i + 2] + off_n);
     }
-    off += tri->vertices_n;
+    off_v += tri->vertices_n;
+    off_n += tri->vertices_n;
+  }
+
+  for (unsigned k = 0; k < 6; k++) {
+    auto other = geometry->conn_geo[k];
+    if (geometry < other) {
+      fprintf(out, "usemtl blue_line\n");
+      float p[3];
+      getMidpoint(p, geometry);
+      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+      getMidpoint(p, other);
+      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+      fprintf(out, "l %d %d\n", off_v, off_v + 1);
+
+      off_v += 2;
+    }
   }
 
 }

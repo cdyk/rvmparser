@@ -1,5 +1,6 @@
 #pragma once
 #include "StoreVisitor.h"
+#include "Arena.h"
 
 struct Anchor
 {
@@ -29,7 +30,34 @@ public:
   bool done() override;
 
 private:
+  Arena arena;
+
+  struct Point
+  {
+    float p[3];
+    unsigned ix;
+  };
+  Point* points = nullptr;
+
+  struct AnchorRef
+  {
+    struct Geometry* geo;
+    float n[3];
+    unsigned o;
+  };
+  AnchorRef* anchors = nullptr;
+  unsigned* uscratch = nullptr;
+
+  float epsilon = 1e-3f;
+
+  void addAnchor(Geometry* geo, float*n, float* p, unsigned o);
+  void uniquePointsRecurse(Point* range, unsigned N);
+  void registerUniquePoint(Point* range, unsigned N, float d);
+  void connect(AnchorRef* a0, AnchorRef* a1);
+
   struct Connectivity* conn = nullptr;
   unsigned anchor_i = 0;
+
+  unsigned unique_points_i = 0;
 
 };

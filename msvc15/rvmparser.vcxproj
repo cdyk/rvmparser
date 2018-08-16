@@ -159,6 +159,7 @@
     <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\AddStats.cpp" />
+    <ClCompile Include="..\src\Arena.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\main.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
     <ClInclude Include="..\src\AddStats.h" />
+    <ClInclude Include="..\src\Arena.h" />
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\RVMParser.h" />
