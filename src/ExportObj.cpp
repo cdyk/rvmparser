@@ -1,9 +1,11 @@
 #include <cassert>
 #include <cstdio>
 #include <string>
+#include <algorithm>
 #include "ExportObj.h"
 #include "FindConnections.h"
 #include "Store.h"
+
 
 ExportObj::ExportObj(const char* path)
 {
@@ -136,8 +138,7 @@ void ExportObj::geometry(struct Geometry* geometry)
 
   switch (geometry->kind)
   {
-  case Geometry::Kind::EllipticalDish:
-  case Geometry::Kind::SphericalDish:
+  case Geometry::Kind::Cylinder:
     fprintf(out, "usemtl green\n");
     break;
   default:

@@ -8,7 +8,69 @@
 #include "Store.h"
 #include "Tessellator.h"
 
+
 namespace {
+
+  struct Interface
+  {
+    enum struct Kind {
+      Undefined,
+      Square,
+      Circular
+    };
+    Kind kind = Kind::Undefined;
+
+    union {
+      struct {
+        float w;
+        float h;
+      } square;
+      struct {
+        float radius;
+      } circular;
+    };
+
+  };
+
+
+  void getInterface(Interface& iface, Geometry* geo, unsigned o)
+  {
+    switch (geo->kind) {
+    case Geometry::Kind::Cylinder:
+      iface.kind = Interface::Kind::Circular;
+      iface.circular.radius = geo->cylinder.radius;
+      break;
+    case Geometry::Kind::Snout:
+      iface.kind = Interface::Kind::Circular;
+      iface.circular.radius = o == 0 ? geo->snout.radius_b : geo->snout.radius_t;
+      break;
+    case Geometry::Kind::CircularTorus:
+      iface.kind = Interface::Kind::Circular;
+      iface.circular.radius = geo->circularTorus.radius;
+      break;
+    default:
+      iface.kind = Interface::Kind::Undefined;
+      break;
+    }
+  }
+
+  bool smaller(Interface& a, Interface& b)
+  {
+    if (a.kind != b.kind) return false;
+    switch (a.kind)
+    {
+    case Interface::Kind::Undefined:
+      return false;
+    case Interface::Kind::Square:
+      return (a.square.w < b.square.w + 1e-5f) && (a.square.h < b.square.h + 1e-5f);
+    case Interface::Kind::Circular:
+      return a.circular.radius < b.circular.radius + 1e-3f;
+    default:
+      return false;
+    }
+
+  }
+
 
   const float pi = float(M_PI);
   const float half_pi = float(0.5*M_PI);
@@ -455,9 +517,15 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   unsigned samples_s = sagittaBasedSampleCount(twopi, ct.radius, scale); // small radius, poloidal direction
 
   bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
-
+  bool cap[2] = { true, true };
+  for (unsigned i = 0; i < 2; i++) {
+    if (geo->conn_geo[i]) {
+      Interface a, b;
+      getInterface(a, geo, i);
+      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
+      cap[i] = smaller(a, b) == false;
+    }
+  }
 
   t0.resize(2 * samples_l);
   for (unsigned i = 0; i < samples_l; i++) {
@@ -474,11 +542,11 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   tri->error = std::max(sagittaBasedError(ct.angle, ct.offset + ct.radius, scale, samples_l),
                         sagittaBasedError(twopi, ct.radius, scale, samples_s));
 
-  tri->vertices_n = ((shell ? samples_l : 0) + (cap0 ? 1 : 0) + (cap1 ? 1 : 0)) * samples_s;
+  tri->vertices_n = ((shell ? samples_l : 0) + (cap[0] ? 1 : 0) + (cap[1] ? 1 : 0)) * samples_s;
   tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
   tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
 
-  tri->triangles_n = (shell ? 2 * (samples_l - 1)*samples_s : 0) + (samples_s - 2) *((cap0 ? 1 : 0) + (cap1 ? 1 : 0));
+  tri->triangles_n = (shell ? 2 * (samples_l - 1)*samples_s : 0) + (samples_s - 2) *((cap[0] ? 1 : 0) + (cap[1] ? 1 : 0));
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   // generate vertices
@@ -493,14 +561,14 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
       }
     }
   }
-  if (cap0) {
+  if (cap[0]) {
     for (unsigned v = 0; v < samples_s; v++) {
       tri->normals[l] =  0.f; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[0]);
       tri->normals[l] = -1.f; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[1]);
       tri->normals[l] =  0.f; tri->vertices[l++] = ct.radius * t1[2 * v + 1];
     }
   }
-  if (cap1) {
+  if (cap[1]) {
     unsigned m = 2 * (samples_l - 1);
     for (unsigned v = 0; v < samples_s; v++) {
       tri->normals[l] = -t0[m + 1]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[m + 0]);
@@ -536,14 +604,14 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
 
   u1.resize(samples_s);
   u2.resize(samples_s);
-  if (cap0) {
+  if (cap[0]) {
     for (unsigned i = 0; i < samples_s; i++) {
       u1[i] = o + i;
     }
     l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples_s);
     o += samples_s;
   }
-  if (cap1) {
+  if (cap[1]) {
     for (unsigned i = 0; i < samples_s; i++) {
       u1[i] = o + (samples_s - 1) - i;
     }
@@ -571,8 +639,20 @@ void Tessellator::snout(struct Geometry* geo, float scale)
 
 
   bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
+  bool cap[2] = { true, true };
+  for (unsigned i = 0; i < 2; i++) {
+    if (geo->conn_geo[i]) {
+      Interface a, b;
+      getInterface(a, geo, i);
+      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
+      cap[i] = smaller(a, b) == false;
+
+      if (cap[i] == false) {
+        int a = 2;
+      }
+
+    }
+  }
 
   t0.resize(2 * samples);
   for (unsigned i = 0; i < samples; i++) {
@@ -595,11 +675,11 @@ void Tessellator::snout(struct Geometry* geo, float scale)
   float mb[2] = { std::tan(sn.bshear[0]), std::tan(sn.bshear[1]) };
   float mt[2] = { std::tan(sn.tshear[0]), std::tan(sn.tshear[1]) };
 
-  tri->vertices_n = (shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0);
+  tri->vertices_n = (shell ? 2 * samples : 0) + (cap[0] ? samples : 0) + (cap[1] ? samples : 0);
   tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
   tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
 
-  tri->triangles_n = (shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0);
+  tri->triangles_n = (shell ? 2 * samples : 0) + (cap[0] ? samples - 2 : 0) + (cap[1] ? samples - 2 : 0);
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   if (shell) {
@@ -621,18 +701,18 @@ void Tessellator::snout(struct Geometry* geo, float scale)
       l = vertex(tri->normals, tri->vertices, l, nx, ny, nz, xt, yt, zt);
     }
   }
-  if (cap0) {
+  if (cap[0]) {
     auto nx = std::sin(sn.bshear[0])*std::cos(sn.bshear[1]);
     auto ny = std::sin(sn.bshear[1]);
     auto nz = -std::cos(sn.bshear[0])*std::cos(sn.bshear[1]);
-    for (unsigned i = 0; cap0 && i < samples; i++) {
+    for (unsigned i = 0; cap[0] && i < samples; i++) {
       l = vertex(tri->normals, tri->vertices, l, nx, ny, nz,
                  t1[2 * i + 0] - ox,
                  t1[2 * i + 1] - oy,
                  -h2 + mb[0] * t1[2 * i + 0] + mb[1] * t1[2 * i + 1]);
     }
   }
-  if (cap1) {
+  if (cap[1]) {
     auto nx = -std::sin(sn.tshear[0])*std::cos(sn.tshear[1]);
     auto ny = -std::sin(sn.tshear[1]);
     auto nz = std::cos(sn.tshear[0])*std::cos(sn.tshear[1]);
@@ -657,14 +737,14 @@ void Tessellator::snout(struct Geometry* geo, float scale)
 
   u1.resize(samples);
   u2.resize(samples);
-  if (cap0) {
+  if (cap[0]) {
     for (unsigned i = 0; i < samples; i++) {
       u1[i] = o + (samples - 1) - i;
     }
     l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
     o += samples;
   }
-  if (cap1) {
+  if (cap[1]) {
     for (unsigned i = 0; i < samples; i++) {
       u1[i] = o + i;
     }
@@ -692,14 +772,21 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   unsigned samples = sagittaBasedSampleCount(twopi, cy.radius, scale);
 
   bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
+  bool cap[2] = { true, true };
+  for (unsigned i = 0; i < 2; i++) {
+    if (geo->conn_geo[i]) {
+      Interface a, b;
+      getInterface(a, geo, i);
+      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
+      cap[i] = smaller(a, b) == false;
+    }
+  }
 
-  tri->vertices_n = (shell ? 2 * samples : 0) + (cap0 ? samples : 0) + (cap1 ? samples : 0);
+  tri->vertices_n = (shell ? 2 * samples : 0) + (cap[0] ? samples : 0) + (cap[1] ? samples : 0);
   tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
   tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
 
-  tri->triangles_n = (shell ? 2 * samples : 0) + (cap0 ? samples - 2 : 0) + (cap1 ? samples - 2 : 0);
+  tri->triangles_n = (shell ? 2 * samples : 0) + (cap[0] ? samples - 2 : 0) + (cap[1] ? samples - 2 : 0);
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   t0.resize(2 * samples);
@@ -721,12 +808,12 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
       l = vertex(tri->normals, tri->vertices, l, t0[2 * i + 0], t0[2 * i + 1], 0, t1[2 * i + 0], t1[2 * i + 1], h2);
     }
   }
-  if (cap0) {
-    for (unsigned i = 0; cap0 && i < samples; i++) {
+  if (cap[0]) {
+    for (unsigned i = 0; cap[0] && i < samples; i++) {
       l = vertex(tri->normals, tri->vertices, l, 0, 0, -1, t1[2 * i + 0], t1[2 * i + 1], -h2);
     }
   }
-  if (cap1) {
+  if (cap[1]) {
     for (unsigned i = 0; i < samples; i++) {
       l = vertex(tri->normals, tri->vertices, l, 0, 0, 1, t1[2 * i + 0], t1[2 * i + 1], h2);
     }
@@ -744,14 +831,14 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   }
   u1.resize(samples);
   u2.resize(samples);
-  if (cap0) {
+  if (cap[0]) {
     for (unsigned i = 0; i < samples; i++) {
       u1[i] = o + (samples - 1) - i;
     }
     l = tessellateCircle(tri->indices, l, u2.data(), u1.data(), samples);
     o += samples;
   }
-  if (cap1) {
+  if (cap[1]) {
     for (unsigned i = 0; i < samples; i++) {
       u1[i] = o + i;
     }
