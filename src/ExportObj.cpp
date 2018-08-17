@@ -27,6 +27,10 @@ ExportObj::ExportObj(const char* path)
   fprintf(mtl, "Kd 0.2 0.2 0.2\n");
   fprintf(mtl, "Kd 1.0 1.0 1.0\n");
 
+  fprintf(mtl, "newmtl magenta\n");
+  fprintf(mtl, "Kd 0.8 0.0 0.8\n");
+  fprintf(mtl, "Kd 1.0 0.0 1.0\n");
+
   fprintf(mtl, "newmtl green\n");
   fprintf(mtl, "Kd 0.0 0.8 0.0\n");
   fprintf(mtl, "Kd 0.0 1.0 0.0\n");
@@ -208,6 +212,32 @@ void ExportObj::geometry(struct Geometry* geometry)
     off_v += tri->vertices_n;
     off_n += tri->vertices_n;
   }
+
+  if (primitiveBoundingBoxes) {
+    fprintf(out, "usemtl magenta\n");
+
+    for (unsigned i = 0; i < 8; i++) {
+      float px = (i & 1) ? geometry->bbox[0] : geometry->bbox[3];
+      float py = (i & 2) ? geometry->bbox[1] : geometry->bbox[4];
+      float pz = (i & 4) ? geometry->bbox[2] : geometry->bbox[5];
+
+      float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+      float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+      float Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
+
+      fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+    }
+    fprintf(out, "l %d %d %d %d %d\n",
+            off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
+    fprintf(out, "l %d %d %d %d %d\n",
+            off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
+    fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
+    fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
+    fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
+    fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
+    off_v += 8;
+  }
+
 
   for (unsigned k = 0; k < 6; k++) {
     auto other = geometry->conn_geo[k];

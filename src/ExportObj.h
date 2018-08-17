@@ -35,4 +35,6 @@ private:
   struct Connectivity* conn = nullptr;
   float curr_translation[3] = { 0,0,0 };
 
+  bool primitiveBoundingBoxes = true;
+
 };
