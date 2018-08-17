@@ -40,6 +40,8 @@ void FindConnections::addAnchor(Geometry* geo, float* n, float* p, unsigned o)
 
 void FindConnections::init(class Store& store)
 {
+  this->store = &store;
+
   assert(store.stats);
   store.conn = store.arena.alloc<Connectivity>();
   conn = store.conn;
@@ -62,6 +64,8 @@ void FindConnections::init(class Store& store)
   points = (Point*)arena.alloc(sizeof(Point)*conn->anchor_n);
   anchors = (AnchorRef*)arena.alloc(sizeof(AnchorRef)*conn->anchor_n);
 
+  nodes = (Geometry**)arena.alloc(sizeof(Geometry*) * store.stats->geometry_n);
+
   uscratch = (unsigned*)arena.alloc(sizeof(unsigned)*conn->anchor_n);
 
   anchor_i = 0;
@@ -69,6 +73,8 @@ void FindConnections::init(class Store& store)
 
 void FindConnections::geometry(struct Geometry* geo)
 {
+  nodes[geo->index] = geo;
+
   switch (geo->kind) {
   case Geometry::Kind::Pyramid: {
     auto bx = 0.5f * geo->pyramid.bottom[0];
@@ -309,7 +315,6 @@ void FindConnections::connect(AnchorRef* a0, AnchorRef* a1)
   a1->geo->conn_off[a1->o] = a0->o;
 }
 
-
 bool FindConnections::done()
 {
   conn->anchor_n = anchor_i;
@@ -343,15 +348,74 @@ bool FindConnections::done()
       std::swap(points[best_ix], points[N - 1]);
       --N;
     }
-    else if (best_ix != ~0u) {
-      fprintf(stderr, "%f\n", std::sqrt(best_dist));
-    }
-
   }
 
   //uniquePointsRecurse(points, anchor_i);
+  //fprintf(stderr, "unique points=%d of %d\n", unique_points_i, anchor_i);
 
+  findConnectedComponents();
 
-  fprintf(stderr, "unique points=%d of %d\n", unique_points_i, anchor_i);
   return true;
+}
+
+void FindConnections::findConnectedComponents()
+{
+  auto N = store->stats->geometry_n;
+  Geometry** stack = (Geometry**)arena.alloc(sizeof(Geometry*) * N);
+  uint8_t* visited = (uint8_t*)arena.alloc(sizeof(uint8_t)*N);
+  std::memset(visited, 0, sizeof(uint8_t)*N);
+
+  unsigned component_n = 0;
+  for (unsigned i = 0; i < N; i++) {
+    if (visited[i]) continue;
+
+    auto * comp = store->newComposite();
+    comp->bbox[0] = comp->bbox[1] = comp->bbox[2] = std::numeric_limits<float>::max();
+    comp->bbox[3] = comp->bbox[4] = comp->bbox[5] = -std::numeric_limits<float>::max();
+
+    stack[0] = nodes[i];
+    component_n++;
+
+    unsigned stack_i = 1;
+    while (stack_i) {
+      auto * g = stack[--stack_i];
+
+      g->composite = comp;
+      g->next_comp = comp->first_geo;
+      comp->first_geo = g;
+
+      visited[g->index] = 1;
+
+      const auto & M = g->M_3x4;
+      for (unsigned k = 0; k < 8; k++) {
+        float px = (i & 1) ? g->bbox[0] : g->bbox[3];
+        float py = (i & 2) ? g->bbox[1] : g->bbox[4];
+        float pz = (i & 4) ? g->bbox[2] : g->bbox[5];
+
+        float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+        float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+        float Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
+        comp->bbox[0] = std::min(comp->bbox[0], Px);
+        comp->bbox[1] = std::min(comp->bbox[1], Py);
+        comp->bbox[2] = std::min(comp->bbox[2], Pz);
+        comp->bbox[3] = std::max(comp->bbox[3], Px);
+        comp->bbox[4] = std::max(comp->bbox[4], Py);
+        comp->bbox[5] = std::max(comp->bbox[5], Pz);
+      }
+
+      for (unsigned k = 0; k < 6; k++) {
+        if (g->conn_geo[k] && (visited[g->conn_geo[k]->index] == 0)) stack[stack_i++] = g->conn_geo[k];
+      }
+    }
+
+
+    auto dx = comp->bbox[3] - comp->bbox[0];
+    auto dy = comp->bbox[4] - comp->bbox[1];
+    auto dz = comp->bbox[5] - comp->bbox[2];
+
+    comp->size = std::max(std::max(dx, dy), dz);
+  }
+  fprintf(stderr, "connected components: %d\n", component_n);
+
+
 }

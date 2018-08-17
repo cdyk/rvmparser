@@ -5,6 +5,7 @@ struct Stats
 {
   unsigned group_n = 0;
 
+  unsigned geometry_n = 0;
   unsigned pyramid_n = 0;
   unsigned box_n = 0;
   unsigned rectangular_torus_n = 0;

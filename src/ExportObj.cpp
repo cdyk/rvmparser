@@ -140,11 +140,13 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
+  if (geometry->composite->size < 0.5f) return;
+
   switch (geometry->kind)
   {
-  case Geometry::Kind::Cylinder:
-    fprintf(out, "usemtl green\n");
-    break;
+  //case Geometry::Kind::Cylinder:
+  //  fprintf(out, "usemtl green\n");
+  //  break;
   default:
     fprintf(out, "usemtl default\n");
     break;
@@ -253,5 +255,36 @@ void ExportObj::geometry(struct Geometry* geometry)
       off_v += 2;
     }
   }
+
+}
+
+
+void ExportObj::composite(struct Composite* comp)
+{
+  if (compositeBoundingBoxes == false) return;
+
+  if (comp->size < 0.5f) {
+    fprintf(out, "usmtl magenta\n");
+  }
+  else {
+    fprintf(out, "usemtl green\n");
+  }
+
+  for (unsigned i = 0; i < 8; i++) {
+    float px = (i & 1) ? comp->bbox[0] : comp->bbox[3];
+    float py = (i & 2) ? comp->bbox[1] : comp->bbox[4];
+    float pz = (i & 4) ? comp->bbox[2] : comp->bbox[5];
+    fprintf(out, "v %f %f %f\n", px, py, pz);
+  }
+  fprintf(out, "l %d %d %d %d %d\n",
+          off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
+  fprintf(out, "l %d %d %d %d %d\n",
+          off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
+  fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
+  fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
+  fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
+  fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
+  off_v += 8;
+
 
 }

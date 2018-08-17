@@ -15,6 +15,7 @@ void AddStats::beginGroup(const char* name, const float* translation, const uint
 
 void AddStats::geometry(struct Geometry* geo)
 {
+  stats->geometry_n++;
   switch (geo->kind) {
   case Geometry::Kind::Pyramid: stats->pyramid_n++; break;
   case Geometry::Kind::Box: stats->box_n++; break;
@@ -47,21 +48,22 @@ void AddStats::geometry(struct Geometry* geo)
 bool AddStats::done()
 {
   fprintf(stderr, "Stats:\n");
-  fprintf(stderr, "    Groups             %d\n", stats->group_n);
-  fprintf(stderr, "    Pyramids           %d\n", stats->pyramid_n);
-  fprintf(stderr, "    Boxes              %d\n", stats->box_n);
-  fprintf(stderr, "    Rectangular tori   %d\n", stats->rectangular_torus_n);
-  fprintf(stderr, "    Circular tori      %d\n", stats->circular_torus_n);
-  fprintf(stderr, "    Elliptical dish    %d\n", stats->elliptical_dish_n);
-  fprintf(stderr, "    Spherical dish     %d\n", stats->spherical_dish_n);
-  fprintf(stderr, "    Snouts             %d\n", stats->snout_n);
-  fprintf(stderr, "    Cylinders          %d\n", stats->cylinder_n);
-  fprintf(stderr, "    Spheres            %d\n", stats->sphere_n);
-  fprintf(stderr, "    Facet groups       %d\n", stats->facetgroup_n);
-  fprintf(stderr, "        polygons       %d (fgrp avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n/float(stats->facetgroup_n)));
-  fprintf(stderr, "        contours       %d (poly avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
-  fprintf(stderr, "        vertices       %d (cont avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
-  fprintf(stderr, "    Lines              %d\n", stats->line_n);
+  fprintf(stderr, "    Groups                 %d\n", stats->group_n);
+  fprintf(stderr, "    Geometries             %d\n", stats->geometry_n);
+  fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
+  fprintf(stderr, "        Boxes              %d\n", stats->box_n);
+  fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
+  fprintf(stderr, "        Circular tori      %d\n", stats->circular_torus_n);
+  fprintf(stderr, "        Elliptical dish    %d\n", stats->elliptical_dish_n);
+  fprintf(stderr, "        Spherical dish     %d\n", stats->spherical_dish_n);
+  fprintf(stderr, "        Snouts             %d\n", stats->snout_n);
+  fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
+  fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
+  fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
+  fprintf(stderr, "            polygons       %d (fgrp avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n/float(stats->facetgroup_n)));
+  fprintf(stderr, "            contours       %d (poly avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+  fprintf(stderr, "            vertices       %d (cont avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+  fprintf(stderr, "        Lines              %d\n", stats->line_n);
 
   return true;
 }

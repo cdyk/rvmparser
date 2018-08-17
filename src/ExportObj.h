@@ -27,6 +27,8 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
+  void composite(struct Composite* comp) override;
+
 private:
   FILE* out = nullptr;
   FILE* mtl = nullptr;
@@ -35,6 +37,7 @@ private:
   struct Connectivity* conn = nullptr;
   float curr_translation[3] = { 0,0,0 };
 
-  bool primitiveBoundingBoxes = true;
+  bool primitiveBoundingBoxes = false;
+  bool compositeBoundingBoxes = true;
 
 };

@@ -27,7 +27,7 @@ struct Triangulation {
   float error = 0.f;
 };
 
-
+struct Composite;
 
 struct Geometry
 {
@@ -45,12 +45,16 @@ struct Geometry
     Line,
     FacetGroup
   };
-  Geometry* next = nullptr;
+  Geometry* next = nullptr;                 // Next geometry in the list of geometries in group.
   Triangulation* triangulation = nullptr;
+  Composite* composite = nullptr;           // Pointer to the composite this geometry belongs to.
+  Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
+
   Geometry* conn_geo[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   unsigned conn_off[6];
 
   Kind kind;
+  unsigned index;
 
   float M_3x4[12];
   float bbox[6];
@@ -117,6 +121,15 @@ struct ListHeader
 };
 
 
+struct Composite
+{
+  Composite* next = nullptr;
+  Geometry* first_geo = nullptr;
+
+  float bbox[6];
+  float size;
+};
+
 struct Group
 {
   enum struct Kind
@@ -164,6 +177,7 @@ public:
 
   Group* newGroup(Group * parent, Group::Kind kind);
 
+  Composite* newComposite();
 
   void apply(StoreVisitor* visitor);
 
@@ -172,10 +186,11 @@ public:
   struct Stats* stats = nullptr;
   struct Connectivity* conn = nullptr;
 private:
+  unsigned geo_n = 0;
 
   void apply(StoreVisitor* visitor, Group* group);
 
   ListHeader<Group> roots;
-
+  ListHeader<Composite> comps;
   
 };

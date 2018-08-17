@@ -22,4 +22,6 @@ public:
 
   virtual void geometry(struct Geometry* geometry) {};
 
+  virtual void composite(struct Composite* composite) {}
+
 };

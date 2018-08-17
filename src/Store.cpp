@@ -28,6 +28,12 @@ Store::Store()
   roots.last = nullptr;
 }
 
+Composite* Store::newComposite()
+{
+  auto * comp = arena.alloc<Composite>();
+  insert(comps, comp);
+  return comp;
+}
 
 Geometry* Store::newGeometry(Group* parent)
 {
@@ -36,6 +42,7 @@ Geometry* Store::newGeometry(Group* parent)
 
   auto * geo =  arena.alloc<Geometry>();
   geo->next = nullptr;
+  geo->index = geo_n++;
 
   insert(parent->group.geometries, geo);
   return geo;
@@ -103,6 +110,11 @@ void Store::apply(StoreVisitor* visitor)
 
       visitor->endFile();
     }
+
+    for (auto * comp = comps.first; comp != nullptr; comp = comp->next) {
+      visitor->composite(comp);
+    }
+
   } while (visitor->done() == false);
 
 

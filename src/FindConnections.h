@@ -30,6 +30,7 @@ public:
   bool done() override;
 
 private:
+  Store* store;
   Arena arena;
 
   struct Point
@@ -46,6 +47,9 @@ private:
     unsigned o;
   };
   AnchorRef* anchors = nullptr;
+
+  Geometry** nodes = nullptr;      // For connected component search.
+
   unsigned* uscratch = nullptr;
 
   float epsilon = 1e-3f;
@@ -54,6 +58,7 @@ private:
   void uniquePointsRecurse(Point* range, unsigned N);
   void registerUniquePoint(Point* range, unsigned N, float d);
   void connect(AnchorRef* a0, AnchorRef* a1);
+  void findConnectedComponents();
 
   struct Connectivity* conn = nullptr;
   unsigned anchor_i = 0;
