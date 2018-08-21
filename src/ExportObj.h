@@ -6,10 +6,9 @@
 class ExportObj : public StoreVisitor
 {
 public:
-
-  ExportObj(const char* path);
-
   ~ExportObj();
+
+  bool open(const char* path_obj, const char* path_mtl);
 
   void init(class Store& store) override;
 
@@ -37,7 +36,8 @@ private:
   struct Connectivity* conn = nullptr;
   float curr_translation[3] = { 0,0,0 };
 
+  bool anchors = false;
   bool primitiveBoundingBoxes = false;
-  bool compositeBoundingBoxes = true;
+  bool compositeBoundingBoxes = false;
 
 };

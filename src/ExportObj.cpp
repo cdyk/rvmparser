@@ -6,43 +6,23 @@
 #include "FindConnections.h"
 #include "Store.h"
 
+namespace {
 
-ExportObj::ExportObj(const char* path)
-{
-  auto err = fopen_s(&out, path, "w");
-  assert(err == 0);
+  bool open_w(FILE** f, const char* path)
+  {
+    auto err = fopen_s(f, path, "w");
+    if (err == 0) return true;
 
-  std::string mtlpath(path);
-  auto l = mtlpath.rfind(".obj");
-  assert(l != std::string::npos);
+    char buf[1024];
+    if (strerror_s(buf, sizeof(buf), err) != 0) {
+      buf[0] = '\0';
+    }
+    fprintf(stderr, "Failed to open %s for writing: %s", path, buf);
+    return false;
+  }
 
-  mtlpath = mtlpath.substr(0, l) + ".mtl";
-  err = fopen_s(&mtl, mtlpath.c_str(), "w");
-  assert(err == 0);
-
-
-  fprintf(out, "mtllib %s\n", mtlpath.c_str());
-
-  fprintf(mtl, "newmtl default\n");
-  fprintf(mtl, "Kd 0.2 0.2 0.2\n");
-  fprintf(mtl, "Kd 1.0 1.0 1.0\n");
-
-  fprintf(mtl, "newmtl magenta\n");
-  fprintf(mtl, "Kd 0.8 0.0 0.8\n");
-  fprintf(mtl, "Kd 1.0 0.0 1.0\n");
-
-  fprintf(mtl, "newmtl green\n");
-  fprintf(mtl, "Kd 0.0 0.8 0.0\n");
-  fprintf(mtl, "Kd 0.0 1.0 0.0\n");
-
-  fprintf(mtl, "newmtl red_line\n");
-  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
-  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
-
-  fprintf(mtl, "newmtl blue_line\n");
-  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
-  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
 }
+
 
 ExportObj::~ExportObj()
 {
@@ -54,10 +34,49 @@ ExportObj::~ExportObj()
   }
 }
 
+bool ExportObj::open(const char* path_obj, const char* path_mtl)
+{
+  if (!open_w(&out, path_obj)) return false;
+  if (!open_w(&mtl, path_mtl)) return false;
+
+  std::string mtllib(path_mtl);
+  auto l = mtllib.find_last_of("/\\");
+  if (l != std::string::npos) {
+    mtllib = mtllib.substr(l + 1);
+  }
+
+  fprintf(out, "mtllib %s\n", mtllib.c_str());
+
+  fprintf(mtl, "newmtl default\n");
+  fprintf(mtl, "Ka 0.2 0.2 0.2\n");
+  fprintf(mtl, "Kd 1.0 1.0 1.0\n");
+
+  fprintf(mtl, "newmtl magenta\n");
+  fprintf(mtl, "Ka 0.2 0.0 0.2\n");
+  fprintf(mtl, "Kd 1.0 0.0 1.0\n");
+
+  fprintf(mtl, "newmtl green\n");
+  fprintf(mtl, "Ka 0.0 0.8 0.0\n");
+  fprintf(mtl, "Kd 0.0 1.0 0.0\n");
+
+  fprintf(mtl, "newmtl red_line\n");
+  fprintf(mtl, "Ka 1.0 0.0 0.0\n");
+  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
+
+  fprintf(mtl, "newmtl blue_line\n");
+  fprintf(mtl, "Ka 0.0 0.0 1.0\n");
+  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
+
+  return true;
+}
+
+
 void ExportObj::init(class Store& store)
 {
+  assert(out);
+  assert(mtl);
+
   conn = store.conn;
-  assert(conn);
 }
 
 void ExportObj::beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding)
@@ -73,14 +92,16 @@ void ExportObj::endFile() {
   fprintf(out, "usemtl red_line\n");
 
   auto l = 0.05f;
-  for (unsigned i = 0; i < conn->anchor_n; i++) {
-    auto * p = conn->p + 3 * i;
-    auto * n = conn->anchors[i].n;
+  if (anchors && conn) {
+    for (unsigned i = 0; i < conn->anchor_n; i++) {
+      auto * p = conn->p + 3 * i;
+      auto * n = conn->anchors[i].n;
 
-    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-    fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
-    fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
-    off_v += 2;
+      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+      fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
+      fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
+      off_v += 2;
+    }
   }
 
   fprintf(out, "# End of file\n");
@@ -140,13 +161,13 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
-  if (geometry->composite->size < 0.5f) return;
+  if (geometry->composite && geometry->composite->size < 0.5f) return;
 
   switch (geometry->kind)
   {
-  //case Geometry::Kind::Cylinder:
-  //  fprintf(out, "usemtl green\n");
-  //  break;
+  case Geometry::Kind::FacetGroup:
+    fprintf(out, "usemtl magenta\n");
+    break;
   default:
     fprintf(out, "usemtl default\n");
     break;
@@ -173,7 +194,7 @@ void ExportObj::geometry(struct Geometry* geometry)
   else if (geometry->triangulation != nullptr) {
     auto * tri = geometry->triangulation;
 
-    fprintf(out, "g\n");
+    //fprintf(out, "g\n");
     if(geometry->triangulation->error != 0.f) {
       fprintf(out, "# error=%f\n", geometry->triangulation->error);
     }
