@@ -20,7 +20,7 @@ public:
 
   void endModel() override;
 
-  void beginGroup(const char* name, const float* translation, const uint32_t material) override;
+  void beginGroup(struct Group* group) override;
 
   void EndGroup() override;
 

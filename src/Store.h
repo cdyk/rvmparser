@@ -181,12 +181,16 @@ public:
 
   void apply(StoreVisitor* visitor);
 
+  unsigned geometryCount() const { return geo_n; }
+  unsigned groupCount() const { return grp_n; }
+
   Arena arena;
   Arena arenaTriangulation;
   struct Stats* stats = nullptr;
   struct Connectivity* conn = nullptr;
 private:
   unsigned geo_n = 0;
+  unsigned grp_n = 0;
 
   void apply(StoreVisitor* visitor, Group* group);
 

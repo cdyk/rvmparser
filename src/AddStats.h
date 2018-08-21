@@ -29,7 +29,7 @@ public:
 
   void init(class Store& store) override;
 
-  void beginGroup(const char* name, const float* translation, const uint32_t material) override;
+  void beginGroup(struct Group* group) override;
 
   void geometry(struct Geometry* geometry) override;
 

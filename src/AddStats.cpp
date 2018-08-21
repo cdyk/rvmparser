@@ -8,7 +8,7 @@ void AddStats::init(class Store& store)
   stats = store.stats;
 }
 
-void AddStats::beginGroup(const char* name, const float* translation, const uint32_t material)
+void AddStats::beginGroup(Group* group)
 {
   stats->group_n++;
 }

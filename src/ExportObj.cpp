@@ -114,11 +114,11 @@ void ExportObj::beginModel(const char* project, const char* name)
 
 void ExportObj::endModel() { }
 
-void ExportObj::beginGroup(const char* name, const float* translation, const uint32_t material)
+void ExportObj::beginGroup(Group* group)
 {
-  for (unsigned i = 0; i < 3; i++) curr_translation[i] = translation[i];
+  for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 
-  fprintf(out, "o %s\n", name);
+  fprintf(out, "o %s\n", group->group.name);
 
 }
 

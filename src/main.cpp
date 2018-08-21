@@ -10,10 +10,13 @@
 #include "Tessellator.h"
 #include "ExportObj.h"
 #include "Store.h"
+#include "Flatten.h"
 #include "AddStats.h"
 
 
-bool parseRVM(Store* store, const std::string& path)
+template<typename F>
+bool
+processFile(const std::string& path, F f)
 {
   bool rv = true;
   HANDLE h = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -29,7 +32,7 @@ bool parseRVM(Store* store, const std::string& path)
       const void * ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
       if (ptr == nullptr) rv = false;
       else {
-        parseRVM(store, ptr, fileSize);
+        rv = f(ptr, fileSize);
         UnmapViewOfFile(ptr);
       }
       CloseHandle(m);
@@ -37,15 +40,19 @@ bool parseRVM(Store* store, const std::string& path)
     CloseHandle(h);
   }
   return rv;
+
 }
+
 
 int main(int argc, char** argv)
 {
   int rv = 0;
 
+  bool run_flatten = true;
 
   Store* store = new Store();
 
+  Flatten flatten;
 
   std::string stem;
   for (int i = 1; i < argc; i++) {
@@ -60,22 +67,39 @@ int main(int argc, char** argv)
     }
     stem = arg.substr(0, l);
 
-    if (!parseRVM(store, arg)) {
+    if (!processFile(arg, [store](const void * ptr, size_t size) { parseRVM(store, ptr, size); return true; }))
+    {
       fprintf(stderr, "Failed to parse %s\n", arg.c_str());
       rv = -1;
       break;
     }
     fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
 
+    if (run_flatten) {
+      auto tagFile = stem + ".tag";
+
+      if (processFile(tagFile, [f = &flatten](const void * ptr, size_t size) {f->setKeep(ptr, size); return true; })) {
+        fprintf(stderr, "Processed %s\n", tagFile.c_str());
+      }
+    }
+
   }
 
-  if (!stem.empty()) {
+
+
+  if (rv == 0 && !stem.empty()) {
+    if (run_flatten) {
+      store->apply(&flatten);
+    }
+
+
     AddStats addStats;
     store->apply(&addStats);
 
     //FindConnections findConnections;
     //store->apply(&findConnections);
 
+#if 0
     Tessellator tessellator;
     store->apply(&tessellator);
 
@@ -87,6 +111,7 @@ int main(int argc, char** argv)
       fprintf(stderr, "Failed to export obj file.\n");
       rv = -1;
     }
+#endif
   }
 
   delete store;

@@ -61,15 +61,14 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   }
 
   grp->kind = kind;
+  grp_n++;
   return grp;
 }
 
 void Store::apply(StoreVisitor* visitor, Group* group)
 {
   assert(group->kind == Group::Kind::Group);
-  visitor->beginGroup(group->group.name,
-                      group->group.translation,
-                      group->group.material);
+  visitor->beginGroup(group);
 
   auto * g = group->groups.first;
   while (g != nullptr) {

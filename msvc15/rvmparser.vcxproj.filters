@@ -58,6 +58,9 @@
     <ClInclude Include="..\src\Arena.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Flatten.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\RVMParser.cpp">
@@ -103,6 +106,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Arena.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Flatten.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
