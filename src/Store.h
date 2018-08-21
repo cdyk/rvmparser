@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
-
-#include "RVMVisitor.h"
+#include "Arena.h"
 
 struct Group;
 struct Geometry;
@@ -15,7 +14,7 @@ struct Contour
 
 struct Polygon
 {
-  Contour* coutours;
+  Contour* contours;
   uint32_t contours_n;
 };
 
@@ -28,6 +27,7 @@ struct Triangulation {
   float error = 0.f;
 };
 
+struct Composite;
 
 struct Geometry
 {
@@ -45,9 +45,16 @@ struct Geometry
     Line,
     FacetGroup
   };
-  Geometry* next = nullptr;
+  Geometry* next = nullptr;                 // Next geometry in the list of geometries in group.
   Triangulation* triangulation = nullptr;
+  Composite* composite = nullptr;           // Pointer to the composite this geometry belongs to.
+  Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
+
+  Geometry* conn_geo[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+  unsigned conn_off[6];
+
   Kind kind;
+  unsigned index;
 
   float M_3x4[12];
   float bbox[6];
@@ -114,6 +121,15 @@ struct ListHeader
 };
 
 
+struct Composite
+{
+  Composite* next = nullptr;
+  Geometry* first_geo = nullptr;
+
+  float bbox[6];
+  float size;
+};
+
 struct Group
 {
   enum struct Kind
@@ -149,22 +165,8 @@ struct Group
 
 };
 
-struct Arena
-{
-  ~Arena() { clear(); }
 
-  uint8_t * first = nullptr;
-  uint8_t * curr = nullptr;
-  size_t fill = 0;
-  size_t size = 0;
-
-  void* alloc(size_t bytes);
-  void* dup(void* src, size_t bytes);
-  void clear();
-
-  template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
-};
-
+class StoreVisitor;
 
 class Store
 {
@@ -175,16 +177,20 @@ public:
 
   Group* newGroup(Group * parent, Group::Kind kind);
 
+  Composite* newComposite();
 
-  void apply(RVMVisitor* visitor);
+  void apply(StoreVisitor* visitor);
 
   Arena arena;
   Arena arenaTriangulation;
+  struct Stats* stats = nullptr;
+  struct Connectivity* conn = nullptr;
 private:
+  unsigned geo_n = 0;
 
-  void apply(RVMVisitor* visitor, Group* group);
+  void apply(StoreVisitor* visitor, Group* group);
 
   ListHeader<Group> roots;
-
+  ListHeader<Composite> comps;
   
 };

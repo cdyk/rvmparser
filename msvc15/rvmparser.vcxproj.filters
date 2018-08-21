@@ -10,9 +10,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\RVMVisitor.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\RVMParser.h">
       <Filter>src</Filter>
     </ClInclude>
@@ -47,6 +44,18 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Tessellator.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\FindConnections.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StoreVisitor.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\AddStats.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Arena.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
@@ -85,6 +94,15 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Tessellator.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\FindConnections.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\AddStats.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Arena.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

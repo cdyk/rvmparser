@@ -1,30 +1,18 @@
 #pragma once
 
-#include "RVMVisitor.h"
+#include "StoreVisitor.h"
 
-class Tessellator : public RVMVisitor
+class Tessellator : public StoreVisitor
 {
 public:
 
   void init(class Store& store) override;
 
-  void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) {}
-
-  void endFile() {}
-
-  void beginModel(const char* project, const char* name) {}
-
-  void endModel() {}
-
-  void beginGroup(const char* name, const float* translation, const uint32_t material) {}
-
-  void EndGroup() {}
-
   void geometry(struct Geometry* geometry) override;
 
 private:
   float tolerance = 0.01f;
-  bool cullTiny = true;
+  bool cullTiny = false;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;
 

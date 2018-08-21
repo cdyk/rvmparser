@@ -1,64 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include "Store.h"
-
-
-void* Arena::alloc(size_t bytes)
-{
-  const size_t pageSize = 1024*1024;
-
-  if (bytes == 0) return nullptr;
-
-  auto padded = (bytes + 7) & ~7;
-
-  if (size < fill + padded) {
-    fill = sizeof(uint8_t*);
-    size = std::max(pageSize, fill + padded);
-
-    auto * page = (uint8_t*)malloc(size);
-    *(uint8_t**)page = nullptr;
-
-    if (first == nullptr) {
-      first = page;
-      curr = page;
-    }
-    else {
-      *(uint8_t**)curr = page; // update next
-      curr = page;
-    }
-  }
-
-  assert(first != nullptr);
-  assert(curr != nullptr);
-  assert(*(uint8_t**)curr == nullptr);
-  assert(fill + padded <= size);
-
-  auto * rv = curr + fill;
-  fill += padded;
-  return rv;
-}
-
-void* Arena::dup(void* src, size_t bytes)
-{
-  auto * dst = alloc(bytes);
-  std::memcpy(dst, src, bytes);
-  return dst;
-}
-
-
-void Arena::clear()
-{
-  auto * c = first;
-  while (c != nullptr) {
-    auto * n = *(uint8_t**)c;
-    free(c);
-    c = n;
-  }
-  first = nullptr;
-  curr = nullptr;
-  fill = 0;
-  size = 0;
-}
+#include "StoreVisitor.h"
 
 
 
@@ -85,6 +28,12 @@ Store::Store()
   roots.last = nullptr;
 }
 
+Composite* Store::newComposite()
+{
+  auto * comp = arena.alloc<Composite>();
+  insert(comps, comp);
+  return comp;
+}
 
 Geometry* Store::newGeometry(Group* parent)
 {
@@ -93,6 +42,7 @@ Geometry* Store::newGeometry(Group* parent)
 
   auto * geo =  arena.alloc<Geometry>();
   geo->next = nullptr;
+  geo->index = geo_n++;
 
   insert(parent->group.geometries, geo);
   return geo;
@@ -114,7 +64,7 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   return grp;
 }
 
-void Store::apply(RVMVisitor* visitor, Group* group)
+void Store::apply(StoreVisitor* visitor, Group* group)
 {
   assert(group->kind == Group::Kind::Group);
   visitor->beginGroup(group->group.name,
@@ -136,29 +86,36 @@ void Store::apply(RVMVisitor* visitor, Group* group)
   visitor->EndGroup();
 }
 
-void Store::apply(RVMVisitor* visitor)
+void Store::apply(StoreVisitor* visitor)
 {
   visitor->init(*this);
-  for(auto * file = roots.first; file != nullptr; file = file->next) {
-    assert(file->kind == Group::Kind::File);
-    visitor->beginFile(file->file.info,
-                       file->file.note,
-                       file->file.date,
-                       file->file.user,
-                       file->file.encoding);
+  do {
+    for (auto * file = roots.first; file != nullptr; file = file->next) {
+      assert(file->kind == Group::Kind::File);
+      visitor->beginFile(file->file.info,
+                         file->file.note,
+                         file->file.date,
+                         file->file.user,
+                         file->file.encoding);
 
-    for(auto * model = file->groups.first; model != nullptr; model = model->next) {
-      assert(model->kind == Group::Kind::Model);
-      visitor->beginModel(model->model.project, model->model.name);
+      for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+        assert(model->kind == Group::Kind::Model);
+        visitor->beginModel(model->model.project, model->model.name);
 
-      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
-        apply(visitor, group);
+        for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+          apply(visitor, group);
+        }
+        visitor->endModel();
       }
-      visitor->endModel();
+
+      visitor->endFile();
     }
 
-    visitor->endFile();
-  }
+    for (auto * comp = comps.first; comp != nullptr; comp = comp->next) {
+      visitor->composite(comp);
+    }
+
+  } while (visitor->done() == false);
 
 
 }
