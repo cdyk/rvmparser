@@ -115,7 +115,7 @@ void Flatten::beginGroup(Group* group)
     if (*name == '/') name++;
 
     auto it = ctx->tags.find(name);
-    if (it != ctx->tags.end()) {
+    if (ctx->stack_p == 1 || it != ctx->tags.end()) {   // Tag found or is root group, include.
       for (unsigned i = 0; i < ctx->stack_p; i++) {
         ctx->groups.insert(ctx->stack[i]);
       }
@@ -159,7 +159,7 @@ void Flatten::EndGroup()
 void Flatten::geometry(struct Geometry* geometry)
 {
   if (ctx->pass == 1) {
-    assert(1 < ctx->stack_p);
+    assert(2 < ctx->stack_p);
     ctx->store->cloneGeometry(ctx->stack[ctx->stack_p - 1], geometry);
   }
 }

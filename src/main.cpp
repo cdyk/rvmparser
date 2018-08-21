@@ -95,14 +95,13 @@ int main(int argc, char** argv)
       store = flatten.result();
     }
 
-
     AddStats addStats;
     store->apply(&addStats);
 
     //FindConnections findConnections;
     //store->apply(&findConnections);
 
-#if 0
+#if 1
     Tessellator tessellator;
     store->apply(&tessellator);
 
