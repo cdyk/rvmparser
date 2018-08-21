@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cassert>
 #include <unordered_set>
 #include "Store.h"
 #include "Flatten.h"
@@ -13,6 +14,9 @@ struct Context
 
   Group** stack = nullptr;
   unsigned stack_p = 0;
+  unsigned ignore_n = 0;
+
+  Store* store = nullptr;
 };
 
 Flatten::Flatten()
@@ -22,8 +26,17 @@ Flatten::Flatten()
 
 Flatten::~Flatten()
 {
+  if (ctx->store != nullptr) delete ctx->store;
   delete ctx;
 }
+
+Store* Flatten::result()
+{
+  auto rv = ctx->store;
+  ctx->store = nullptr;
+  return rv;
+}
+
 
 
 void Flatten::setKeep(const void * ptr, size_t size)
@@ -51,21 +64,53 @@ void Flatten::setKeep(const void * ptr, size_t size)
 
 void Flatten::init(class Store& store)
 {
-  if (ctx->pass == 0) {
-    ctx->stack = (Group**)ctx->arena.alloc(sizeof(Group*)*store.groupCount());
+  ctx->stack = (Group**)ctx->arena.alloc(sizeof(Group*)*store.groupCount());
+  fprintf(stderr, "Initial number of tags: %zd\n", ctx->tags.size());
+  ctx->store = new Store();
+}
 
-    fprintf(stderr, "Initial number of tags: %zd\n", ctx->tags.size());
+
+void Flatten::beginFile(Group* group)
+{
+  if (ctx->pass == 1) {
+    assert(ctx->stack_p == 0);
+    ctx->stack[ctx->stack_p] = ctx->store->cloneGroup(nullptr, group);
+    ctx->stack_p++;
   }
 }
 
+void Flatten::endFile()
+{
+  if (ctx->pass == 1) {
+    assert(ctx->stack_p == 1);
+    ctx->stack_p--;
+  }
+}
+
+void Flatten::beginModel(Group* group)
+{
+  if (ctx->pass == 1) {
+    assert(ctx->stack_p == 1);
+    ctx->stack[ctx->stack_p] = ctx->store->cloneGroup(ctx->stack[ctx->stack_p - 1], group);
+    ctx->stack_p++;
+  }
+}
+
+void Flatten::endModel()
+{
+  if (ctx->pass == 1) {
+    assert(ctx->stack_p == 2);
+    ctx->stack_p--;
+  }
+}
+
+
 void Flatten::beginGroup(Group* group)
 {
-
-  ctx->stack[ctx->stack_p++] = group;
-
   if (ctx->pass == 0) {
     // Add parents to groups to keep
 
+    ctx->stack[ctx->stack_p++] = group;
     auto * name = group->group.name;
     if (*name == '/') name++;
 
@@ -76,18 +121,47 @@ void Flatten::beginGroup(Group* group)
       }
     }
   }
+
+  else if (ctx->pass == 1) {
+    assert(1 < ctx->stack_p);
+    auto it = ctx->groups.find(group);
+    if (it == ctx->groups.end()) {
+      ctx->ignore_n++;
+    }
+    else {
+      assert(ctx->ignore_n == 0);
+      ctx->stack[ctx->stack_p] = ctx->store->cloneGroup(ctx->stack[ctx->stack_p - 1], group);
+      ctx->stack_p++;
+    }
+  }
+
 }
 
 void Flatten::EndGroup()
 {
-  ctx->stack_p--;
+  if (ctx->pass == 0) {
+    ctx->stack_p--;
+  }
+
+  else if(ctx->pass == 1) {
+
+    if (ctx->ignore_n) {
+      ctx->ignore_n--;
+    }
+    else {
+      assert(ctx->stack_p);
+      ctx->stack_p--;
+    }
+  }
 }
 
 
 void Flatten::geometry(struct Geometry* geometry)
 {
-
-
+  if (ctx->pass == 1) {
+    assert(1 < ctx->stack_p);
+    ctx->store->cloneGeometry(ctx->stack[ctx->stack_p - 1], geometry);
+  }
 }
 
 bool Flatten::done()
@@ -96,5 +170,10 @@ bool Flatten::done()
     fprintf(stderr, "Number of groups to keep: %zd\n", ctx->groups.size());
   }
 
-  return ctx->pass++ == 0;
+  else if (ctx->pass == 1) {
+    fprintf(stderr, "second pass done.\n");
+
+  }
+
+  return ctx->pass++ == 1;
 }

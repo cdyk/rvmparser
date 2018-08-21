@@ -11,7 +11,7 @@ struct Arena
   size_t size = 0;
 
   void* alloc(size_t bytes);
-  void* dup(void* src, size_t bytes);
+  void* dup(const void* src, size_t bytes);
   void clear();
 
   template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }

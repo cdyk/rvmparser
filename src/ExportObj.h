@@ -12,11 +12,11 @@ public:
 
   void init(class Store& store) override;
 
-  void beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding) override;
+  void beginFile(Group* group) override;
 
   void endFile() override;
 
-  void beginModel(const char* project, const char* name) override;
+  void beginModel(Group* group) override;
 
   void endModel() override;
 

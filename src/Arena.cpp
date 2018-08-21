@@ -38,7 +38,7 @@ void* Arena::alloc(size_t bytes)
   return rv;
 }
 
-void* Arena::dup(void* src, size_t bytes)
+void* Arena::dup(const void* src, size_t bytes)
 {
   auto * dst = alloc(bytes);
   std::memcpy(dst, src, bytes);

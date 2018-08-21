@@ -90,6 +90,9 @@ int main(int argc, char** argv)
   if (rv == 0 && !stem.empty()) {
     if (run_flatten) {
       store->apply(&flatten);
+
+      delete store;
+      store = flatten.result();
     }
 
 

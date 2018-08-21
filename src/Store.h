@@ -175,7 +175,11 @@ public:
 
   Geometry* newGeometry(Group* parent);
 
+  Geometry* cloneGeometry(Group* parent, const Geometry* src);
+
   Group* newGroup(Group * parent, Group::Kind kind);
+
+  Group* cloneGroup(Group* parent, const Group* src);
 
   Composite* newComposite();
 

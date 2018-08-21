@@ -79,12 +79,12 @@ void ExportObj::init(class Store& store)
   conn = store.conn;
 }
 
-void ExportObj::beginFile(const char* info, const char* note, const char* date, const char* user, const char* encoding)
+void ExportObj::beginFile(Group* group)
 {
-  fprintf(out, "# %s\n", info);
-  fprintf(out, "# %s\n", note);
-  fprintf(out, "# %s\n", date);
-  fprintf(out, "# %s\n", user);
+  fprintf(out, "# %s\n", group->file.info);
+  fprintf(out, "# %s\n", group->file.note);
+  fprintf(out, "# %s\n", group->file.date);
+  fprintf(out, "# %s\n", group->file.user);
 }
 
 void ExportObj::endFile() {
@@ -107,9 +107,9 @@ void ExportObj::endFile() {
   fprintf(out, "# End of file\n");
 }
 
-void ExportObj::beginModel(const char* project, const char* name)
+void ExportObj::beginModel(Group* group)
 {
-  fprintf(out, "# Model project=%s, name=%s\n", project, name);
+  fprintf(out, "# Model project=%s, name=%s\n", group->model.project, group->model.name);
 }
 
 void ExportObj::endModel() { }
