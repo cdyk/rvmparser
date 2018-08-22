@@ -56,17 +56,22 @@ void DumpNames::printGroupTail()
 {
   if (printed) return;
   printed = true;
-  if (geometries || facetgroups) {
-    fprintf(out, ":");
-  }
+
+  fprintf(out, "\n");
 
   if (geometries) {
-    fprintf(out, " paramgeo=%d", geometries);
+    for (unsigned i = 0; i < stack_p; i++) {
+      fprintf(out, "    ");
+    }
+    fprintf(out, " pgeos=%d\n", geometries);
   }
+
   if (facetgroups) {
-    fprintf(out, " fgroups=%d", facetgroups);
+    for (unsigned i = 0; i < stack_p; i++) {
+      fprintf(out, "    ");
+    }
+    fprintf(out, " fgrps=%d\n", facetgroups);
   }
-  fprintf(out, "\n");
 }
 
 void DumpNames::beginGroup(const char* name, const float* translation, const uint32_t material)
@@ -77,12 +82,10 @@ void DumpNames::beginGroup(const char* name, const float* translation, const uin
   facetgroups = 0;
 
   stack[stack_p++] = name;
-  if (stack_p) {
-    fprintf(out, "%s", stack[0]);
+  for (unsigned i = 0; i + 1 < stack_p; i++) {
+    fprintf(out, "    ");
   }
-  for (unsigned i = 1; i < stack_p; i++) {
-    fprintf(out, "|%s", stack[i]);
-  }
+  fprintf(out, "%s", name);
 
 }
 
