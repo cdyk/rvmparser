@@ -89,6 +89,9 @@ int main(int argc, char** argv)
       if (processFile(tagFile, [f = &flatten](const void * ptr, size_t size) {f->setKeep(ptr, size); return true; })) {
         fprintf(stderr, "Processed %s\n", tagFile.c_str());
       }
+      else {
+        run_flatten = false;
+      }
     }
 
   }
