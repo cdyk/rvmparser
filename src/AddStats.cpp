@@ -61,8 +61,8 @@ bool AddStats::done()
   fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
   fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
   fprintf(stderr, "            polygons       %d (fgrp avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n/float(stats->facetgroup_n)));
-  fprintf(stderr, "            contours       %d (poly avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
-  fprintf(stderr, "            vertices       %d (cont avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+  fprintf(stderr, "            contours       %d (poly avg=%d)\n", stats->facetgroup_polygon_n_contours_n, unsigned(stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+  fprintf(stderr, "            vertices       %d (cont avg=%d)\n", stats->facetgroup_polygon_n_vertices_n, unsigned(stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
   fprintf(stderr, "        Lines              %d\n", stats->line_n);
 
   return true;
