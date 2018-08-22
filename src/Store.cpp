@@ -26,6 +26,8 @@ Store::Store()
 {
   roots.first = nullptr;
   roots.last = nullptr;
+  comps.first = nullptr;
+  comps.last = nullptr;
 }
 
 Composite* Store::newComposite()
