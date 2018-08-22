@@ -104,6 +104,8 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
     insert(parent->groups, grp);
   }
 
+  grp_n++;
+
   grp->kind = kind;
   grp_n++;
   return grp;

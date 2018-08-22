@@ -12,6 +12,7 @@
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
+#include "DumpNames.h"
 
 
 template<typename F>
@@ -47,8 +48,9 @@ processFile(const std::string& path, F f)
 int main(int argc, char** argv)
 {
   int rv = 0;
-
   bool run_flatten = true;
+  bool dump_names = false;
+
 
   Store* store = new Store();
 
@@ -57,6 +59,12 @@ int main(int argc, char** argv)
   std::string stem;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
+
+    if (arg == "--dump-names") {
+      dump_names = true;
+      continue;
+    }
+
     auto arg_lc = arg;
     for (auto & c : arg_lc) c = std::tolower(c);
     auto l = arg_lc.rfind(".rvm");
@@ -93,6 +101,16 @@ int main(int argc, char** argv)
 
       delete store;
       store = flatten.result();
+    }
+
+    if (dump_names) {
+      FILE* out;
+      if (fopen_s(&out, "names.txt", "w") == 0) {
+        DumpNames dumpNames;
+        dumpNames.setOutput(out);
+        store->apply(&dumpNames);
+        fclose(out);
+      }
     }
 
     AddStats addStats;
