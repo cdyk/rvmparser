@@ -20,7 +20,11 @@ public:
 
   virtual void EndGroup() {}
 
+  virtual void beginGeometries(struct Group* container) {}
+
   virtual void geometry(struct Geometry* geometry) {}
+
+  virtual void endGeometries() {}
 
   virtual void composite(struct Composite* composite) {}
 

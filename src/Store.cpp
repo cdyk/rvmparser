@@ -151,9 +151,11 @@ void Store::apply(StoreVisitor* visitor, Group* group)
   }
 
   if (group->kind == Group::Kind::Group) {
+    visitor->beginGeometries(group);
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
       visitor->geometry(geo);
     }
+    visitor->endGeometries();
   }
 
   visitor->EndGroup();
