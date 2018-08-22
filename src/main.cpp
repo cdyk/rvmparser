@@ -9,14 +9,21 @@
 #include "ExportObj.h"
 #include "Store.h"
 #include "AddStats.h"
+#include "DumpNames.h"
 
 int main(int argc, char** argv)
 {
 
+  bool dump_names = false;
 
   Store* store = new Store();
 
   for (int i = 1; i < argc; i++) {
+    if (std::string(argv[i]) == "--dump-names") {
+      dump_names = true;
+      continue;
+    }
+
     auto outfile = std::string(argv[i]) + ".obj";
 
     fprintf(stderr, "Reading '%s'\n", argv[i]);
@@ -39,6 +46,16 @@ int main(int argc, char** argv)
     UnmapViewOfFile(ptr);
     CloseHandle(m);
     CloseHandle(h);
+  }
+
+  if (dump_names) {
+    FILE* out;
+    if (fopen_s(&out, "names.txt", "w") == 0) {
+      DumpNames dumpNames;
+      dumpNames.setOutput(out);
+      store->apply(&dumpNames);
+      fclose(out);
+    }
   }
 
   AddStats addStats;
