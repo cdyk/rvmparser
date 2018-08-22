@@ -185,8 +185,9 @@ public:
   Arena arenaTriangulation;
   struct Stats* stats = nullptr;
   struct Connectivity* conn = nullptr;
-private:
+//private:
   unsigned geo_n = 0;
+  unsigned grp_n = 0;
 
   void apply(StoreVisitor* visitor, Group* group);
 

@@ -49,7 +49,7 @@ bool AddStats::done()
 {
   fprintf(stderr, "Stats:\n");
   fprintf(stderr, "    Groups                 %d\n", stats->group_n);
-  fprintf(stderr, "    Geometries             %d\n", stats->geometry_n);
+  fprintf(stderr, "    Geometries             %d (grp avg=%.1f)\n", stats->geometry_n, stats->geometry_n/float(stats->group_n));
   fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
   fprintf(stderr, "        Boxes              %d\n", stats->box_n);
   fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
@@ -60,9 +60,9 @@ bool AddStats::done()
   fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
   fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
   fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
-  fprintf(stderr, "            polygons       %d (fgrp avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n/float(stats->facetgroup_n)));
-  fprintf(stderr, "            contours       %d (poly avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
-  fprintf(stderr, "            vertices       %d (cont avg=%d)\n", stats->facetgroup_polygon_n, unsigned(stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+  fprintf(stderr, "            polygons       %d (fgrp avg=%.1f)\n", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n/float(stats->facetgroup_n)));
+  fprintf(stderr, "            contours       %d (poly avg=%.1f)\n", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+  fprintf(stderr, "            vertices       %d (cont avg=%.1f)\n", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
   fprintf(stderr, "        Lines              %d\n", stats->line_n);
 
   return true;
