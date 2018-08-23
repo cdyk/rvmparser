@@ -1103,6 +1103,8 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
           }
         }
       }
+
+      tessDeleteTess(tess);
     }
   }
 
@@ -1114,9 +1116,9 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
     tri->vertices_n = uint32_t(vertices.size() / 3);
     tri->triangles_n =  uint32_t(indices.size() / 3);
 
-    tri->vertices = (float*)arena->dup(vertices.data(), sizeof(float)*vertices.size());
-    tri->normals = (float*)arena->dup(normals.data(), sizeof(float)*normals.size());
-    tri->indices = (uint32_t*)arena->dup(indices.data(), sizeof(uint32_t)*indices.size());
+    tri->vertices = (float*)arena->dup(vertices.data(), sizeof(float) * 3 * tri->vertices_n);
+    tri->normals = (float*)arena->dup(normals.data(), sizeof(float) * 3 * tri->vertices_n);
+    tri->indices = (uint32_t*)arena->dup(indices.data(), sizeof(uint32_t) * 3 * tri->triangles_n);
   }
   geo->triangulation = tri;
 }
