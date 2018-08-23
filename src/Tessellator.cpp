@@ -968,6 +968,29 @@ void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc
   tri->indices = (uint32_t*)arena->dup(indices.data(), 3 * sizeof(uint32_t)*tri->triangles_n);
 }
 
+namespace {
+
+  inline void sub3(float* dst, float *a, float *b)
+  {
+    dst[0] = a[0] - b[0];
+    dst[1] = a[1] - b[1];
+    dst[2] = a[2] - b[2];
+  }
+
+  inline void cross3(float* dst, float *a, float *b)
+  {
+    dst[0] = a[1] * b[2] - a[2] * b[1];
+    dst[1] = a[2] * b[0] - a[0] * b[2];
+    dst[2] = a[0] * b[1] - a[1] * b[0];
+  }
+
+  inline float dot3(float *a, float *b)
+  {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  }
+
+}
+
 void Tessellator::facetGroup(struct Geometry* geo, float scale)
 {
   auto & fg = geo->facetGroup;
@@ -977,46 +1000,106 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
   for (unsigned p = 0; p < fg.polygons_n; p++) {
     auto & poly = fg.polygons[p];
 
-    auto tess = tessNewTess(nullptr);
-    for (unsigned c = 0; c < poly.contours_n; c++) {
-      auto & cont = poly.contours[c];
-      tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
-    }
-
-    if (tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, nullptr)) {
+    if (poly.contours_n == 1 && poly.contours[0].vertices_n == 3) {
+      auto & cont = poly.contours[0];
       auto vo = uint32_t(vertices.size()) / 3;
-      auto vn = unsigned(tessGetVertexCount(tess));
- 
-      vertices.resize(vertices.size() + 3 * vn);
-      std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
 
-      auto * remap = tessGetVertexIndices(tess);
+      vertices.resize(vertices.size() + 3 * 3);
       normals.resize(vertices.size());
-      for (unsigned i = 0; i < vn; i++) {
 
-        if (remap[i] != TESS_UNDEF) {
-          unsigned ix = remap[i];
-          for (unsigned c = 0; c < poly.contours_n; c++) {
-            auto & cont = poly.contours[c];
-            if (ix < cont.vertices_n) {
-              normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
-              normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];
-              normals[3 * (vo + i) + 2] = cont.normals[3 * ix + 2];
-              break;
+      std::memcpy(vertices.data() + 3 * vo, cont.vertices, 3 * 3 * sizeof(float));
+      std::memcpy(normals.data() + 3 * vo, cont.normals, 3 * 3 * sizeof(float));
+
+      indices.push_back(vo + 0);
+      indices.push_back(vo + 1);
+      indices.push_back(vo + 2);
+    }
+    else if (poly.contours_n == 1 && poly.contours[0].vertices_n == 4) {
+      auto & cont = poly.contours[0];
+      auto & V = cont.vertices;
+      auto vo = uint32_t(vertices.size()) / 3;
+
+      vertices.resize(vertices.size() + 3 * 4);
+      normals.resize(vertices.size());
+
+      std::memcpy(vertices.data() + 3 * vo, cont.vertices, 3 * 4 * sizeof(float));
+      std::memcpy(normals.data() + 3 * vo, cont.normals, 3 * 4 * sizeof(float));
+
+      // find least folding diagonal
+
+      float v01[3], v12[3], v23[3], v30[3];
+      sub3(v01, V + 3 * 1, V + 3 * 0);
+      sub3(v12, V + 3 * 2, V + 3 * 1);
+      sub3(v23, V + 3 * 3, V + 3 * 2);
+      sub3(v30, V + 3 * 0, V + 3 * 3);
+
+      float n0[3], n1[3], n2[3], n3[3];
+      cross3(n0, v01, v30);
+      cross3(n1, v12, v01);
+      cross3(n2, v23, v12);
+      cross3(n3, v30, v23);
+
+      if (dot3(n0, n2) < dot3(n1, n3)) {
+        indices.push_back(vo + 0);
+        indices.push_back(vo + 1);
+        indices.push_back(vo + 2);
+
+        indices.push_back(vo + 2);
+        indices.push_back(vo + 3);
+        indices.push_back(vo + 0);
+      }
+      else {
+        indices.push_back(vo + 3);
+        indices.push_back(vo + 0);
+        indices.push_back(vo + 1);
+
+        indices.push_back(vo + 1);
+        indices.push_back(vo + 2);
+        indices.push_back(vo + 3);
+      }
+    }
+    else  {
+      auto tess = tessNewTess(nullptr);
+      for (unsigned c = 0; c < poly.contours_n; c++) {
+        auto & cont = poly.contours[c];
+        tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
+      }
+
+      if (tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, nullptr)) {
+        auto vo = uint32_t(vertices.size()) / 3;
+        auto vn = unsigned(tessGetVertexCount(tess));
+
+        vertices.resize(vertices.size() + 3 * vn);
+        std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
+
+        auto * remap = tessGetVertexIndices(tess);
+        normals.resize(vertices.size());
+        for (unsigned i = 0; i < vn; i++) {
+
+          if (remap[i] != TESS_UNDEF) {
+            unsigned ix = remap[i];
+            for (unsigned c = 0; c < poly.contours_n; c++) {
+              auto & cont = poly.contours[c];
+              if (ix < cont.vertices_n) {
+                normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
+                normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];
+                normals[3 * (vo + i) + 2] = cont.normals[3 * ix + 2];
+                break;
+              }
+              ix -= cont.vertices_n;
             }
-            ix -= cont.vertices_n;
           }
-        }
 
-        auto io = uint32_t(indices.size());
-        auto * elements = tessGetElements(tess);
-        auto elements_n = unsigned(tessGetElementCount(tess));
-        for (unsigned e = 0; e < elements_n; e++) {
-          auto ix = elements + 3 * e;
-          if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
-            indices.push_back(ix[0] + vo);
-            indices.push_back(ix[1] + vo);
-            indices.push_back(ix[2] + vo);
+          auto io = uint32_t(indices.size());
+          auto * elements = tessGetElements(tess);
+          auto elements_n = unsigned(tessGetElementCount(tess));
+          for (unsigned e = 0; e < elements_n; e++) {
+            auto ix = elements + 3 * e;
+            if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
+              indices.push_back(ix[0] + vo);
+              indices.push_back(ix[1] + vo);
+              indices.push_back(ix[2] + vo);
+            }
           }
         }
       }
