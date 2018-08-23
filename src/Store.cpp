@@ -28,6 +28,13 @@ Store::Store()
   roots.last = nullptr;
   comps.first = nullptr;
   comps.last = nullptr;
+  setErrorString("");
+}
+
+void Store::setErrorString(const char* str)
+{
+  auto l = strlen(str);
+  error_str = (const char*)arena.dup(str, l + 1);
 }
 
 Composite* Store::newComposite()

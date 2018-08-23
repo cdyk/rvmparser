@@ -10,7 +10,7 @@ void DumpNames::init(class Store& store)
   assert(stack == nullptr);
   assert(stack_p == 0);
   arena = new Arena();
-  stack = (const char**)arena->alloc(sizeof(const char*)*store.grp_n);
+  stack = (const char**)arena->alloc(sizeof(const char*)*store.groupCount());
 };
 
 bool DumpNames::done()

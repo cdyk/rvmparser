@@ -75,9 +75,9 @@ int main(int argc, char** argv)
     }
     stem = arg.substr(0, l);
 
-    if (!processFile(arg, [store](const void * ptr, size_t size) { parseRVM(store, ptr, size); return true; }))
+    if (!processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }))
     {
-      fprintf(stderr, "Failed to parse %s\n", arg.c_str());
+      fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
       rv = -1;
       break;
     }

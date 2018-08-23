@@ -15,6 +15,8 @@ namespace {
   struct Context
   {
     Store* store;
+    char* buf;
+    size_t buf_size;
     std::vector<Group*> group_stack;
   };
 
@@ -135,7 +137,10 @@ namespace {
   const char* parse_prim(Context* ctx, const char* p, const char* e)
   {
     assert(!ctx->group_stack.empty());
-    assert(ctx->group_stack.back()->kind == Group::Kind::Group);
+    if (ctx->group_stack.back()->kind != Group::Kind::Group) {
+      ctx->store->setErrorString("In PRIM, parent chunk is not CNTB");
+      return nullptr;
+    }
 
     uint32_t version, kind;
     p = read_uint32_be(version, p, e);
@@ -257,9 +262,9 @@ namespace {
       break;
 
     default:
-      fprintf(stderr, "Unknown primitive kind %d\n", kind);
-      assert(false);
-      break;
+      snprintf(ctx->buf, ctx->buf_size, "In PRIM, unknown primitive kind %d", kind);
+      ctx->store->setErrorString(ctx->buf);
+      return nullptr;
     }
     return p;
   }
@@ -293,13 +298,16 @@ namespace {
       switch (id_chunk_id) {
       case id("CNTB"):
         p = parse_cntb(ctx, p, e);
+        if (p == nullptr) return p;
         break;
       case id("PRIM"):
         p = parse_prim(ctx, p, e);
+        if (p == nullptr) return p;
         break;
       default:
-        fprintf(stderr, "Unknown chunk id '%s", chunk_id);
-        assert(false);
+        snprintf(ctx->buf, ctx->buf_size, "In CNTB, unknown chunk id %s", chunk_id);
+        ctx->store->setErrorString(ctx->buf);
+        return nullptr;
       }
       l = p;
       p = parse_chunk_header(chunk_id, len, dunno, p, e);
@@ -319,9 +327,10 @@ namespace {
 
 }
 
-void parseRVM(class Store* store, const void * ptr, size_t size)
+bool parseRVM(class Store* store, const void * ptr, size_t size)
 {
-  Context ctx = { store };
+  char buf[1024];
+  Context ctx = { store,  buf, sizeof(buf) };
 
   auto * p = reinterpret_cast<const char*>(ptr);
   auto * e = p + size;
@@ -331,13 +340,25 @@ void parseRVM(class Store* store, const void * ptr, size_t size)
 
   char chunk_id[5] = { 0, 0, 0, 0, 0 };
   p = parse_chunk_header(chunk_id, len, dunno, p, e);
-  assert(id(chunk_id) == id("HEAD"));
+  if (id(chunk_id) != id("HEAD")) {
+    snprintf(ctx.buf, ctx.buf_size, "Expected chunk HEAD, got %s", chunk_id);
+    store->setErrorString(buf);
+    return false;
+  }
   p = parse_head(&ctx, p, e);
-  assert(p - l == len);
+  if (p - l != len) {
+    snprintf(ctx.buf, ctx.buf_size, "Expected length %d, got %zd", len, p - l);
+    store->setErrorString(buf);
+    return false;
+  }
 
   l = p;
   p = parse_chunk_header(chunk_id, len, dunno, p, e);
-  assert(id(chunk_id) == id("MODL"));
+  if (id(chunk_id) != id("MODL")) {
+    snprintf(ctx.buf, ctx.buf_size, "Expected chunk MODL, got %s",chunk_id);
+    store->setErrorString(buf);
+    return false;
+  }
   p = parse_modl(&ctx, p, e);
 
   l = p;
@@ -347,13 +368,16 @@ void parseRVM(class Store* store, const void * ptr, size_t size)
     switch (id_chunk_id) {
     case id("CNTB"):
       p = parse_cntb(&ctx, p, e);
+      if (p == nullptr) return false;
       break;
     case id("PRIM"):
       p = parse_prim(&ctx, p, e);
+      if (p == nullptr) return false;
       break;
     default:
-      fprintf(stderr, "Unknown chunk id '%s", chunk_id);
-      assert(false);
+      snprintf(ctx.buf, ctx.buf_size, "Unrecognized chunk %s", chunk_id);
+      store->setErrorString(buf);
+      return false;
     }
     l = p;
     p = parse_chunk_header(chunk_id, len, dunno, p, e);
@@ -364,9 +388,7 @@ void parseRVM(class Store* store, const void * ptr, size_t size)
   ctx.group_stack.pop_back();
   ctx.group_stack.pop_back();
 
-  //v->endModel();
-  //v->endFile();
-
+  return true;
 }
 
 
