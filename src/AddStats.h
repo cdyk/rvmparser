@@ -16,6 +16,8 @@ struct Stats
   unsigned cylinder_n = 0;
   unsigned sphere_n = 0;
   unsigned facetgroup_n = 0;
+  unsigned facetgroup_triangles_n = 0;
+  unsigned facetgroup_quads_n = 0;
   unsigned facetgroup_polygon_n = 0;
   unsigned facetgroup_polygon_n_contours_n = 0;
   unsigned facetgroup_polygon_n_vertices_n = 0;

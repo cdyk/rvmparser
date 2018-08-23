@@ -118,6 +118,29 @@ int main(int argc, char** argv)
 
     AddStats addStats;
     store->apply(&addStats);
+    auto * stats = store->stats;
+    if (stats) {
+      fprintf(stderr, "Stats:\n");
+      fprintf(stderr, "    Groups                 %d\n", stats->group_n);
+      fprintf(stderr, "    Geometries             %d (grp avg=%.1f)\n", stats->geometry_n, stats->geometry_n / float(stats->group_n));
+      fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
+      fprintf(stderr, "        Boxes              %d\n", stats->box_n);
+      fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
+      fprintf(stderr, "        Circular tori      %d\n", stats->circular_torus_n);
+      fprintf(stderr, "        Elliptical dish    %d\n", stats->elliptical_dish_n);
+      fprintf(stderr, "        Spherical dish     %d\n", stats->spherical_dish_n);
+      fprintf(stderr, "        Snouts             %d\n", stats->snout_n);
+      fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
+      fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
+      fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
+      fprintf(stderr, "            triangles      %d\n", stats->facetgroup_triangles_n);
+      fprintf(stderr, "            quads          %d\n", stats->facetgroup_quads_n);
+      fprintf(stderr, "            polygons       %d (fgrp avg=%.1f)\n", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n / float(stats->facetgroup_n)));
+      fprintf(stderr, "                contours   %d (poly avg=%.1f)\n", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+      fprintf(stderr, "                vertices   %d (cont avg=%.1f)\n", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+      fprintf(stderr, "        Lines              %d\n", stats->line_n);
+    }
+
 
     //FindConnections findConnections;
     //store->apply(&findConnections);
