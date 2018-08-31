@@ -5,7 +5,7 @@
 #include <string>
 #include <cctype>
 
-#include "RVMParser.h"
+#include "Parser.h"
 #include "FindConnections.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
@@ -16,12 +16,14 @@
 
 
 template<typename F>
-bool
+int
 processFile(const std::string& path, F f)
 {
-  bool rv = true;
+  int rv = 2;
   HANDLE h = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  if (h == INVALID_HANDLE_VALUE) rv = false;
+  if (h == INVALID_HANDLE_VALUE) {
+    return 1;
+  }
   else {
     DWORD hiSize;
     DWORD loSize = GetFileSize(h, &hiSize);
@@ -33,7 +35,7 @@ processFile(const std::string& path, F f)
       const void * ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
       if (ptr == nullptr) rv = false;
       else {
-        rv = f(ptr, fileSize);
+        rv = f(ptr, fileSize) ? 0 : 2;
         UnmapViewOfFile(ptr);
       }
       CloseHandle(m);
@@ -45,12 +47,29 @@ processFile(const std::string& path, F f)
 }
 
 
+void logger(unsigned level, const char* msg, ...)
+{
+  switch (level) {
+  case 0: fprintf(stderr, "[I] "); break;
+  case 1: fprintf(stderr, "[W] "); break;
+  case 2: fprintf(stderr, "[E] "); break;
+  }
+
+  va_list argptr;
+  va_start(argptr, msg);
+  vfprintf(stderr, msg, argptr);
+  va_end(argptr);
+  fprintf(stderr, "\n");
+}
+
+
 int main(int argc, char** argv)
 {
   int rv = 0;
   bool run_flatten = true;
   bool dump_names = false;
 
+  std::vector<std::string> attributeSuffices = { ".txt",  ".att" };
 
   Store* store = new Store();
 
@@ -75,13 +94,33 @@ int main(int argc, char** argv)
     }
     stem = arg.substr(0, l);
 
-    if (!processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }))
+
+    if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }) != 0)
     {
       fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
       rv = -1;
       break;
     }
     fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
+
+    
+    for (auto & suffix : attributeSuffices) {
+      auto attributeFile = stem + suffix;
+      auto rv = processFile(attributeFile, [store](const void* ptr, size_t size) { return parseAtt(store, logger, ptr, size); });
+      if (rv == 1) {
+        //fprintf(stderr, "%s does not exist.\n", attributeFile.c_str());
+      }
+      else {
+        if (rv == 0) {
+          fprintf(stderr, "Successfully parsed %s\n", attributeFile.c_str());
+        }
+        else {
+          fprintf(stderr, "Failed to parse %s\n", attributeFile.c_str());
+        }
+        break;
+      }
+    }
+    
 
     if (run_flatten) {
       auto tagFile = stem + ".tag";
@@ -145,7 +184,7 @@ int main(int argc, char** argv)
     //FindConnections findConnections;
     //store->apply(&findConnections);
 
-#if 1
+#if 0
     Tessellator tessellator;
     store->apply(&tessellator);
 

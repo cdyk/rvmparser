@@ -2,6 +2,8 @@
 #include <cstdint>
 #include "Arena.h"
 
+typedef void (*Logger)(unsigned level, const char* msg, ...);
+
 struct Group;
 struct Geometry;
 

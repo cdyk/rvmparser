@@ -10,9 +10,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\RVMParser.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\libs\libtess2\Include\tesselator.h">
       <Filter>libtess2</Filter>
     </ClInclude>
@@ -64,11 +61,11 @@
     <ClInclude Include="..\src\DumpNames.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Parser.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\RVMParser.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -115,6 +112,12 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\DumpNames.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ParserRVM.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ParserAtt.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

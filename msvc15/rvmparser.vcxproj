@@ -165,7 +165,8 @@
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
     <ClCompile Include="..\src\main.cpp" />
-    <ClCompile Include="..\src\RVMParser.cpp" />
+    <ClCompile Include="..\src\ParserAtt.cpp" />
+    <ClCompile Include="..\src\ParserRVM.cpp" />
     <ClCompile Include="..\src\Store.cpp" />
     <ClCompile Include="..\src\Tessellator.cpp" />
   </ItemGroup>
@@ -184,7 +185,7 @@
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />
-    <ClInclude Include="..\src\RVMParser.h" />
+    <ClInclude Include="..\src\Parser.h" />
     <ClInclude Include="..\src\StoreVisitor.h" />
     <ClInclude Include="..\src\Store.h" />
     <ClInclude Include="..\src\Tessellator.h" />
