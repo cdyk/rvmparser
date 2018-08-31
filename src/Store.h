@@ -1,8 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "Arena.h"
-
-typedef void (*Logger)(unsigned level, const char* msg, ...);
+#include "Common.h"
 
 struct Group;
 struct Geometry;
@@ -197,6 +195,7 @@ public:
   struct Stats* stats = nullptr;
   struct Connectivity* conn = nullptr;
 
+  StringInterning strings;
 private:
   unsigned geo_n = 0;
   unsigned grp_n = 0;

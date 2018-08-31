@@ -1,9 +1,10 @@
 #include <cstdio>
 #include <cassert>
 #include <unordered_set>
+
+#include "Common.h"
 #include "Store.h"
 #include "Flatten.h"
-#include "Arena.h"
 
 struct Context
 {

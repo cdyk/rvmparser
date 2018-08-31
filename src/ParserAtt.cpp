@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include "Parser.h"
+#include "Store.h"
 
 namespace {
 
@@ -16,15 +17,10 @@ namespace {
     unsigned tabs;
   };
 
-  bool handleNew(Context* ctx, const char* id, size_t id_N)
+  bool handleNew(Context* ctx, const char* id_a, const char* id_b)
   {
-    if (ctx->buf_size <= id_N + 1) {
-      ctx->logger(2, "@%d: Insufficient buffer size for string", ctx->line);
-      return false;
-    }
-    std::memcpy(ctx->buf, id, id_N);
-    ctx->buf[id_N] = '\0';
-    ctx->logger(0, "@%d: new '%s'", ctx->line, ctx->buf);
+    auto * id = ctx->store->strings.intern(id_a, id_b);
+    ctx->logger(0, "@%d: new '%s'", ctx->line, id);
     return true;
   }
 
@@ -34,23 +30,11 @@ namespace {
     return true;
   }
 
-  bool handleAttribute(Context* ctx, const char* key, size_t key_N, const char* value, size_t value_N)
+  bool handleAttribute(Context* ctx, const char* key_a, const char* key_b, const char* value_a, const char* value_b)
   {
-    if (ctx->buf_size <= key_N + value_N + 2) {
-      ctx->logger(2, "@%d: Insufficient buffer size for string", ctx->line);
-      return false;
-    }
-
-    auto * k = ctx->buf;
-    std::memcpy(k, key, key_N);
-    k[key_N] = '\0';
-
-    auto * v = k + key_N + 1;
-    std::memcpy(v, value, value_N);
-    v[value_N] = '\0';
-
-    ctx->logger(0, "@%d: att ('%s', '%s')", ctx->line, k, v);
-
+    auto * key = ctx->store->strings.intern(key_a, key_b);
+    auto * value = ctx->store->strings.intern(value_a, value_b);
+    ctx->logger(0, "@%d: att ('%s', '%s')", ctx->line, key, value);
     return true;
   }
 
@@ -138,7 +122,7 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
     if (matchNew(p, end)) {
       auto * a = skipSpace(p + 4, end);
       p = getEndOfLine(a, end);
-      if (!handleNew(&ctx, a, reverseSkipSpace(a, p) - a)) return false;
+      if (!handleNew(&ctx, a, reverseSkipSpace(a, p))) return false;
     }
     else if (matchEnd(p, end)) {
       if (!handleEnd(&ctx)) return false;
@@ -146,23 +130,23 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
     }
     else {
       while (true) {
-        auto * keyStart = p;
+        auto * key_a = p;
         p = findAssign(p, end);
         if (p == end || p[0] != ':') {
           logger(2, "@%d: Failed to find ':=' token.\n", ctx.line);
           return false;
         }
-        auto keyN = reverseSkipSpace(keyStart, p) - keyStart;
+        auto * key_b = reverseSkipSpace(key_a, p);
         p = skipSpace(p + 2, end);
 
-        auto * valueStart = p;
+        auto * value_a = p;
         p = findSep(p, end);
-        auto valueN = reverseSkipSpace(valueStart, p) - valueStart;
-        if (2 <= valueN && valueStart[0] == '\'' && valueStart[valueN - 1] == '\'') {
-          valueStart++;
-          valueN -= 2;
+        auto * value_b = reverseSkipSpace(value_a, p);
+        if (2 <= (value_b-value_a) && value_a[0] == '\'' && value_b[-1] == '\'') {
+          value_a++;
+          value_b--;
         }
-        if (!handleAttribute(&ctx, keyStart, keyN, valueStart, valueN)) return false;
+        if (!handleAttribute(&ctx, key_a, key_b, value_a, value_b)) return false;
 
         if (p + 5 < end && p[0] == '&') {
           p = skipSpace(p + 5, end);

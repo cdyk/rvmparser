@@ -1,6 +1,7 @@
 #pragma once
+
+#include "Common.h"
 #include "StoreVisitor.h"
-#include "Arena.h"
 
 struct Anchor
 {
