@@ -181,6 +181,8 @@ public:
 
   Group* cloneGroup(Group* parent, const Group* src);
 
+  Group* findRootGroup(const char* name);
+
   Composite* newComposite();
 
   void apply(StoreVisitor* visitor);

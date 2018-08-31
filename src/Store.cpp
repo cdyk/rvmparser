@@ -37,6 +37,23 @@ void Store::setErrorString(const char* str)
   error_str = strings.intern(str, str + l);
 }
 
+Group* Store::findRootGroup(const char* name)
+{
+  for (auto * file = roots.first; file != nullptr; file = file->next) {
+    assert(file->kind == Group::Kind::File);
+    for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+      fprintf(stderr, "model '%s'\n", model->model.name);
+      assert(model->kind == Group::Kind::Model);
+      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+        fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
+        if (group->group.name == name) return group;
+      }
+    }
+  }
+  return nullptr;
+}
+
+
 Composite* Store::newComposite()
 {
   auto * comp = arena.alloc<Composite>();

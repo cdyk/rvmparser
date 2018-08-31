@@ -5,6 +5,13 @@ class Store;
 
 typedef void(*Logger)(unsigned level, const char* msg, ...);
 
+void* xmalloc(size_t size);
+
+void* xcalloc(size_t count, size_t size);
+
+void* xrealloc(void* ptr, size_t size);
+
+
 struct Arena
 {
   ~Arena() { clear(); }

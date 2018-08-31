@@ -28,26 +28,33 @@ namespace {
     return x;
   }
 
-  void* xmalloc(size_t size)
-  {
-    auto rv = malloc(size);
-    if (rv != nullptr) return rv;
+}
 
-    fprintf(stderr, "Failed to allocate memory.");
-    exit(-1);
-  }
+void* xmalloc(size_t size)
+{
+  auto rv = malloc(size);
+  if (rv != nullptr) return rv;
 
-  void* xcalloc(size_t count, size_t size)
-  {
-    auto rv = calloc(count, size);
-    if (rv != nullptr) return rv;
+  fprintf(stderr, "Failed to allocate memory.");
+  exit(-1);
+}
 
-    fprintf(stderr, "Failed to allocate memory.");
-    exit(-1);
-  }
+void* xcalloc(size_t count, size_t size)
+{
+  auto rv = calloc(count, size);
+  if (rv != nullptr) return rv;
 
+  fprintf(stderr, "Failed to allocate memory.");
+  exit(-1);
+}
 
+void* xrealloc(void* ptr, size_t size)
+{
+  auto * rv = realloc(ptr, size);
+  if (rv != nullptr) return rv;
 
+  fprintf(stderr, "Failed to allocate memory.");
+  exit(-1);
 }
 
 void* Arena::alloc(size_t bytes)
@@ -135,17 +142,21 @@ void Map::insert(uint64_t key, uint64_t value)
   assert(value != 0);   // null value is used to denote not found
 
   if (capacity <= 2 * fill) {
-    auto old_fill = fill;
+    auto old_capacity = capacity;
     auto old_keys = keys;
     auto old_vals = vals;
-    
+
     fill = 0;
     capacity = capacity ? 2 * capacity : 16;
     keys = (uint64_t*)xcalloc(capacity, sizeof(uint64_t));
     vals = (uint64_t*)malloc(capacity * sizeof(uint64_t));
 
-    for (size_t i = 0; i < old_fill; i++) {
-      if (old_keys[i]) insert(old_keys[i], old_vals[i]);
+    unsigned g = 0;
+    for (size_t i = 0; i < old_capacity; i++) {
+      if (old_keys[i]) {
+        insert(old_keys[i], old_vals[i]);
+        g++;
+      }
     }
 
     free(old_keys);
@@ -206,7 +217,6 @@ const char* StringInterning::intern(const char* a, const char* b)
   newIntern->length = length;
   std::memcpy(newIntern->string, a, length);
   newIntern->string[length] = '\0';
-  //fprintf(stderr, "new string '%s'\n", newIntern->string);
   map.insert(hash, uint64_t(newIntern));
   return newIntern->string;
 }

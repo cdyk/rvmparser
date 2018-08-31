@@ -1,32 +1,85 @@
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 
 #include "Parser.h"
 #include "Store.h"
 
 namespace {
 
+  struct StackItem
+  {
+    const char* id;
+    Group* group;
+  };
+
   struct Context
   {
     Store* store;
     Logger logger;
+    const char* headerInfo = nullptr; //Header Information
     char* buf;
     size_t buf_size;
     unsigned line;
     unsigned spaces;
     unsigned tabs;
+
+    StackItem* stack = nullptr;
+    unsigned stack_p = 0;
+    unsigned stack_c = 0;
+
   };
 
   bool handleNew(Context* ctx, const char* id_a, const char* id_b)
   {
+    if (ctx->stack_c <= ctx->stack_p + 1) {
+      ctx->stack_c = 2 * ctx->stack_c;
+      ctx->stack = (StackItem*)xrealloc(ctx->stack, sizeof(StackItem) * ctx->stack_c);
+    }
+
     auto * id = ctx->store->strings.intern(id_a, id_b);
-    ctx->logger(0, "@%d: new '%s'", ctx->line, id);
+
+    Group * group = nullptr;
+    if (ctx->stack_p == 0) {
+
+      if (id != ctx->headerInfo) {
+        group = ctx->store->findRootGroup(id);
+        if (group == nullptr) {
+          ctx->logger(1, "@%d: Failed to find root group '%s' id=%p", ctx->line, id, id);
+        }
+      }
+    }
+    else {
+
+      auto * parent = ctx->stack[ctx->stack_p - 1].group;
+      if (parent) {
+        for (auto * child = parent->groups.first; child; child = child->next) {
+          if (child->group.name == id) {
+            group = child;
+            break;
+          }
+        }
+      }
+      if (group == nullptr) {
+        ctx->logger(1, "@%d: Failed to find child group '%s' id=%p", ctx->line, id, id);
+      }
+    }
+
+
+    //ctx->logger(0, "@%d: new '%s'", ctx->line, id);
+
+    ctx->stack[ctx->stack_p++] = { id, group };
     return true;
   }
 
   bool handleEnd(Context* ctx)
   {
-    ctx->logger(0, "@%d: end", ctx->line);
+    if (ctx->stack_p == 0) {
+      ctx->logger(2, "@%d: More END-tags and than NEW-tags.", ctx->line);
+      return false;
+    }
+    //ctx->logger(0, "@%d: end", ctx->line);
+    ctx->stack_p--;
     return true;
   }
 
@@ -34,7 +87,7 @@ namespace {
   {
     auto * key = ctx->store->strings.intern(key_a, key_b);
     auto * value = ctx->store->strings.intern(value_a, value_b);
-    ctx->logger(0, "@%d: att ('%s', '%s')", ctx->line, key, value);
+    //ctx->logger(0, "@%d: att ('%s', '%s')", ctx->line, key, value);
     return true;
   }
 
@@ -110,7 +163,10 @@ namespace {
 bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
 {
   char buf[1024];
-  Context ctx = { store, logger, buf, sizeof(buf) };
+  Context ctx = { store, logger, store->strings.intern("Header Information"), buf, sizeof(buf) };
+
+  ctx.stack_c = 1024;
+  ctx.stack = (StackItem*)xmalloc(sizeof(StackItem) * ctx.stack_c);
 
   auto * p = (const char*)(ptr);
   auto * end = p + size;
@@ -122,10 +178,10 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
     if (matchNew(p, end)) {
       auto * a = skipSpace(p + 4, end);
       p = getEndOfLine(a, end);
-      if (!handleNew(&ctx, a, reverseSkipSpace(a, p))) return false;
+      if (!handleNew(&ctx, a, reverseSkipSpace(a, p))) goto error;
     }
     else if (matchEnd(p, end)) {
-      if (!handleEnd(&ctx)) return false;
+      if (!handleEnd(&ctx)) goto error;
       p = getEndOfLine(p, end);
     }
     else {
@@ -134,7 +190,7 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
         p = findAssign(p, end);
         if (p == end || p[0] != ':') {
           logger(2, "@%d: Failed to find ':=' token.\n", ctx.line);
-          return false;
+          goto error;
         }
         auto * key_b = reverseSkipSpace(key_a, p);
         p = skipSpace(p + 2, end);
@@ -146,7 +202,7 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
           value_a++;
           value_b--;
         }
-        if (!handleAttribute(&ctx, key_a, key_b, value_a, value_b)) return false;
+        if (!handleAttribute(&ctx, key_a, key_b, value_a, value_b)) goto error;
 
         if (p + 5 < end && p[0] == '&') {
           p = skipSpace(p + 5, end);
@@ -158,12 +214,21 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
     }
     if ((p < end) && (*p != '\n' && *p != '\r')) {
       logger(2, "@%d: Line scanning did not terminate at end of line", ctx.line);
-      return false;
+      goto error;
     }
     p = skipEndOfLine(p, end);
   }
 
-  // skip first line
+  if (ctx.stack_p != 0) {
+    logger(2, "@%d: More NEW-tags and than END-tags.", ctx.line);
+    return false;
+  }
 
+
+  free(ctx.stack);
   return true;
+
+error:
+  free(ctx.stack);
+  return false;
 }

@@ -123,6 +123,8 @@ namespace {
     p = read_string(&g->model.project, ctx->store, p, e);
     p = read_string(&g->model.name, ctx->store, p, e);
 
+    //fprintf(stderr, "modl project='%s', name='%s'\n", g->model.project, g->model.name);
+
     return p;
   }
 
@@ -270,6 +272,8 @@ namespace {
     uint32_t version;
     p = read_uint32_be(version, p, e);
     p = read_string(&g->group.name, ctx->store, p, e);
+
+    fprintf(stderr, "group '%s' %p\n", g->group.name, g->group.name);
 
     // Translation seems to be a reference point that can be used as a local frame for objects in the group.
     // The transform is not relative to this reference point.

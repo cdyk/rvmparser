@@ -95,6 +95,7 @@ int main(int argc, char** argv)
     stem = arg.substr(0, l);
 
 
+#if 0
     if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }) != 0)
     {
       fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
@@ -102,7 +103,7 @@ int main(int argc, char** argv)
       break;
     }
     fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
-
+#endif
     
     for (auto & suffix : attributeSuffices) {
       auto attributeFile = stem + suffix;
