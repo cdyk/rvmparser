@@ -58,13 +58,7 @@ namespace {
         break;
       }
     }
-
-    auto * str = (char*)store->arena.alloc(l + 1);
-    *dst = str;
-
-    std::memcpy(str, p, l);
-    str[l] = '\0';
-
+    *dst = store->strings.intern(p, p + l);
     return p + 4 * len;
   }
 
@@ -111,9 +105,7 @@ namespace {
       p = read_string(&g->file.encoding, ctx->store, p, e);
     }
     else {
-      auto * encoding = (char*)ctx->store->arena.alloc(1);
-      encoding[0] = '\0';
-      g->file.encoding = encoding;
+      g->file.encoding = ctx->store->strings.intern("");
     }
 
     return p;

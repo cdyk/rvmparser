@@ -107,7 +107,13 @@ void Arena::clear()
   size = 0;
 }
 
-uint64_t MapHeader::get(uint64_t key)
+Map::~Map()
+{
+  if (keys) free(keys);
+  if (vals) free(vals);
+}
+
+uint64_t Map::get(uint64_t key)
 {
   if (fill == 0) return 0;
 
@@ -123,9 +129,10 @@ uint64_t MapHeader::get(uint64_t key)
   }
 }
 
-void MapHeader::insert(uint64_t key, uint64_t value)
+void Map::insert(uint64_t key, uint64_t value)
 {
-  assert(key != 0);   // null is used to denote no-key
+  assert(key != 0);     // null is used to denote no-key
+  assert(value != 0);   // null value is used to denote not found
 
   if (capacity <= 2 * fill) {
     auto old_fill = fill;
@@ -174,7 +181,10 @@ namespace {
 
 }
 
-
+const char* StringInterning::intern(const char* str)
+{
+  return intern(str, str + strlen(str));
+}
 
 const char* StringInterning::intern(const char* a, const char* b)
 {
@@ -196,7 +206,7 @@ const char* StringInterning::intern(const char* a, const char* b)
   newIntern->length = length;
   std::memcpy(newIntern->string, a, length);
   newIntern->string[length] = '\0';
-  fprintf(stderr, "new string '%s'\n", newIntern->string);
+  //fprintf(stderr, "new string '%s'\n", newIntern->string);
   map.insert(hash, uint64_t(newIntern));
   return newIntern->string;
 }

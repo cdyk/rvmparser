@@ -34,7 +34,7 @@ Store::Store()
 void Store::setErrorString(const char* str)
 {
   auto l = strlen(str);
-  error_str = (const char*)arena.dup(str, l + 1);
+  error_str = strings.intern(str, str + l);
 }
 
 Composite* Store::newComposite()
@@ -125,18 +125,18 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
   auto * dst = newGroup(parent, src->kind);
   switch (src->kind) {
   case Group::Kind::File:
-    dst->file.info = (char*)arena.dup(src->file.info, strlen(src->file.info) + 1);
-    dst->file.note = (char*)arena.dup(src->file.note, strlen(src->file.note) + 1);
-    dst->file.date = (char*)arena.dup(src->file.date, strlen(src->file.date) + 1);
-    dst->file.user = (char*)arena.dup(src->file.user, strlen(src->file.user) + 1);
-    dst->file.encoding = (char*)arena.dup(src->file.encoding, strlen(src->file.encoding) + 1);
+    dst->file.info = strings.intern(src->file.info);
+    dst->file.note = strings.intern(src->file.note);
+    dst->file.date = strings.intern(src->file.date);
+    dst->file.user = strings.intern(src->file.user);
+    dst->file.encoding = strings.intern(src->file.encoding);
     break;
   case Group::Kind::Model:
-    dst->model.project = (char*)arena.dup(src->model.project, strlen(src->model.project) + 1);
-    dst->model.name = (char*)arena.dup(src->model.name, strlen(src->model.name) + 1);
+    dst->model.project = strings.intern(src->model.project);
+    dst->model.name = strings.intern(src->model.name);
     break;
   case Group::Kind::Group:
-    dst->group.name = (char*)arena.dup(src->group.name, strlen(src->group.name) + 1);
+    dst->group.name = strings.intern(src->group.name);
     dst->group.material = src->group.material;
     for (unsigned k = 0; k < 3; k++) dst->group.translation[k] = src->group.translation[k];
     break;

@@ -21,8 +21,10 @@ struct Arena
   template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
 };
 
-struct MapHeader
+struct Map
 {
+  ~Map();
+
   uint64_t* keys = nullptr;
   uint64_t* vals = nullptr;
   size_t fill = 0;
@@ -35,9 +37,10 @@ struct MapHeader
 struct StringInterning
 {
   Arena arena;
-  MapHeader map;
+  Map map;
 
   const char* intern(const char* a, const char* b);
+  const char* intern(const char* str);  // null terminanted
 
 
 };
