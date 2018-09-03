@@ -34,8 +34,25 @@ Store::Store()
 void Store::setErrorString(const char* str)
 {
   auto l = strlen(str);
-  error_str = (const char*)arena.dup(str, l + 1);
+  error_str = strings.intern(str, str + l);
 }
+
+Group* Store::findRootGroup(const char* name)
+{
+  for (auto * file = roots.first; file != nullptr; file = file->next) {
+    assert(file->kind == Group::Kind::File);
+    for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+      //fprintf(stderr, "model '%s'\n", model->model.name);
+      assert(model->kind == Group::Kind::Model);
+      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+        //fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
+        if (group->group.name == name) return group;
+      }
+    }
+  }
+  return nullptr;
+}
+
 
 Composite* Store::newComposite()
 {
@@ -120,23 +137,61 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   return grp;
 }
 
+Attribute* Store::getAttribute(Group* group, const char* key)
+{
+  for (auto * attribute = group->attributes.first; attribute != nullptr; attribute = attribute->next) {
+    if (attribute->key == key) return attribute;
+  }
+  return nullptr;
+}
+
+Attribute* Store::newAttribute(Group* group, const char* key)
+{
+  auto * attribute = arena.alloc<Attribute>();
+  attribute->key = key;
+  insert(group->attributes, attribute);
+  return attribute;
+}
+
+
+Group* Store::getDefaultModel()
+{
+  auto * file = roots.first;
+  if (file == nullptr) {
+    file = newGroup(nullptr, Group::Kind::File);
+    file->file.info = strings.intern("");
+    file->file.note = strings.intern("");
+    file->file.date = strings.intern("");
+    file->file.user = strings.intern("");
+    file->file.encoding = strings.intern("");
+  }
+  auto * model = file->groups.first;
+  if (model == nullptr) {
+    model = newGroup(file, Group::Kind::Model);
+    model->model.project = strings.intern("");
+    model->model.name = strings.intern("");
+  }
+  return model;
+}
+
+
 Group* Store::cloneGroup(Group* parent, const Group* src)
 {
   auto * dst = newGroup(parent, src->kind);
   switch (src->kind) {
   case Group::Kind::File:
-    dst->file.info = (char*)arena.dup(src->file.info, strlen(src->file.info) + 1);
-    dst->file.note = (char*)arena.dup(src->file.note, strlen(src->file.note) + 1);
-    dst->file.date = (char*)arena.dup(src->file.date, strlen(src->file.date) + 1);
-    dst->file.user = (char*)arena.dup(src->file.user, strlen(src->file.user) + 1);
-    dst->file.encoding = (char*)arena.dup(src->file.encoding, strlen(src->file.encoding) + 1);
+    dst->file.info = strings.intern(src->file.info);
+    dst->file.note = strings.intern(src->file.note);
+    dst->file.date = strings.intern(src->file.date);
+    dst->file.user = strings.intern(src->file.user);
+    dst->file.encoding = strings.intern(src->file.encoding);
     break;
   case Group::Kind::Model:
-    dst->model.project = (char*)arena.dup(src->model.project, strlen(src->model.project) + 1);
-    dst->model.name = (char*)arena.dup(src->model.name, strlen(src->model.name) + 1);
+    dst->model.project = strings.intern(src->model.project);
+    dst->model.name = strings.intern(src->model.name);
     break;
   case Group::Kind::Group:
-    dst->group.name = (char*)arena.dup(src->group.name, strlen(src->group.name) + 1);
+    dst->group.name = strings.intern(src->group.name);
     dst->group.material = src->group.material;
     for (unsigned k = 0; k < 3; k++) dst->group.translation[k] = src->group.translation[k];
     break;
@@ -144,6 +199,12 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
     assert(false && "Group has invalid kind.");
     break;
   }
+
+  for (auto * src_att = src->attributes.first; src_att != nullptr; src_att = src_att->next) {
+    auto * dst_att = newAttribute(dst, strings.intern(src_att->key));
+    dst_att->val = strings.intern(src_att->val);
+  }
+
   return dst;
 }
 
@@ -153,18 +214,28 @@ void Store::apply(StoreVisitor* visitor, Group* group)
   assert(group->kind == Group::Kind::Group);
   visitor->beginGroup(group);
 
-  auto * g = group->groups.first;
-  while (g != nullptr) {
-    apply(visitor, g);
-    g = g->next;
+  if (group->attributes.first) {
+    visitor->beginAttributes(group);
+    for (auto * a = group->attributes.first; a != nullptr; a = a->next) {
+      visitor->attribute(a->key, a->val);
+    }
+    visitor->endAttributes(group);
   }
 
-  if (group->kind == Group::Kind::Group) {
+  if (group->kind == Group::Kind::Group && group->group.geometries.first != nullptr) {
     visitor->beginGeometries(group);
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
       visitor->geometry(geo);
     }
     visitor->endGeometries();
+  }
+
+  if (group->groups.first != nullptr) {
+    visitor->beginChildren(group);
+    for (auto * g = group->groups.first; g != nullptr; g = g->next) {
+      apply(visitor, g);
+    }
+    visitor->endChildren();
   }
 
   visitor->EndGroup();

@@ -1,6 +1,6 @@
 #include <cassert>
+#include "Common.h"
 #include "DumpNames.h"
-#include "Arena.h"
 #include "Store.h"
 
 

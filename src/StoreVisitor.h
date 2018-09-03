@@ -20,6 +20,16 @@ public:
 
   virtual void EndGroup() {}
 
+  virtual void beginChildren(struct Group* container) {}
+
+  virtual void endChildren() {}
+
+  virtual void beginAttributes(struct Group* container) {}
+
+  virtual void attribute(const char* key, const char* id) {}
+
+  virtual void endAttributes(struct Group* container) {}
+
   virtual void beginGeometries(struct Group* container) {}
 
   virtual void geometry(struct Geometry* geometry) {}

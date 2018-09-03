@@ -159,13 +159,15 @@
     <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\AddStats.cpp" />
-    <ClCompile Include="..\src\Arena.cpp" />
+    <ClCompile Include="..\src\Common.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
+    <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
     <ClCompile Include="..\src\main.cpp" />
-    <ClCompile Include="..\src\RVMParser.cpp" />
+    <ClCompile Include="..\src\ParserAtt.cpp" />
+    <ClCompile Include="..\src\ParserRVM.cpp" />
     <ClCompile Include="..\src\Store.cpp" />
     <ClCompile Include="..\src\Tessellator.cpp" />
   </ItemGroup>
@@ -179,12 +181,13 @@
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
     <ClInclude Include="..\src\AddStats.h" />
-    <ClInclude Include="..\src\Arena.h" />
+    <ClInclude Include="..\src\Common.h" />
     <ClInclude Include="..\src\DumpNames.h" />
+    <ClInclude Include="..\src\ExportJson.h" />
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />
-    <ClInclude Include="..\src\RVMParser.h" />
+    <ClInclude Include="..\src\Parser.h" />
     <ClInclude Include="..\src\StoreVisitor.h" />
     <ClInclude Include="..\src\Store.h" />
     <ClInclude Include="..\src\Tessellator.h" />
