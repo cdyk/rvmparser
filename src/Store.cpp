@@ -42,10 +42,10 @@ Group* Store::findRootGroup(const char* name)
   for (auto * file = roots.first; file != nullptr; file = file->next) {
     assert(file->kind == Group::Kind::File);
     for (auto * model = file->groups.first; model != nullptr; model = model->next) {
-      fprintf(stderr, "model '%s'\n", model->model.name);
+      //fprintf(stderr, "model '%s'\n", model->model.name);
       assert(model->kind == Group::Kind::Model);
       for (auto * group = model->groups.first; group != nullptr; group = group->next) {
-        fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
+        //fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
         if (group->group.name == name) return group;
       }
     }
@@ -214,18 +214,28 @@ void Store::apply(StoreVisitor* visitor, Group* group)
   assert(group->kind == Group::Kind::Group);
   visitor->beginGroup(group);
 
-  auto * g = group->groups.first;
-  while (g != nullptr) {
-    apply(visitor, g);
-    g = g->next;
+  if (group->attributes.first) {
+    visitor->beginAttributes(group);
+    for (auto * a = group->attributes.first; a != nullptr; a = a->next) {
+      visitor->attribute(a->key, a->val);
+    }
+    visitor->endAttributes(group);
   }
 
-  if (group->kind == Group::Kind::Group) {
+  if (group->kind == Group::Kind::Group && group->group.geometries.first != nullptr) {
     visitor->beginGeometries(group);
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
       visitor->geometry(geo);
     }
     visitor->endGeometries();
+  }
+
+  if (group->groups.first != nullptr) {
+    visitor->beginChildren(group);
+    for (auto * g = group->groups.first; g != nullptr; g = g->next) {
+      apply(visitor, g);
+    }
+    visitor->endChildren();
   }
 
   visitor->EndGroup();

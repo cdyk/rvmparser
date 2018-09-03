@@ -161,6 +161,7 @@
     <ClCompile Include="..\src\AddStats.cpp" />
     <ClCompile Include="..\src\Common.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
+    <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="..\src\AddStats.h" />
     <ClInclude Include="..\src\Common.h" />
     <ClInclude Include="..\src\DumpNames.h" />
+    <ClInclude Include="..\src\ExportJson.h" />
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />

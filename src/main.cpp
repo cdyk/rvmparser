@@ -9,6 +9,7 @@
 #include "FindConnections.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
+#include "ExportJson.h"
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
@@ -69,6 +70,9 @@ int main(int argc, char** argv)
   bool run_flatten = true;
   bool dump_names = false;
 
+  std::string attributes_json = ""; // "attributes.json";
+  std::string output_obj_stem = "";
+
   std::vector<std::string> attributeSuffices = { ".txt",  ".att" };
 
   Store* store = new Store();
@@ -95,7 +99,6 @@ int main(int argc, char** argv)
     stem = arg.substr(0, l);
 
 
-#if 0
     if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }) != 0)
     {
       fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
@@ -103,7 +106,6 @@ int main(int argc, char** argv)
       break;
     }
     fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
-#endif
     
     for (auto & suffix : attributeSuffices) {
       auto attributeFile = stem + suffix;
@@ -139,6 +141,9 @@ int main(int argc, char** argv)
 
 
   if (rv == 0 && !stem.empty()) {
+
+    run_flatten = false;
+
     if (run_flatten) {
       store->apply(&flatten);
 
@@ -146,15 +151,27 @@ int main(int argc, char** argv)
       store = flatten.result();
     }
 
-    if (dump_names) {
-      FILE* out;
-      if (fopen_s(&out, "names.txt", "w") == 0) {
-        DumpNames dumpNames;
-        dumpNames.setOutput(out);
-        store->apply(&dumpNames);
-        fclose(out);
+    if (!attributes_json.empty()) {
+      ExportJson exportJson;
+      if (exportJson.open(attributes_json.c_str())) {
+        store->apply(&exportJson);
+      }
+      else {
+        fprintf(stderr, "Failed to export obj file.\n");
+        rv = -1;
       }
     }
+
+
+    //if (dump_names) {
+    //  FILE* out;
+    //  if (fopen_s(&out, "names.txt", "w") == 0) {
+    //    DumpNames dumpNames;
+    //    dumpNames.setOutput(out);
+    //    store->apply(&dumpNames);
+    //    fclose(out);
+    //  }
+    //}
 
     AddStats addStats;
     store->apply(&addStats);
@@ -185,24 +202,22 @@ int main(int argc, char** argv)
     //FindConnections findConnections;
     //store->apply(&findConnections);
 
-#if 0
-    Tessellator tessellator;
-    store->apply(&tessellator);
+    if (!output_obj_stem.empty()) {
+      Tessellator tessellator;
+      store->apply(&tessellator);
 
-    ExportObj exportObj;
-    if (exportObj.open((stem + ".obj").c_str(), (stem + ".mtl").c_str())) {
-      store->apply(&exportObj);
+      ExportObj exportObj;
+      if (exportObj.open((output_obj_stem + ".obj").c_str(), (output_obj_stem + ".mtl").c_str())) {
+        store->apply(&exportObj);
+      }
+      else {
+        fprintf(stderr, "Failed to export obj file.\n");
+        rv = -1;
+      }
     }
-    else {
-      fprintf(stderr, "Failed to export obj file.\n");
-      rv = -1;
-    }
-#endif
   }
 
   delete store;
-
-  //auto a = getc(stdin);
  
   return rv;
 }
