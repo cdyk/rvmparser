@@ -1,6 +1,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <cassert>
 
 #include "Parser.h"
 #include "Store.h"
@@ -45,7 +46,10 @@ namespace {
       if (id != ctx->headerInfo) {
         group = ctx->store->findRootGroup(id);
         if (group == nullptr) {
-          ctx->logger(1, "@%d: Failed to find root group '%s' id=%p", ctx->line, id, id);
+          auto * model = ctx->store->getDefaultModel();
+          group = ctx->store->newGroup(model, Group::Kind::Group);
+          group->group.name = id;
+          //ctx->logger(1, "@%d: Failed to find root group '%s' id=%p", ctx->line, id, id);
         }
       }
     }
@@ -61,13 +65,14 @@ namespace {
         }
       }
       if (group == nullptr) {
-        ctx->logger(1, "@%d: Failed to find child group '%s' id=%p", ctx->line, id, id);
+        group = ctx->store->newGroup(parent, Group::Kind::Group);
+        group->group.name = id;
+        //ctx->logger(1, "@%d: Failed to find child group '%s' id=%p", ctx->line, id, id);
       }
     }
 
-
     //ctx->logger(0, "@%d: new '%s'", ctx->line, id);
-
+    assert(id);
     ctx->stack[ctx->stack_p++] = { id, group };
     return true;
   }
@@ -85,8 +90,17 @@ namespace {
 
   bool handleAttribute(Context* ctx, const char* key_a, const char* key_b, const char* value_a, const char* value_b)
   {
+    assert(ctx->stack_p);
+    auto * grp = ctx->stack[ctx->stack_p - 1].group;
+    if (grp == nullptr) return true; // Inside skipped group like headerinfo
+
     auto * key = ctx->store->strings.intern(key_a, key_b);
-    auto * value = ctx->store->strings.intern(value_a, value_b);
+    auto * att = ctx->store->getAttribute(grp, key);
+    if (att == nullptr) {
+      att = ctx->store->newAttribute(grp, key);
+    }
+    att->val = ctx->store->strings.intern(value_a, value_b);
+
     //ctx->logger(0, "@%d: att ('%s', '%s')", ctx->line, key, value);
     return true;
   }

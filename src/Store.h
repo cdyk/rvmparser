@@ -120,6 +120,12 @@ struct ListHeader
   T* last;
 };
 
+struct Attribute
+{
+  Attribute* next = nullptr;
+  const char* key = nullptr;
+  const char* val = nullptr;
+};
 
 struct Composite
 {
@@ -141,6 +147,7 @@ struct Group
 
   Group* next = nullptr;
   ListHeader<Group> groups;
+  ListHeader<Attribute> attributes;
 
   Kind kind = Kind::Group;
   union {
@@ -177,11 +184,17 @@ public:
 
   Geometry* cloneGeometry(Group* parent, const Geometry* src);
 
+  Group* getDefaultModel();
+
   Group* newGroup(Group * parent, Group::Kind kind);
 
   Group* cloneGroup(Group* parent, const Group* src);
 
   Group* findRootGroup(const char* name);
+
+  Attribute* getAttribute(Group* group, const char* key);
+
+  Attribute* newAttribute(Group* group, const char* key);
 
   Composite* newComposite();
 

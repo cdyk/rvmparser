@@ -137,6 +137,44 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   return grp;
 }
 
+Attribute* Store::getAttribute(Group* group, const char* key)
+{
+  for (auto * attribute = group->attributes.first; attribute != nullptr; attribute = attribute->next) {
+    if (attribute->key == key) return attribute;
+  }
+  return nullptr;
+}
+
+Attribute* Store::newAttribute(Group* group, const char* key)
+{
+  auto * attribute = arena.alloc<Attribute>();
+  attribute->key = key;
+  insert(group->attributes, attribute);
+  return attribute;
+}
+
+
+Group* Store::getDefaultModel()
+{
+  auto * file = roots.first;
+  if (file == nullptr) {
+    file = newGroup(nullptr, Group::Kind::File);
+    file->file.info = strings.intern("");
+    file->file.note = strings.intern("");
+    file->file.date = strings.intern("");
+    file->file.user = strings.intern("");
+    file->file.encoding = strings.intern("");
+  }
+  auto * model = file->groups.first;
+  if (model == nullptr) {
+    model = newGroup(file, Group::Kind::Model);
+    model->model.project = strings.intern("");
+    model->model.name = strings.intern("");
+  }
+  return model;
+}
+
+
 Group* Store::cloneGroup(Group* parent, const Group* src)
 {
   auto * dst = newGroup(parent, src->kind);
@@ -161,6 +199,12 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
     assert(false && "Group has invalid kind.");
     break;
   }
+
+  for (auto * src_att = src->attributes.first; src_att != nullptr; src_att = src_att->next) {
+    auto * dst_att = newAttribute(dst, strings.intern(src_att->key));
+    dst_att->val = strings.intern(src_att->val);
+  }
+
   return dst;
 }
 
