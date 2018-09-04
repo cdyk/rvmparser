@@ -69,13 +69,14 @@ void ExportJson::beginGroup(struct Group* group)
   doIndent(json, indent);
   fprintf(json, "{ \"name\": \"%s\",\n", group->group.name);
   indent += 2;
+  doIndent(json, indent); fprintf(json, "\"material\": %u,\n", group->group.material);
 }
 
 void ExportJson::EndGroup()
 {
   indent -= 2;
   doIndent(json, indent);
-  fprintf(json, "\n}\n");
+  fprintf(json, "},\n");
 }
 
 void ExportJson::beginChildren(struct Group* container)
@@ -89,7 +90,7 @@ void ExportJson::endChildren()
 {
   indent -= 2;
   doIndent(json, indent);
-  fprintf(json, "\n]\n");
+  fprintf(json, "]\n");
 }
 
 void ExportJson::beginAttributes(struct Group* container)

@@ -63,158 +63,189 @@ void logger(unsigned level, const char* msg, ...)
   fprintf(stderr, "\n");
 }
 
+void printHelp(const char* argv0)
+{
+  fprintf(stderr, "Usage: %s [options] files\n\n", argv0);
+  fprintf(stderr, "Files with .rvm-suffix will be interpreted as a geometry while, and files with .txt");
+  fprintf(stderr, "suffix will be interpreted as a geometry file.\n\n");
+  fprintf(stderr, "Options:\n");
+  fprintf(stderr, "    --keep-groups=filename.txt   Provide a list of group names to keep. Groups not");
+  fprintf(stderr, "                                 itself or with a child in this list will be merged");
+  fprintf(stderr, "                                 with the first parent that should be kept.");
+  fprintf(stderr, "    --output-json=filename.json  Write hierarchy with attributes to a json file.\n");
+  fprintf(stderr, "    --output-txt=filename.txt    Dump all group names to a text file.\n");
+  fprintf(stderr, "    --output-obj=filenamestem    Write geometry to an obj file, .obj and .mtl\n");
+  fprintf(stderr, "                                 are added to filenamestem.");
+
+
+}
+
 
 int main(int argc, char** argv)
 {
   int rv = 0;
-  bool run_flatten = true;
-  bool dump_names = false;
+  bool should_tessellate = false;
 
-  std::string attributes_json = ""; // "attributes.json";
-  std::string output_obj_stem = "";
+  std::string keep_groups;
+  std::string output_json;
+  std::string output_txt;
+  std::string output_obj_stem;
+  
 
   std::vector<std::string> attributeSuffices = { ".txt",  ".att" };
 
   Store* store = new Store();
 
-  Flatten flatten;
 
   std::string stem;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
 
-    if (arg == "--dump-names") {
-      dump_names = true;
-      continue;
+    if (arg.substr(0, 2) == "--") {
+
+      if (arg == "--help") {
+        printHelp(argv[0]);
+        return 0;
+      }
+
+      auto e = arg.find('=');
+      if (e != std::string::npos) {
+        auto key = arg.substr(0, e);
+        auto val = arg.substr(e + 1);
+        if (key == "--keep-groups") {
+          keep_groups = val;
+          continue;
+        }
+        else  if (key == "--output-json") {
+          output_json = val;
+          continue;
+        }
+        else if (key == "--output-txt") {
+          output_txt = val;
+          continue;
+        }
+        else if (key == "--output-obj") {
+          output_obj_stem = val;
+          should_tessellate = true;
+          continue;
+        }
+      }
+
+      fprintf(stderr, "Unrecognized argument '%s'", arg.c_str());
+      printHelp(argv[0]);
+      return -1;
     }
 
     auto arg_lc = arg;
     for (auto & c : arg_lc) c = std::tolower(c);
+
+    // parse rvm file
     auto l = arg_lc.rfind(".rvm");
-    if (l == std::string::npos) {
-      fprintf(stderr, "Failed to find suffix '.rvm' in path %s\n", arg.c_str());
-      rv = -1;
-      break;
-    }
-    stem = arg.substr(0, l);
-
-
-    if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }) != 0)
-    {
-      fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
-      rv = -1;
-      break;
-    }
-    fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
-    
-    for (auto & suffix : attributeSuffices) {
-      auto attributeFile = stem + suffix;
-      auto rv = processFile(attributeFile, [store](const void* ptr, size_t size) { return parseAtt(store, logger, ptr, size); });
-      if (rv == 1) {
-        //fprintf(stderr, "%s does not exist.\n", attributeFile.c_str());
-      }
-      else {
-        if (rv == 0) {
-          fprintf(stderr, "Successfully parsed %s\n", attributeFile.c_str());
-        }
-        else {
-          fprintf(stderr, "Failed to parse %s\n", attributeFile.c_str());
-        }
+    if (l != std::string::npos) {
+      if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }) != 0)
+      {
+        fprintf(stderr, "Failed to parse %s: %s\n", arg.c_str(), store->errorString());
+        rv = -1;
         break;
       }
+      fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
+      continue;
     }
-    
 
-    if (run_flatten) {
-      auto tagFile = stem + ".tag";
-
-      if (processFile(tagFile, [f = &flatten](const void * ptr, size_t size) {f->setKeep(ptr, size); return true; })) {
-        fprintf(stderr, "Processed %s\n", tagFile.c_str());
+    // parse attributes file
+    l = arg_lc.rfind(".txt");
+    if (l != std::string::npos) {
+      auto rv = processFile(arg, [store](const void* ptr, size_t size) { return parseAtt(store, logger, ptr, size); });
+      if (rv == 0) {
+        fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
       }
       else {
-        run_flatten = false;
+        fprintf(stderr, "Failed to parse %s\n", arg.c_str());
+        rv = -1;
+        break;
       }
+      continue;
     }
-
   }
 
+  if (rv == 0 && should_tessellate) {
+    Tessellator tessellator;
+    store->apply(&tessellator);
+  }
 
+  if (rv == 0 && !keep_groups.empty()) {
+    Flatten flatten;
+    if (processFile(keep_groups, [f = &flatten](const void * ptr, size_t size) {f->setKeep(ptr, size); return true; })) {
+      fprintf(stderr, "Processed %s\n", keep_groups.c_str());
 
-  if (rv == 0 && !stem.empty()) {
-
-    run_flatten = false;
-
-    if (run_flatten) {
       store->apply(&flatten);
 
       delete store;
       store = flatten.result();
     }
-
-    if (!attributes_json.empty()) {
-      ExportJson exportJson;
-      if (exportJson.open(attributes_json.c_str())) {
-        store->apply(&exportJson);
-      }
-      else {
-        fprintf(stderr, "Failed to export obj file.\n");
-        rv = -1;
-      }
+    else {
+      fprintf(stderr, "Failed to parse %s\n", keep_groups.c_str());
+      rv = -1;
     }
+  }
 
-
-    //if (dump_names) {
-    //  FILE* out;
-    //  if (fopen_s(&out, "names.txt", "w") == 0) {
-    //    DumpNames dumpNames;
-    //    dumpNames.setOutput(out);
-    //    store->apply(&dumpNames);
-    //    fclose(out);
-    //  }
-    //}
-
-    AddStats addStats;
-    store->apply(&addStats);
-    auto * stats = store->stats;
-    if (stats) {
-      fprintf(stderr, "Stats:\n");
-      fprintf(stderr, "    Groups                 %d\n", stats->group_n);
-      fprintf(stderr, "    Geometries             %d (grp avg=%.1f)\n", stats->geometry_n, stats->geometry_n / float(stats->group_n));
-      fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
-      fprintf(stderr, "        Boxes              %d\n", stats->box_n);
-      fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
-      fprintf(stderr, "        Circular tori      %d\n", stats->circular_torus_n);
-      fprintf(stderr, "        Elliptical dish    %d\n", stats->elliptical_dish_n);
-      fprintf(stderr, "        Spherical dish     %d\n", stats->spherical_dish_n);
-      fprintf(stderr, "        Snouts             %d\n", stats->snout_n);
-      fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
-      fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
-      fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
-      fprintf(stderr, "            triangles      %d\n", stats->facetgroup_triangles_n);
-      fprintf(stderr, "            quads          %d\n", stats->facetgroup_quads_n);
-      fprintf(stderr, "            polygons       %d (fgrp avg=%.1f)\n", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n / float(stats->facetgroup_n)));
-      fprintf(stderr, "                contours   %d (poly avg=%.1f)\n", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
-      fprintf(stderr, "                vertices   %d (cont avg=%.1f)\n", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
-      fprintf(stderr, "        Lines              %d\n", stats->line_n);
+  if (rv == 0 && !output_json.empty()) {
+    ExportJson exportJson;
+    if (exportJson.open(output_json.c_str())) {
+      store->apply(&exportJson);
     }
-
-
-    //FindConnections findConnections;
-    //store->apply(&findConnections);
-
-    if (!output_obj_stem.empty()) {
-      Tessellator tessellator;
-      store->apply(&tessellator);
-
-      ExportObj exportObj;
-      if (exportObj.open((output_obj_stem + ".obj").c_str(), (output_obj_stem + ".mtl").c_str())) {
-        store->apply(&exportObj);
-      }
-      else {
-        fprintf(stderr, "Failed to export obj file.\n");
-        rv = -1;
-      }
+    else {
+      fprintf(stderr, "Failed to export obj file.\n");
+      rv = -1;
     }
+  }
+
+
+  if (rv == 0 && !output_txt.empty()) {
+    FILE* out;
+    if (fopen_s(&out, output_txt.c_str(), "w") == 0) {
+      DumpNames dumpNames;
+      dumpNames.setOutput(out);
+      store->apply(&dumpNames);
+      fclose(out);
+    }
+  }
+
+  if (rv == 0 && !output_obj_stem.empty()) {
+    assert(should_tessellate);
+    ExportObj exportObj;
+    if (exportObj.open((output_obj_stem + ".obj").c_str(), (output_obj_stem + ".mtl").c_str())) {
+      store->apply(&exportObj);
+    }
+    else {
+      fprintf(stderr, "Failed to export obj file.\n");
+      rv = -1;
+    }
+  }
+
+  AddStats addStats;
+  store->apply(&addStats);
+  auto * stats = store->stats;
+  if (stats) {
+    fprintf(stderr, "Stats:\n");
+    fprintf(stderr, "    Groups                 %d\n", stats->group_n);
+    fprintf(stderr, "    Geometries             %d (grp avg=%.1f)\n", stats->geometry_n, stats->geometry_n / float(stats->group_n));
+    fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
+    fprintf(stderr, "        Boxes              %d\n", stats->box_n);
+    fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
+    fprintf(stderr, "        Circular tori      %d\n", stats->circular_torus_n);
+    fprintf(stderr, "        Elliptical dish    %d\n", stats->elliptical_dish_n);
+    fprintf(stderr, "        Spherical dish     %d\n", stats->spherical_dish_n);
+    fprintf(stderr, "        Snouts             %d\n", stats->snout_n);
+    fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
+    fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
+    fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
+    fprintf(stderr, "            triangles      %d\n", stats->facetgroup_triangles_n);
+    fprintf(stderr, "            quads          %d\n", stats->facetgroup_quads_n);
+    fprintf(stderr, "            polygons       %d (fgrp avg=%.1f)\n", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n / float(stats->facetgroup_n)));
+    fprintf(stderr, "                contours   %d (poly avg=%.1f)\n", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+    fprintf(stderr, "                vertices   %d (cont avg=%.1f)\n", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+    fprintf(stderr, "        Lines              %d\n", stats->line_n);
   }
 
   delete store;
