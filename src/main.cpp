@@ -1,9 +1,11 @@
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <Windows.h>
 #include <cstdio>
 #include <cassert>
 #include <string>
 #include <cctype>
+#include <algorithm>
 
 #include "Parser.h"
 #include "FindConnections.h"
@@ -14,6 +16,7 @@
 #include "Flatten.h"
 #include "AddStats.h"
 #include "DumpNames.h"
+#include "AddGroupBBox.h"
 #include "Colorizer.h"
 
 template<typename F>
@@ -86,6 +89,9 @@ int main(int argc, char** argv)
   int rv = 0;
   bool should_tessellate = false;
 
+  float tolerance = 0.1f;
+  float cullScale = -10.f;
+
   std::string keep_groups;
   std::string output_json;
   std::string output_txt;
@@ -134,6 +140,12 @@ int main(int argc, char** argv)
           color_attribute = val;
           continue;
         }
+        else if (key == "--tolerance") {
+          tolerance = std::max(1e-6f, std::stof(val));
+        }
+        else if (key == "--cull-scale") {
+          cullScale = std::stof(val); // set to negative to disable culling.
+        }
       }
 
       fprintf(stderr, "Unrecognized argument '%s'", arg.c_str());
@@ -179,7 +191,10 @@ int main(int argc, char** argv)
   }
 
   if (rv == 0 && should_tessellate) {
-    Tessellator tessellator;
+    AddGroupBBox addGroupBBox;
+    store->apply(&addGroupBBox);
+
+    Tessellator tessellator(tolerance, tolerance*cullScale);
     store->apply(&tessellator);
   }
 

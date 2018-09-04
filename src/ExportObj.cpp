@@ -21,6 +21,25 @@ namespace {
     return false;
   }
 
+  void wireBoundingBox(FILE* out, unsigned& off_v, const float* bbox)
+  {
+    for (unsigned i = 0; i < 8; i++) {
+      float px = (i & 1) ? bbox[0] : bbox[3];
+      float py = (i & 2) ? bbox[1] : bbox[4];
+      float pz = (i & 4) ? bbox[2] : bbox[5];
+      fprintf(out, "v %f %f %f\n", px, py, pz);
+    }
+    fprintf(out, "l %d %d %d %d %d\n",
+            off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
+    fprintf(out, "l %d %d %d %d %d\n",
+            off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
+    fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
+    fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
+    fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
+    fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
+    off_v += 8;
+  }
+
 }
 
 
@@ -46,6 +65,13 @@ bool ExportObj::open(const char* path_obj, const char* path_mtl)
   }
 
   fprintf(out, "mtllib %s\n", mtllib.c_str());
+
+  if (groupBoundingBoxes) {
+    fprintf(mtl, "newmtl group_bbox\n");
+    fprintf(mtl, "Ka 1 0 0\n");
+    fprintf(mtl, "Kd 1 0 0\n");
+    fprintf(mtl, "Ks 0 0 0\n");
+  }
 
   return true;
 }
@@ -99,6 +125,10 @@ void ExportObj::beginGroup(Group* group)
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 
   fprintf(out, "o %s\n", group->group.name);
+  if (groupBoundingBoxes && group->group.bbox) {
+    fprintf(out, "usemtl group_bbox\n");
+    wireBoundingBox(out, off_v, group->group.bbox);
+  }
 
 }
 

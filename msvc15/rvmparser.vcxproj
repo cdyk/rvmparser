@@ -158,6 +158,7 @@
     <ClCompile Include="..\libs\libtess2\Source\priorityq.c" />
     <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
+    <ClCompile Include="..\src\AddGroupBBox.cpp" />
     <ClCompile Include="..\src\AddStats.cpp" />
     <ClCompile Include="..\src\Colorizer.cpp" />
     <ClCompile Include="..\src\Common.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="..\libs\libtess2\Source\priorityq.h" />
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
+    <ClInclude Include="..\src\AddGroupBBox.h" />
     <ClInclude Include="..\src\AddStats.h" />
     <ClInclude Include="..\src\Colorizer.h" />
     <ClInclude Include="..\src\Common.h" />

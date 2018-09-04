@@ -1,23 +1,35 @@
 #pragma once
 
+#include "Common.h"
 #include "StoreVisitor.h"
 
 class Tessellator : public StoreVisitor
 {
 public:
+  Tessellator() = delete;
+  Tessellator(const Tessellator&) = delete;
+  Tessellator& operator=(const Tessellator&) = delete;
+
+  Tessellator(float tolerance, float cullthreshold) : tolerance(tolerance), cullThreshold(cullthreshold) {}
 
   void init(class Store& store) override;
+
+  void beginGroup(struct Group* group)  override;
+
+  void EndGroup() override;
 
   void geometry(struct Geometry* geometry) override;
 
 private:
-  float tolerance = 100.01f;
-  bool cullTiny = false;
+  float tolerance = 0.f / 0.f;
+  float cullThreshold = 0.f / 0.f;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;
+  Arena arena;
+  Store * store = nullptr;
 
-  struct Arena * arena = nullptr;
-
+  uint8_t* stack = nullptr;
+  unsigned stack_p = 0;
 
   std::vector<float> vertices;
   std::vector<float> normals;

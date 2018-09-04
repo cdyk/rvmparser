@@ -194,6 +194,10 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
     dst->group.name = strings.intern(src->group.name);
     dst->group.material = src->group.material;
     for (unsigned k = 0; k < 3; k++) dst->group.translation[k] = src->group.translation[k];
+
+    if (src->group.bbox) {
+      dst->group.bbox = (float*)arena.dup(src->group.bbox, sizeof(float) * 6);
+    }
     break;
   default:
     assert(false && "Group has invalid kind.");

@@ -39,6 +39,7 @@ private:
   float curr_translation[3] = { 0,0,0 };
 
   bool anchors = false;
+  bool groupBoundingBoxes = true;
   bool primitiveBoundingBoxes = false;
   bool compositeBoundingBoxes = false;
 

@@ -70,6 +70,9 @@
     <ClInclude Include="..\src\Colorizer.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\AddGroupBBox.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -130,6 +133,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Colorizer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\AddGroupBBox.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

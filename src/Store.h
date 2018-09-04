@@ -167,6 +167,7 @@ struct Group
     } model;
     struct {
       ListHeader<Geometry> geometries;
+      float* bbox;
       const char* name;
       uint32_t material;
       float translation[3];

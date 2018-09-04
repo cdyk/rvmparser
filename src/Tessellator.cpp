@@ -139,14 +139,47 @@ namespace {
 
 void Tessellator::init(class Store& store)
 {
-  arena = &store.arenaTriangulation;
+  this->store = &store;
+  store.arenaTriangulation.clear();
 
-  arena->clear();
+  stack = (uint8_t*)arena.alloc(sizeof(uint8_t)*store.groupCount());
+  stack_p = 0;
 }
 
 
+void Tessellator::beginGroup(struct Group* group)
+{
+  uint8_t include = 1;
+
+  auto * bbox = group->group.bbox;
+  if (bbox && 0.f < cullThreshold) {
+    auto dx = bbox[3] - bbox[0];
+    auto dy = bbox[4] - bbox[1];
+    auto dz = bbox[5] - bbox[2];
+    if (dx*dx + dy * dy + dz * dz < cullThreshold*cullThreshold) {
+      include = 0;
+    }
+  }
+
+  stack[stack_p++] = include;
+}
+
+void Tessellator::EndGroup()
+{
+  assert(stack_p);
+  stack_p--;
+}
+
 void Tessellator::geometry(Geometry* geo)
 {
+  assert(stack_p);
+  if (stack[stack_p - 1] == 0) {
+    geo->triangulation = nullptr;
+    return;
+  }
+     
+
+
   auto & M = geo->M_3x4;
   float sx = std::sqrt(M[0] * M[0] + M[1] * M[1] + M[2] * M[2]);
   float sy = std::sqrt(M[3] * M[3] + M[4] * M[4] + M[5] * M[5]);
@@ -248,14 +281,14 @@ void Tessellator::pyramid(Geometry* geo, float scale)
     { -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) },
   };
 
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
   tri->vertices_n = 4 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
   tri->triangles_n = 2 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
 
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   unsigned l = 0;
   for (unsigned i = 0; i < 4; i++) {
@@ -280,7 +313,7 @@ void Tessellator::pyramid(Geometry* geo, float scale)
   assert(l == 3*tri->vertices_n);
 
   l = 0;
-  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t) * tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t) * tri->triangles_n);
   for (unsigned i = 0; i < 4; i++) {
     l = quadIndices(tri->indices, l, 4 * i, 0, 1, 2, 3);
   }
@@ -339,13 +372,13 @@ void Tessellator::box(Geometry* geo, float scale)
   }
   Triangulation* tri = nullptr;
   if (faces_n) {
-    tri = arena->alloc<Triangulation>();
+    tri = store->arenaTriangulation.alloc<Triangulation>();
     tri->vertices_n = 4 * faces_n;
-    tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-    tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+    tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+    tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
     tri->triangles_n = 2 * faces_n;
-    tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+    tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
     unsigned o = 0;
     unsigned i_v = 0;
@@ -385,13 +418,13 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
 {
   auto & tor = geo->rectangularTorus;
 
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
-  if (cullTiny && std::max(tor.outer_radius-tor.inner_radius, tor.height)*scale < tolerance) {
-    tri->error = std::max(tor.outer_radius - tor.inner_radius, tor.height)*scale;
-    return;
-  }
+  //if (cullTiny && std::max(tor.outer_radius-tor.inner_radius, tor.height)*scale < tolerance) {
+  //  tri->error = std::max(tor.outer_radius - tor.inner_radius, tor.height)*scale;
+  //  return;
+  //}
 
   auto samples = sagittaBasedSampleCount(tor.angle, tor.outer_radius, scale);
 
@@ -418,8 +451,8 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
   tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, samples);
 
   tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0);
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   if (shell) {
     for (unsigned i = 0; i < samples; i++) {
@@ -463,7 +496,7 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
   unsigned o = 0;
 
   tri->triangles_n = (shell ? 4 * 2 * (samples - 1) : 0) + (cap0 ? 2 : 0) + (cap1 ? 2 : 0);
-  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   if (shell) {
     for (unsigned i = 0; i + 1 < samples; i++) {
@@ -505,13 +538,13 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
 {
   auto & ct = geo->circularTorus;
 
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
-  if (cullTiny && ct.radius*scale < tolerance) {
-    tri->error = ct.radius*scale;
-    return;
-  }
+  //if (cullTiny && ct.radius*scale < tolerance) {
+  //  tri->error = ct.radius*scale;
+  //  return;
+  //}
 
   unsigned samples_l = sagittaBasedSampleCount(ct.angle, ct.offset + ct.radius, scale); // large radius, toroidal direction
   unsigned samples_s = sagittaBasedSampleCount(twopi, ct.radius, scale); // small radius, poloidal direction
@@ -543,11 +576,11 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
                         sagittaBasedError(twopi, ct.radius, scale, samples_s));
 
   tri->vertices_n = ((shell ? samples_l : 0) + (cap[0] ? 1 : 0) + (cap[1] ? 1 : 0)) * samples_s;
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   tri->triangles_n = (shell ? 2 * (samples_l - 1)*samples_s : 0) + (samples_s - 2) *((cap[0] ? 1 : 0) + (cap[1] ? 1 : 0));
-  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   // generate vertices
   unsigned l = 0;
@@ -627,14 +660,14 @@ void Tessellator::snout(struct Geometry* geo, float scale)
 {
   auto & sn = geo->snout;
 
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
   auto radius_max = std::max(sn.radius_b, sn.radius_t);
-  if (cullTiny && radius_max*scale < tolerance) {
-    tri->error = radius_max *scale;
-    return;
-  }
+  //if (cullTiny && radius_max*scale < tolerance) {
+  //  tri->error = radius_max *scale;
+  //  return;
+  //}
   unsigned samples = sagittaBasedSampleCount(twopi, radius_max, scale);
 
 
@@ -676,11 +709,11 @@ void Tessellator::snout(struct Geometry* geo, float scale)
   float mt[2] = { std::tan(sn.tshear[0]), std::tan(sn.tshear[1]) };
 
   tri->vertices_n = (shell ? 2 * samples : 0) + (cap[0] ? samples : 0) + (cap[1] ? samples : 0);
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   tri->triangles_n = (shell ? 2 * samples : 0) + (cap[0] ? samples - 2 : 0) + (cap[1] ? samples - 2 : 0);
-  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   if (shell) {
     for (unsigned i = 0; i < samples; i++) {
@@ -762,13 +795,13 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   const auto & cy = geo->cylinder;
 
 
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
-  if (cullTiny && cy.radius*scale < tolerance) {
-    tri->error = cy.radius * scale;
-    return;
-  }
+  //if (cullTiny && cy.radius*scale < tolerance) {
+  //  tri->error = cy.radius * scale;
+  //  return;
+  //}
   unsigned samples = sagittaBasedSampleCount(twopi, cy.radius, scale);
 
   bool shell = true;
@@ -783,11 +816,11 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   }
 
   tri->vertices_n = (shell ? 2 * samples : 0) + (cap[0] ? samples : 0) + (cap[1] ? samples : 0);
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   tri->triangles_n = (shell ? 2 * samples : 0) + (cap[0] ? samples - 2 : 0) + (cap[1] ? samples - 2 : 0);
-  tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   t0.resize(2 * samples);
   for (unsigned i = 0; i < samples; i++) {
@@ -855,7 +888,7 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
 
 void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale)
 {
-  auto * tri = arena->alloc<Triangulation>();
+  auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
   unsigned samples = sagittaBasedSampleCount(twopi, radius, scale);
@@ -891,8 +924,8 @@ void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc
   tri->error = sagittaBasedError(twopi, radius, scale, samples);
 
   tri->vertices_n = 3 * s;
-  tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
-  tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
+  tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
 
   unsigned l = 0;
   for (unsigned r = 0; r < rings; r++) {
@@ -965,7 +998,7 @@ void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc
   }
 
   tri->triangles_n = unsigned(indices.size() / 3);
-  tri->indices = (uint32_t*)arena->dup(indices.data(), 3 * sizeof(uint32_t)*tri->triangles_n);
+  tri->indices = (uint32_t*)store->arenaTriangulation.dup(indices.data(), 3 * sizeof(uint32_t)*tri->triangles_n);
 }
 
 namespace {
@@ -1112,13 +1145,13 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
 
   Triangulation* tri = nullptr;
   if (!indices.empty()) {
-    tri = arena->alloc<Triangulation>();
+    tri = store->arenaTriangulation.alloc<Triangulation>();
     tri->vertices_n = uint32_t(vertices.size() / 3);
     tri->triangles_n =  uint32_t(indices.size() / 3);
 
-    tri->vertices = (float*)arena->dup(vertices.data(), sizeof(float) * 3 * tri->vertices_n);
-    tri->normals = (float*)arena->dup(normals.data(), sizeof(float) * 3 * tri->vertices_n);
-    tri->indices = (uint32_t*)arena->dup(indices.data(), sizeof(uint32_t) * 3 * tri->triangles_n);
+    tri->vertices = (float*)store->arenaTriangulation.dup(vertices.data(), sizeof(float) * 3 * tri->vertices_n);
+    tri->normals = (float*)store->arenaTriangulation.dup(normals.data(), sizeof(float) * 3 * tri->vertices_n);
+    tri->indices = (uint32_t*)store->arenaTriangulation.dup(indices.data(), sizeof(uint32_t) * 3 * tri->triangles_n);
   }
   geo->triangulation = tri;
 }

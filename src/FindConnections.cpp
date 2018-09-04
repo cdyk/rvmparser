@@ -388,9 +388,9 @@ void FindConnections::findConnectedComponents()
 
       const auto & M = g->M_3x4;
       for (unsigned k = 0; k < 8; k++) {
-        float px = (i & 1) ? g->bbox[0] : g->bbox[3];
-        float py = (i & 2) ? g->bbox[1] : g->bbox[4];
-        float pz = (i & 4) ? g->bbox[2] : g->bbox[5];
+        float px = (k & 1) ? g->bbox[0] : g->bbox[3];
+        float py = (k & 2) ? g->bbox[1] : g->bbox[4];
+        float pz = (k & 4) ? g->bbox[2] : g->bbox[5];
 
         float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
         float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
