@@ -47,26 +47,6 @@ bool ExportObj::open(const char* path_obj, const char* path_mtl)
 
   fprintf(out, "mtllib %s\n", mtllib.c_str());
 
-  fprintf(mtl, "newmtl default\n");
-  fprintf(mtl, "Ka 0.2 0.2 0.2\n");
-  fprintf(mtl, "Kd 1.0 1.0 1.0\n");
-
-  fprintf(mtl, "newmtl magenta\n");
-  fprintf(mtl, "Ka 0.2 0.0 0.2\n");
-  fprintf(mtl, "Kd 1.0 0.0 1.0\n");
-
-  fprintf(mtl, "newmtl green\n");
-  fprintf(mtl, "Ka 0.0 0.8 0.0\n");
-  fprintf(mtl, "Kd 0.0 1.0 0.0\n");
-
-  fprintf(mtl, "newmtl red_line\n");
-  fprintf(mtl, "Ka 1.0 0.0 0.0\n");
-  fprintf(mtl, "Kd 1.0 0.0 0.0\n");
-
-  fprintf(mtl, "newmtl blue_line\n");
-  fprintf(mtl, "Ka 0.0 0.0 1.0\n");
-  fprintf(mtl, "Kd 0.0 0.0 1.0\n");
-
   return true;
 }
 
@@ -89,20 +69,20 @@ void ExportObj::beginFile(Group* group)
 
 void ExportObj::endFile() {
 
-  fprintf(out, "usemtl red_line\n");
+  //fprintf(out, "usemtl red_line\n");
 
-  auto l = 0.05f;
-  if (anchors && conn) {
-    for (unsigned i = 0; i < conn->anchor_n; i++) {
-      auto * p = conn->p + 3 * i;
-      auto * n = conn->anchors[i].n;
+  //auto l = 0.05f;
+  //if (anchors && conn) {
+  //  for (unsigned i = 0; i < conn->anchor_n; i++) {
+  //    auto * p = conn->p + 3 * i;
+  //    auto * n = conn->anchors[i].n;
 
-      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-      fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
-      fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
-      off_v += 2;
-    }
-  }
+  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+  //    fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
+  //    fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
+  //    off_v += 2;
+  //  }
+  //}
 
   fprintf(out, "# End of file\n");
 }
@@ -161,17 +141,23 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
-  if (geometry->composite && geometry->composite->size < 0.5f) return;
+  //if (geometry->composite && geometry->composite->size < 0.5f) return;
 
-  switch (geometry->kind)
-  {
-  case Geometry::Kind::FacetGroup:
-    fprintf(out, "usemtl magenta\n");
-    break;
-  default:
-    fprintf(out, "usemtl default\n");
-    break;
+  if (!definedColors.get(uint64_t(geometry->colorName))) {
+    definedColors.insert(uint64_t(geometry->colorName), 1);
+
+    auto r = (1.f / 255.f)*((geometry->color >> 16) & 0xFF);
+    auto g = (1.f / 255.f)*((geometry->color >> 8) & 0xFF);
+    auto b = (1.f / 255.f)*((geometry->color) & 0xFF);
+
+    fprintf(mtl, "newmtl %s\n", geometry->colorName);
+    fprintf(mtl, "Ka %f %f %f\n", (2.f / 3.f)*r, (2.f / 3.f)*g, (2.f / 3.f)*b);
+    fprintf(mtl, "Kd %f %f %f\n", r,g, b);
+    fprintf(mtl, "Ks 0.5 0.5 0.5\n");
   }
+
+  fprintf(out, "usemtl %s\n", geometry->colorName);
+
   
   if (geometry->kind == Geometry::Kind::Line) {
     auto x0 = geometry->line.a;
@@ -236,76 +222,74 @@ void ExportObj::geometry(struct Geometry* geometry)
     off_n += tri->vertices_n;
   }
 
-  if (primitiveBoundingBoxes) {
-    fprintf(out, "usemtl magenta\n");
+  //if (primitiveBoundingBoxes) {
+  //  fprintf(out, "usemtl magenta\n");
 
-    for (unsigned i = 0; i < 8; i++) {
-      float px = (i & 1) ? geometry->bbox[0] : geometry->bbox[3];
-      float py = (i & 2) ? geometry->bbox[1] : geometry->bbox[4];
-      float pz = (i & 4) ? geometry->bbox[2] : geometry->bbox[5];
+  //  for (unsigned i = 0; i < 8; i++) {
+  //    float px = (i & 1) ? geometry->bbox[0] : geometry->bbox[3];
+  //    float py = (i & 2) ? geometry->bbox[1] : geometry->bbox[4];
+  //    float pz = (i & 4) ? geometry->bbox[2] : geometry->bbox[5];
 
-      float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
-      float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
-      float Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
+  //    float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+  //    float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+  //    float Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
 
-      fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-    }
-    fprintf(out, "l %d %d %d %d %d\n",
-            off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
-    fprintf(out, "l %d %d %d %d %d\n",
-            off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
-    fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
-    fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
-    fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
-    fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
-    off_v += 8;
-  }
+  //    fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+  //  }
+  //  fprintf(out, "l %d %d %d %d %d\n",
+  //          off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
+  //  fprintf(out, "l %d %d %d %d %d\n",
+  //          off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
+  //  fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
+  //  fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
+  //  fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
+  //  fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
+  //  off_v += 8;
+  //}
 
 
-  for (unsigned k = 0; k < 6; k++) {
-    auto other = geometry->conn_geo[k];
-    if (geometry < other) {
-      fprintf(out, "usemtl blue_line\n");
-      float p[3];
-      getMidpoint(p, geometry);
-      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-      getMidpoint(p, other);
-      fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-      fprintf(out, "l %d %d\n", off_v, off_v + 1);
+  //for (unsigned k = 0; k < 6; k++) {
+  //  auto other = geometry->conn_geo[k];
+  //  if (geometry < other) {
+  //    fprintf(out, "usemtl blue_line\n");
+  //    float p[3];
+  //    getMidpoint(p, geometry);
+  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+  //    getMidpoint(p, other);
+  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
+  //    fprintf(out, "l %d %d\n", off_v, off_v + 1);
 
-      off_v += 2;
-    }
-  }
+  //    off_v += 2;
+  //  }
+  //}
 
 }
 
 
 void ExportObj::composite(struct Composite* comp)
 {
-  if (compositeBoundingBoxes == false) return;
+  //if (compositeBoundingBoxes == false) return;
 
-  if (comp->size < 0.5f) {
-    fprintf(out, "usmtl magenta\n");
-  }
-  else {
-    fprintf(out, "usemtl green\n");
-  }
+  //if (comp->size < 0.5f) {
+  //  fprintf(out, "usmtl magenta\n");
+  //}
+  //else {
+  //  fprintf(out, "usemtl green\n");
+  //}
 
-  for (unsigned i = 0; i < 8; i++) {
-    float px = (i & 1) ? comp->bbox[0] : comp->bbox[3];
-    float py = (i & 2) ? comp->bbox[1] : comp->bbox[4];
-    float pz = (i & 4) ? comp->bbox[2] : comp->bbox[5];
-    fprintf(out, "v %f %f %f\n", px, py, pz);
-  }
-  fprintf(out, "l %d %d %d %d %d\n",
-          off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
-  fprintf(out, "l %d %d %d %d %d\n",
-          off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
-  fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
-  fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
-  fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
-  fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
-  off_v += 8;
-
-
+  //for (unsigned i = 0; i < 8; i++) {
+  //  float px = (i & 1) ? comp->bbox[0] : comp->bbox[3];
+  //  float py = (i & 2) ? comp->bbox[1] : comp->bbox[4];
+  //  float pz = (i & 4) ? comp->bbox[2] : comp->bbox[5];
+  //  fprintf(out, "v %f %f %f\n", px, py, pz);
+  //}
+  //fprintf(out, "l %d %d %d %d %d\n",
+  //        off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
+  //fprintf(out, "l %d %d %d %d %d\n",
+  //        off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
+  //fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
+  //fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
+  //fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
+  //fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
+  //off_v += 8;
 }

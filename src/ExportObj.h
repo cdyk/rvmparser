@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdio>
 
+#include "Common.h"
 #include "StoreVisitor.h"
 
 class ExportObj : public StoreVisitor
@@ -31,6 +32,7 @@ public:
 private:
   FILE* out = nullptr;
   FILE* mtl = nullptr;
+  Map definedColors;
   unsigned off_v = 1;
   unsigned off_n = 1;
   struct Connectivity* conn = nullptr;
