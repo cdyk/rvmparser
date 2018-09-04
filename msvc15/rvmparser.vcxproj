@@ -159,6 +159,7 @@
     <ClCompile Include="..\libs\libtess2\Source\sweep.c" />
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\AddStats.cpp" />
+    <ClCompile Include="..\src\Colorizer.cpp" />
     <ClCompile Include="..\src\Common.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
     <ClInclude Include="..\src\AddStats.h" />
+    <ClInclude Include="..\src\Colorizer.h" />
     <ClInclude Include="..\src\Common.h" />
     <ClInclude Include="..\src\DumpNames.h" />
     <ClInclude Include="..\src\ExportJson.h" />

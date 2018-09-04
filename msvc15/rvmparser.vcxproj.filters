@@ -67,6 +67,9 @@
     <ClInclude Include="..\src\ExportJson.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Colorizer.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -124,6 +127,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ExportJson.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Colorizer.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

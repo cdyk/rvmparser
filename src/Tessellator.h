@@ -11,7 +11,7 @@ public:
   void geometry(struct Geometry* geometry) override;
 
 private:
-  float tolerance = 0.01f;
+  float tolerance = 100.01f;
   bool cullTiny = false;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;

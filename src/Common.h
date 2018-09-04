@@ -37,7 +37,10 @@ struct Map
   size_t fill = 0;
   size_t capacity = 0;
 
+
+  bool get(uint64_t& val, uint64_t key);
   uint64_t get(uint64_t key);
+
   void insert(uint64_t key, uint64_t value);
 };
 

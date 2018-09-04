@@ -14,7 +14,7 @@
 #include "Flatten.h"
 #include "AddStats.h"
 #include "DumpNames.h"
-
+#include "Colorizer.h"
 
 template<typename F>
 int
@@ -90,6 +90,7 @@ int main(int argc, char** argv)
   std::string output_json;
   std::string output_txt;
   std::string output_obj_stem;
+  std::string color_attribute;
   
 
   std::vector<std::string> attributeSuffices = { ".txt",  ".att" };
@@ -129,6 +130,10 @@ int main(int argc, char** argv)
           should_tessellate = true;
           continue;
         }
+        else if (key == "--color-attribute") {
+          color_attribute = val;
+          continue;
+        }
       }
 
       fprintf(stderr, "Unrecognized argument '%s'", arg.c_str());
@@ -166,6 +171,11 @@ int main(int argc, char** argv)
       }
       continue;
     }
+  }
+
+  if (rv == 0) {
+    Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
+    store->apply(&colorizer);
   }
 
   if (rv == 0 && should_tessellate) {

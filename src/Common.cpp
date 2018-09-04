@@ -120,26 +120,36 @@ Map::~Map()
   if (vals) free(vals);
 }
 
-uint64_t Map::get(uint64_t key)
+bool Map::get(uint64_t& val, uint64_t key)
 {
-  if (fill == 0) return 0;
+  assert(key != 0);
+  if (fill == 0) return false;
 
   auto mask = capacity - 1;
   for (auto i = size_t(hash_uint64(key)); true ; i++) { // linear probing
     i = i & mask;
     if (keys[i] == key) {
-      return vals[i];
+      val = vals[i];
+      return true;
     }
     else if (keys[i] == 0) {
-      return 0;
+      return false;
     }
   }
 }
 
+uint64_t Map::get(uint64_t key)
+{
+  uint64_t rv = 0;
+  get(rv, key);
+  return rv;
+}
+
+
 void Map::insert(uint64_t key, uint64_t value)
 {
   assert(key != 0);     // null is used to denote no-key
-  assert(value != 0);   // null value is used to denote not found
+  //assert(value != 0);   // null value is used to denote not found
 
   if (capacity <= 2 * fill) {
     auto old_capacity = capacity;

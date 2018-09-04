@@ -26,7 +26,7 @@ public:
 
   virtual void beginAttributes(struct Group* container) {}
 
-  virtual void attribute(const char* key, const char* id) {}
+  virtual void attribute(const char* key, const char* val) {}
 
   virtual void endAttributes(struct Group* container) {}
 

@@ -51,6 +51,9 @@ struct Geometry
   Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
 
   Geometry* conn_geo[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+  const char* colorName = nullptr;
+  uint32_t color = 0x505050u;
+
   unsigned conn_off[6];
 
   Kind kind;
