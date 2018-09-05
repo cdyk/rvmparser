@@ -142,26 +142,22 @@ void Tessellator::init(class Store& store)
   this->store = &store;
   store.arenaTriangulation.clear();
 
-  stack = (uint8_t*)arena.alloc(sizeof(uint8_t)*store.groupCount());
+  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCount());
   stack_p = 0;
 }
 
 
 void Tessellator::beginGroup(struct Group* group)
 {
-  uint8_t include = 1;
-
+  StackItem item = { 0 };
   auto * bbox = group->group.bbox;
-  if (bbox && 0.f < cullThreshold) {
+  if (bbox) {
     auto dx = bbox[3] - bbox[0];
     auto dy = bbox[4] - bbox[1];
     auto dz = bbox[5] - bbox[2];
-    if (dx*dx + dy * dy + dz * dz < cullThreshold*cullThreshold) {
-      include = 0;
-    }
+    item.groupError = std::sqrt(dx*dx + dy*dy + dz*dz);
   }
-
-  stack[stack_p++] = include;
+  stack[stack_p++] = item;
 }
 
 void Tessellator::EndGroup()
@@ -173,12 +169,19 @@ void Tessellator::EndGroup()
 void Tessellator::geometry(Geometry* geo)
 {
   assert(stack_p);
-  if (stack[stack_p - 1] == 0) {
+
+  // No need to tessellate lines.
+  if (geo->kind == Geometry::Kind::Line) {
     geo->triangulation = nullptr;
     return;
   }
-     
 
+  // Group error less than threshold, skip tessellation and record error.
+  if (stack[stack_p - 1].groupError < cullThreshold) {
+    geo->triangulation = store->arenaTriangulation.alloc<Triangulation>();
+    geo->triangulation->error = stack[stack_p - 1].groupError;
+    return;
+  }
 
   auto & M = geo->M_3x4;
   float sx = std::sqrt(M[0] * M[0] + M[1] * M[1] + M[2] * M[2]);
@@ -232,16 +235,11 @@ void Tessellator::geometry(Geometry* geo)
     facetGroup(geo, scale);
     break;
 
-  case Geometry::Kind::Line:
-    geo->triangulation = nullptr;
-    break;
-
+  case Geometry::Kind::Line:  // Handled at start of function.
   default:
     assert(false && "Unhandled primitive type");
     break;
   }
-
-
 }
 
 

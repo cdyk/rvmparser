@@ -28,7 +28,12 @@ private:
   Arena arena;
   Store * store = nullptr;
 
-  uint8_t* stack = nullptr;
+  struct StackItem
+  {
+    float groupError;   // Error induced if group is omitted.
+  };
+
+  StackItem* stack = nullptr;
   unsigned stack_p = 0;
 
   std::vector<float> vertices;

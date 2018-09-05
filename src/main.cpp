@@ -68,19 +68,24 @@ void logger(unsigned level, const char* msg, ...)
 
 void printHelp(const char* argv0)
 {
-  fprintf(stderr, "Usage: %s [options] files\n\n", argv0);
-  fprintf(stderr, "Files with .rvm-suffix will be interpreted as a geometry while, and files with .txt");
-  fprintf(stderr, "suffix will be interpreted as a geometry file.\n\n");
+  fprintf(stderr, "\nUsage: %s [options] files\n\n", argv0);
+  fprintf(stderr, "Files with .rvm-suffix will be interpreted as a geometry files, and files with .txt\n");
+  fprintf(stderr, "suffix will be interpreted as attribute files.\n");
+  fprintf(stderr, "You typically want to pass one of each.\n\n");
   fprintf(stderr, "Options:\n");
-  fprintf(stderr, "    --keep-groups=filename.txt   Provide a list of group names to keep. Groups not");
-  fprintf(stderr, "                                 itself or with a child in this list will be merged");
-  fprintf(stderr, "                                 with the first parent that should be kept.");
+  fprintf(stderr, "    --keep-groups=filename.txt   Provide a list of group names to keep. Groups not\n");
+  fprintf(stderr, "                                 itself or with a child in this list will be merged\n");
+  fprintf(stderr, "                                 with the first parent that should be kept.\n");
   fprintf(stderr, "    --output-json=filename.json  Write hierarchy with attributes to a json file.\n");
   fprintf(stderr, "    --output-txt=filename.txt    Dump all group names to a text file.\n");
   fprintf(stderr, "    --output-obj=filenamestem    Write geometry to an obj file, .obj and .mtl\n");
-  fprintf(stderr, "                                 are added to filenamestem.");
-
-
+  fprintf(stderr, "                                 are added to filenamestem.\n");
+  fprintf(stderr, "    --group-bounding-boxes       Include wireframe of boundingboxes of groups in output.\n");
+  fprintf(stderr, "    --color-attribute=key        Specify which attributes that contain color, empty\n");
+  fprintf(stderr, "                                 imply that material id of group is used.\n");
+  fprintf(stderr, "    --tolerance=value            Tessellation tolerance, given in world frame.\n");
+  fprintf(stderr, "    --cull-scale=value           Cull objects that are smaller than cull-scale times\n");
+  fprintf(stderr, "                                 tolerance. Set to a negative value to disable culling.\n");
 }
 
 
@@ -90,8 +95,10 @@ int main(int argc, char** argv)
   bool should_tessellate = false;
 
   float tolerance = 0.1f;
-  float cullScale = -10.f;
+  float cullScale = -10000.1f;
 
+
+  bool groupBoundingBoxes = false;
   std::string keep_groups;
   std::string output_json;
   std::string output_txt;
@@ -113,6 +120,10 @@ int main(int argc, char** argv)
       if (arg == "--help") {
         printHelp(argv[0]);
         return 0;
+      }
+      else if (arg == "--group-bounding-boxes") {
+        groupBoundingBoxes = true;
+        continue;
       }
 
       auto e = arg.find('=');
@@ -239,6 +250,7 @@ int main(int argc, char** argv)
   if (rv == 0 && !output_obj_stem.empty()) {
     assert(should_tessellate);
     ExportObj exportObj;
+    exportObj.groupBoundingBoxes = groupBoundingBoxes;
     if (exportObj.open((output_obj_stem + ".obj").c_str(), (output_obj_stem + ".mtl").c_str())) {
       store->apply(&exportObj);
     }

@@ -207,49 +207,52 @@ void ExportObj::geometry(struct Geometry* geometry)
 
     off_v += 2;
   }
-  else if (geometry->triangulation != nullptr) {
+  else {
+    assert(geometry->triangulation);
     auto * tri = geometry->triangulation;
 
-    //fprintf(out, "g\n");
-    if(geometry->triangulation->error != 0.f) {
-      fprintf(out, "# error=%f\n", geometry->triangulation->error);
-    }
-    for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
-      auto px = tri->vertices[i + 0];
-      auto py = tri->vertices[i + 1];
-      auto pz = tri->vertices[i + 2];
-      auto nx = tri->normals[i + 0];
-      auto ny = tri->normals[i + 1];
-      auto nz = tri->normals[i + 2];
-
-      float Px, Py, Pz, Nx, Ny, Nz;
-      Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
-      Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
-      Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
-      Nx = M[0] * nx + M[3] * ny + M[6] * nz;
-      Ny = M[1] * nx + M[4] * ny + M[7] * nz;
-      Nz = M[2] * nx + M[5] * ny + M[8] * nz;
-
-      float s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
-
-
-      if (true) {
-        fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-        fprintf(out, "vn %f %f %f\n", s*Nx, s*Ny, s*Nz);
+    if (tri->indices != 0) {
+      //fprintf(out, "g\n");
+      if (geometry->triangulation->error != 0.f) {
+        fprintf(out, "# error=%f\n", geometry->triangulation->error);
       }
-      else {
-        fprintf(out, "v %f %f %f\n", px, py, pz);
-        fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+      for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
+        auto px = tri->vertices[i + 0];
+        auto py = tri->vertices[i + 1];
+        auto pz = tri->vertices[i + 2];
+        auto nx = tri->normals[i + 0];
+        auto ny = tri->normals[i + 1];
+        auto nz = tri->normals[i + 2];
+
+        float Px, Py, Pz, Nx, Ny, Nz;
+        Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
+        Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
+        Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
+        Nx = M[0] * nx + M[3] * ny + M[6] * nz;
+        Ny = M[1] * nx + M[4] * ny + M[7] * nz;
+        Nz = M[2] * nx + M[5] * ny + M[8] * nz;
+
+        float s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
+
+
+        if (true) {
+          fprintf(out, "v %f %f %f\n", Px, Py, Pz);
+          fprintf(out, "vn %f %f %f\n", s*Nx, s*Ny, s*Nz);
+        }
+        else {
+          fprintf(out, "v %f %f %f\n", px, py, pz);
+          fprintf(out, "vn %f %f %f\n", nx, ny, nz);
+        }
       }
+      for (size_t i = 0; i < 3 * tri->triangles_n; i += 3) {
+        fprintf(out, "f %d//%d %d//%d %d//%d\n",
+          tri->indices[i + 0] + off_v, tri->indices[i + 0] + off_n,
+          tri->indices[i + 1] + off_v, tri->indices[i + 1] + off_n,
+          tri->indices[i + 2] + off_v, tri->indices[i + 2] + off_n);
+      }
+      off_v += tri->vertices_n;
+      off_n += tri->vertices_n;
     }
-    for (size_t i = 0; i < 3*tri->triangles_n; i += 3) {
-      fprintf(out, "f %d//%d %d//%d %d//%d\n",
-              tri->indices[i + 0] + off_v, tri->indices[i + 0] + off_n,
-              tri->indices[i + 1] + off_v, tri->indices[i + 1] + off_n,
-              tri->indices[i + 2] + off_v, tri->indices[i + 2] + off_n);
-    }
-    off_v += tri->vertices_n;
-    off_n += tri->vertices_n;
   }
 
   //if (primitiveBoundingBoxes) {

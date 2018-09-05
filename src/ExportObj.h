@@ -7,6 +7,8 @@
 class ExportObj : public StoreVisitor
 {
 public:
+  bool groupBoundingBoxes = false;
+
   ~ExportObj();
 
   bool open(const char* path_obj, const char* path_mtl);
@@ -39,7 +41,6 @@ private:
   float curr_translation[3] = { 0,0,0 };
 
   bool anchors = false;
-  bool groupBoundingBoxes = true;
   bool primitiveBoundingBoxes = false;
   bool compositeBoundingBoxes = false;
 
