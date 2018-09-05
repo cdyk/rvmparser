@@ -45,7 +45,7 @@ and open the solution file in msvc15. The project is just a few source-files, so
 Currently, the example command-line utility (`main.cpp`) only builds on windows, as it uses the windows memmap API, but the parser itself is just passed pointers and size of an in-memory buffer, so the rest of the code should be fully cross-platform.
 
 Dependencies:
-- libtess2](https://github.com/memononen/libtess2) to triangulate polygon more complex than quads.
+- [libtess2](https://github.com/memononen/libtess2) to triangulate polygon more complex than quads.
 
 ## See also
 - [Plant Mock-Up Converter](https://github.com/benvautrin/pmuc).
