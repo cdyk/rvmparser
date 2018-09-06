@@ -1026,6 +1026,7 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
   auto & fg = geo->facetGroup;
 
   vertices.clear();
+  normals.clear();
   indices.clear();
   for (unsigned p = 0; p < fg.polygons_n; p++) {
     auto & poly = fg.polygons[p];
@@ -1105,7 +1106,6 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
         auto * remap = tessGetVertexIndices(tess);
         normals.resize(vertices.size());
         for (unsigned i = 0; i < vn; i++) {
-
           if (remap[i] != TESS_UNDEF) {
             unsigned ix = remap[i];
             for (unsigned c = 0; c < poly.contours_n; c++) {
@@ -1119,17 +1119,17 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
               ix -= cont.vertices_n;
             }
           }
+        }
 
-          auto io = uint32_t(indices.size());
-          auto * elements = tessGetElements(tess);
-          auto elements_n = unsigned(tessGetElementCount(tess));
-          for (unsigned e = 0; e < elements_n; e++) {
-            auto ix = elements + 3 * e;
-            if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
-              indices.push_back(ix[0] + vo);
-              indices.push_back(ix[1] + vo);
-              indices.push_back(ix[2] + vo);
-            }
+        auto io = uint32_t(indices.size());
+        auto * elements = tessGetElements(tess);
+        auto elements_n = unsigned(tessGetElementCount(tess));
+        for (unsigned e = 0; e < elements_n; e++) {
+          auto ix = elements + 3 * e;
+          if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
+            indices.push_back(ix[0] + vo);
+            indices.push_back(ix[1] + vo);
+            indices.push_back(ix[2] + vo);
           }
         }
       }
