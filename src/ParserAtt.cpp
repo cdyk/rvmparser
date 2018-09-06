@@ -29,6 +29,7 @@ namespace {
     unsigned stack_p = 0;
     unsigned stack_c = 0;
 
+    bool create;
   };
 
   bool handleNew(Context* ctx, const char* id_a, const char* id_b)
@@ -45,7 +46,7 @@ namespace {
 
       if (id != ctx->headerInfo) {
         group = ctx->store->findRootGroup(id);
-        if (group == nullptr) {
+        if (ctx->create && group == nullptr) {
           auto * model = ctx->store->getDefaultModel();
           group = ctx->store->newGroup(model, Group::Kind::Group);
           group->group.name = id;
@@ -64,7 +65,7 @@ namespace {
           }
         }
       }
-      if (group == nullptr) {
+      if (ctx->create && group == nullptr) {
         group = ctx->store->newGroup(parent, Group::Kind::Group);
         group->group.name = id;
         //ctx->logger(1, "@%d: Failed to find child group '%s' id=%p", ctx->line, id, id);
@@ -174,13 +175,14 @@ namespace {
 }
 
 
-bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size)
+bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size, bool create)
 {
   char buf[1024];
   Context ctx = { store, logger, store->strings.intern("Header Information"), buf, sizeof(buf) };
 
   ctx.stack_c = 1024;
   ctx.stack = (StackItem*)xmalloc(sizeof(StackItem) * ctx.stack_c);
+  ctx.create = create;
 
   auto * p = (const char*)(ptr);
   auto * end = p + size;
