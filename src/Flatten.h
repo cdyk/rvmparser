@@ -6,6 +6,7 @@
 class Flatten : public StoreVisitor
 {
 public:
+  Flatten();
 
   ~Flatten();
 

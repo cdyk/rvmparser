@@ -18,6 +18,8 @@ public:
 
   virtual void beginGroup(struct Group* group) {}
 
+  virtual void doneGroupContents(struct Group* group) {}
+
   virtual void EndGroup() {}
 
   virtual void beginChildren(struct Group* container) {}

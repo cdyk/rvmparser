@@ -37,6 +37,7 @@ struct Map
   size_t fill = 0;
   size_t capacity = 0;
 
+  void clear();
 
   bool get(uint64_t& val, uint64_t key);
   uint64_t get(uint64_t key);

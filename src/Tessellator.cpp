@@ -368,9 +368,8 @@ void Tessellator::box(Geometry* geo, float scale)
   for(unsigned i=0; i<6; i++) {
     if (faces[i]) faces_n++;
   }
-  Triangulation* tri = nullptr;
+  Triangulation* tri = store->arenaTriangulation.alloc<Triangulation>();
   if (faces_n) {
-    tri = store->arenaTriangulation.alloc<Triangulation>();
     tri->vertices_n = 4 * faces_n;
     tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
     tri->normals = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
@@ -1141,9 +1140,8 @@ void Tessellator::facetGroup(struct Geometry* geo, float scale)
 
   assert(vertices.size() == normals.size());
 
-  Triangulation* tri = nullptr;
+  Triangulation* tri = store->arenaTriangulation.alloc<Triangulation>();
   if (!indices.empty()) {
-    tri = store->arenaTriangulation.alloc<Triangulation>();
     tri->vertices_n = uint32_t(vertices.size() / 3);
     tri->triangles_n =  uint32_t(indices.size() / 3);
 

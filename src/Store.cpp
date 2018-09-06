@@ -114,6 +114,29 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
       assert(false && "Geometry has invalid kind.");
       break;
   }
+  
+  if (src->colorName) {
+    dst->colorName = strings.intern(src->colorName);
+  }
+  dst->color = src->color;
+
+  if (src->triangulation) {
+    dst->triangulation = arena.alloc<Triangulation>();
+
+    const auto * stri = src->triangulation;
+    auto * dtri = dst->triangulation;
+    dtri->error = stri->error;
+    if (stri->vertices_n) {
+      dtri->vertices_n = stri->vertices_n;
+      dtri->vertices = (float*)arena.dup(stri->vertices, 3 * sizeof(float) * dtri->vertices_n);
+      dtri->normals = (float*)arena.dup(stri->normals, 3 * sizeof(float) * dtri->vertices_n);
+    }
+    if (stri->triangles_n) {
+      dtri->triangles_n = stri->triangles_n;
+      dtri->indices = (uint32_t*)arena.dup(stri->indices, 3 * sizeof(uint32_t) * dtri->triangles_n);
+    }
+  }
+
   return dst;
 }
 
@@ -233,6 +256,8 @@ void Store::apply(StoreVisitor* visitor, Group* group)
     }
     visitor->endGeometries();
   }
+
+  visitor->doneGroupContents(group);
 
   if (group->groups.first != nullptr) {
     visitor->beginChildren(group);

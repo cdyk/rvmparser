@@ -4,6 +4,10 @@
 #include "Store.h"
 #include "Flatten.h"
 
+Flatten::Flatten()
+{
+  store = new Store();
+}
 
 Flatten::~Flatten()
 {
@@ -56,7 +60,6 @@ void Flatten::init(class Store& otherStore)
   assert(pass == 0);
   stack = (Group**)arena.alloc(sizeof(Group*)*otherStore.groupCount());
   fprintf(stderr, "Initial number of tags: %zd\n", tags.fill);
-  store = new Store();
 }
 
 

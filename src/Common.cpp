@@ -120,6 +120,15 @@ Map::~Map()
   if (vals) free(vals);
 }
 
+void Map::clear()
+{
+  for (unsigned i = 0; i < capacity; i++) {
+    keys[i] = 0;
+    vals[i] = 0;
+  }
+  fill = 0;
+}
+
 bool Map::get(uint64_t& val, uint64_t key)
 {
   assert(key != 0);
