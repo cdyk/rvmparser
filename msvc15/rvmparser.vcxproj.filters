@@ -73,6 +73,9 @@
     <ClInclude Include="..\src\AddGroupBBox.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\ChunkTiny.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -136,6 +139,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\AddGroupBBox.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ChunkTiny.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

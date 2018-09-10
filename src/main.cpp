@@ -16,6 +16,7 @@
 #include "Flatten.h"
 #include "AddStats.h"
 #include "DumpNames.h"
+#include "ChunkTiny.h"
 #include "AddGroupBBox.h"
 #include "Colorizer.h"
 
@@ -97,6 +98,7 @@ int main(int argc, char** argv)
   float tolerance = 0.1f;
   float cullScale = -10000.1f;
 
+  unsigned chunkTinyVertexThreshold = 0;
 
   bool groupBoundingBoxes = false;
   std::string keep_groups;
@@ -153,9 +155,16 @@ int main(int argc, char** argv)
         }
         else if (key == "--tolerance") {
           tolerance = std::max(1e-6f, std::stof(val));
+          continue;
         }
         else if (key == "--cull-scale") {
           cullScale = std::stof(val); // set to negative to disable culling.
+          continue;
+        }
+        else if (key == "--chunk-tiny") {
+          chunkTinyVertexThreshold = std::stoul(val);
+          should_tessellate = true;
+          continue;
         }
       }
 
@@ -209,21 +218,32 @@ int main(int argc, char** argv)
     store->apply(&tessellator);
   }
 
+  bool do_flatten = false;
+  Flatten flatten(store);
   if (rv == 0 && !keep_groups.empty()) {
-    Flatten flatten;
     if (processFile(keep_groups, [f = &flatten](const void * ptr, size_t size) {f->setKeep(ptr, size); return true; })) {
       fprintf(stderr, "Processed %s\n", keep_groups.c_str());
+      do_flatten = true;
 
-      store->apply(&flatten);
-
-      delete store;
-      store = flatten.result();
     }
     else {
       fprintf(stderr, "Failed to parse %s\n", keep_groups.c_str());
       rv = -1;
     }
   }
+
+  if (rv == 0 && chunkTinyVertexThreshold) {
+    ChunkTiny chunkTiny(flatten, chunkTinyVertexThreshold);
+    store->apply(&chunkTiny);
+    do_flatten = true;
+  }
+
+  if (do_flatten) {
+    store->apply(&flatten);
+    delete store;
+    store = flatten.result();
+  }
+
 
   if (rv == 0 && !output_json.empty()) {
     ExportJson exportJson;

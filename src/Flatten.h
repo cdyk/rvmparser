@@ -6,7 +6,7 @@
 class Flatten : public StoreVisitor
 {
 public:
-  Flatten();
+  Flatten(Store* srcStore);
 
   ~Flatten();
 
@@ -16,7 +16,7 @@ public:
   // insert a single tag into keep set
   void keepTag(const char* tag);
 
-  void init(class Store& store) override;
+  void init(class Store& srcStore) override;
 
   bool done() override;
 
@@ -47,7 +47,8 @@ private:
   Arena arena;
   unsigned pass = 0;
 
-  Store* store = nullptr;
+  Store* srcStore = nullptr;
+  Store* dstStore = nullptr;
 
   Group** stack = nullptr;
   unsigned stack_p = 0;

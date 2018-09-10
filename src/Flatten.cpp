@@ -4,20 +4,21 @@
 #include "Store.h"
 #include "Flatten.h"
 
-Flatten::Flatten()
+Flatten::Flatten(Store* srcStore) :
+  srcStore(srcStore)
 {
-  store = new Store();
+  dstStore = new Store();
 }
 
 Flatten::~Flatten()
 {
-  if (store != nullptr) delete store;
+  if (dstStore != nullptr) delete dstStore;
 }
 
 Store* Flatten::result()
 {
-  auto rv = store;
-  store = nullptr;
+  auto rv = dstStore;
+  dstStore = nullptr;
   return rv;
 }
 
@@ -37,7 +38,7 @@ void Flatten::setKeep(const void * ptr, size_t size)
       auto * d = a - 1;
       while (c < d && (d[-1] != '\t')) --d;
 
-      auto * str = store->strings.intern(d, a);
+      auto * str = srcStore->strings.intern(d, a);
       tags.insert(uint64_t(str), uint64_t(str));
       //std::string tag(d, a - d);
       //ctx->tags.insert(tag);
@@ -50,7 +51,7 @@ void Flatten::setKeep(const void * ptr, size_t size)
 
 void Flatten::keepTag(const char* tag)
 {
-  auto * str = store->strings.intern(tag);
+  auto * str = srcStore->strings.intern(tag);
   tags.insert(uint64_t(str), uint64_t(str));
 }
 
@@ -67,7 +68,7 @@ void Flatten::beginFile(Group* group)
 {
   if (pass == 1) {
     assert(stack_p == 0);
-    stack[stack_p] = store->cloneGroup(nullptr, group);
+    stack[stack_p] = dstStore->cloneGroup(nullptr, group);
     stack_p++;
   }
 }
@@ -84,7 +85,7 @@ void Flatten::beginModel(Group* group)
 {
   if (pass == 1) {
     assert(stack_p == 1);
-    stack[stack_p] = store->cloneGroup(stack[stack_p - 1], group);
+    stack[stack_p] = dstStore->cloneGroup(stack[stack_p - 1], group);
     stack_p++;
   }
 }
@@ -124,7 +125,7 @@ void Flatten::beginGroup(Group* group)
 
     if (groups.get(uint64_t(group))) {
       assert(ignore_n == 0);
-      stack[stack_p] = store->cloneGroup(stack[stack_p - 1], group);
+      stack[stack_p] = dstStore->cloneGroup(stack[stack_p - 1], group);
       stack_p++;
     }
     else {
@@ -167,7 +168,7 @@ void Flatten::geometry(struct Geometry* geometry)
 {
   if (pass == 1) {
     assert(2 < stack_p);
-    store->cloneGeometry(stack[stack_p - 1], geometry);
+    dstStore->cloneGeometry(stack[stack_p - 1], geometry);
   }
 }
 
