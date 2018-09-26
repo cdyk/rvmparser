@@ -1,4 +1,5 @@
 #include <cassert>
+#include <algorithm>
 #include <cmath>
 #include "Common.h"
 #include "Store.h"
@@ -15,9 +16,27 @@ namespace {
     return std::sqrt(dot3(v, v));
   }
 
+  inline float distanceSquared3(const float *a, const float *b)
+  {
+    auto dx = b[0] - a[0];
+    auto dy = b[1] - a[1];
+    auto dz = b[2] - a[2];
+    return dx * dx + dy * dy + dz * dz;
+  }
+
   inline void add3(float* dst, const float *a, const float *b)
   {
     for (unsigned k = 0; k < 3; k++) dst[k] = a[k] + b[k];
+  }
+
+  inline void madd3(float* dst, const float *a, const float *b, const float c)
+  {
+    for (unsigned k = 0; k < 3; k++) dst[k] = a[k] + c*b[k];
+  }
+
+  inline void scale3(float* dst, float s)
+  {
+    for (unsigned k = 0; k < 3; k++) dst[k] *= s;
   }
 
   inline void transformPos3(float* r, const float *M, const float *p)
@@ -49,24 +68,51 @@ namespace {
     Store* store;
     Logger logger;
     Buffer<Anchor> anchors;
+    const float epsilon = 0.001f;
     unsigned anchors_n = 0;
   };
 
 
-  void connect(Context* context)
+  void connect(Context* context, unsigned offset)
   {
-    for (unsigned i = 0; i < context->anchors_n; i++) {
+
+
+
+    for (unsigned j = offset; j < context->anchors_n; j++) {
+      auto & aj = context->anchors[j];
+      for (unsigned i = j + 1; i < context->anchors_n; i++) {
+        auto & ai = context->anchors[i];
+
+
+        if (distanceSquared3(aj.p, ai.p) < context->epsilon) {
+          if (dot3(aj.d, ai.d) < -1.f + 0.01f) {
+
+            float b[3];
+            madd3(b, aj.p, aj.d, 0.05f);
+            context->store->addDebugLine(aj.p, b, 0x0000ff);
+
+            madd3(b, ai.p, ai.d, 0.05f);
+            context->store->addDebugLine(aj.p, b, 0x0000ff);
+
+          }
+        }
+
+      }
+    }
+
+
+    /*for (unsigned i = 0; i < context->anchors_n; i++) {
       auto & a = context->anchors[i];
 
       float b[3];
       add3(b, a.p, a.d);
 
       context->store->addDebugLine(a.p, b, 0xff0000);
-    }
-    context->anchors_n = 0;
+    }*/
+    context->anchors_n = offset;
   }
 
-  void addAnchor(Context* context, Geometry* geo, float* p, float* d, unsigned o)
+  void addCircularAnchor(Context* context, Geometry* geo, float* p, float* d, float r, unsigned o)
   {
     const auto & M = geo->M_3x4;
 
@@ -74,7 +120,9 @@ namespace {
     a.geo = geo;
     transformPos3(a.p, geo->M_3x4, p);
     transformDir3(a.d, geo->M_3x4, d);
-    a.r = length3(a.d);
+    auto scale = length3(a.d);
+    scale3(a.d, 1.f / scale);
+    a.r = std::max(0.01f, scale * r);
     a.o = o;
 
     context->anchors[context->anchors_n++] = a;
@@ -82,16 +130,17 @@ namespace {
 
   void recurse(Context* context, Group* group)
   {
+    auto offset = context->anchors_n;
     for (auto * child = group->groups.first; child != nullptr; child = child->next) {
       recurse(context, child);
     }
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
       switch (geo->kind) {
       case Geometry::Kind::Cylinder: {
-        float d[2][3] = { { 0, 0, -geo->cylinder.radius }, { 0, 0, geo->cylinder.radius } };
+        float d[2][3] = { { 0, 0, -1.f }, { 0, 0, 1.f } };
         float p[2][3] = { { 0, 0, -0.5f * geo->cylinder.height }, { 0, 0, 0.5f * geo->cylinder.height } };
         for (unsigned i = 0; i < 2; i++) {
-          addAnchor(context, geo, d[i], p[i], i);
+          addCircularAnchor(context, geo, p[i], d[i], geo->cylinder.radius, i);
         }
         break;
       }
@@ -99,7 +148,7 @@ namespace {
         break;
       }
     }
-    connect(context);
+    connect(context, offset);
   }
 
 
