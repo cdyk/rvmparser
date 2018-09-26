@@ -57,7 +57,7 @@ struct Geometry
   unsigned conn_off[6];
 
   Kind kind;
-  unsigned index;
+  unsigned id;
 
   float M_3x4[12];
   float bbox[6];
@@ -177,6 +177,15 @@ struct Group
 };
 
 
+struct DebugLine
+{
+  DebugLine* next = nullptr;
+  float a[3];
+  float b[3];
+  uint32_t color = 0xff0000u;
+};
+
+
 class StoreVisitor;
 
 class Store
@@ -202,12 +211,18 @@ public:
 
   Composite* newComposite();
 
+  void addDebugLine(float* a, float* b, uint32_t color);
+
   void apply(StoreVisitor* visitor);
 
-  unsigned geometryCount() const { return geo_n; }
-  unsigned groupCount() const { return grp_n; }
+  unsigned groupCountAllocated() const { return numGroupsAllocated; }
+  unsigned geometryCountAllocated() const { return numGeometriesAllocated; }
+
   const char* errorString() const { return error_str; }
   void setErrorString(const char* str);
+
+  Group* getFirstRoot() { return roots.first; }
+  DebugLine* getFirstDebugLine() { return debugLines.first; }
 
   Arena arena;
   Arena arenaTriangulation;
@@ -216,14 +231,15 @@ public:
 
   StringInterning strings;
 private:
-  unsigned geo_n = 0;
-  unsigned grp_n = 0;
+  unsigned numGroupsAllocated = 0;
+  unsigned numGeometriesAllocated = 0;
 
   const char* error_str = nullptr;
 
   void apply(StoreVisitor* visitor, Group* group);
 
   ListHeader<Group> roots;
+  ListHeader<DebugLine> debugLines;
   ListHeader<Composite> comps;
   
 };

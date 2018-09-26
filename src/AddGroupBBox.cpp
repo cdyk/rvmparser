@@ -7,7 +7,7 @@
 void AddGroupBBox::init(class Store& store)
 {
   this->store = &store;
-  stack = (Group**)arena.alloc(sizeof(Group*)*store.groupCount());
+  stack = (Group**)arena.alloc(sizeof(Group*)*store.groupCountAllocated());
   stack_p = 0;
 }
 

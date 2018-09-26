@@ -54,6 +54,18 @@ Group* Store::findRootGroup(const char* name)
 }
 
 
+void Store::addDebugLine(float* a, float* b, uint32_t color)
+{
+  auto line = arena.alloc<DebugLine>();
+  for (unsigned k = 0; k < 3; k++) {
+    line->a[k] = a[k];
+    line->b[k] = b[k];
+  }
+  line->color = color;
+  insert(debugLines, line);
+}
+
+
 Composite* Store::newComposite()
 {
   auto * comp = arena.alloc<Composite>();
@@ -68,7 +80,7 @@ Geometry* Store::newGeometry(Group* parent)
 
   auto * geo =  arena.alloc<Geometry>();
   geo->next = nullptr;
-  geo->index = geo_n++;
+  geo->id = numGeometriesAllocated++;
 
   insert(parent->group.geometries, geo);
   return geo;
@@ -153,10 +165,8 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
     insert(parent->groups, grp);
   }
 
-  grp_n++;
-
   grp->kind = kind;
-  grp_n++;
+  numGroupsAllocated++;
   return grp;
 }
 

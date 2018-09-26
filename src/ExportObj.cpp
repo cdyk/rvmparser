@@ -83,6 +83,33 @@ void ExportObj::init(class Store& store)
   assert(mtl);
 
   conn = store.conn;
+
+  char colorName[6];
+  for (auto * line = store.getFirstDebugLine(); line != nullptr; line = line->next) {
+
+    for (unsigned k = 0; k < 6; k++) {
+      auto v = (line->color >> (4 * k)) & 0xf;
+      if (v < 10) colorName[k] = '0' + v;
+      else colorName[k] = 'a' + v - 10;
+    }
+    auto * name = store.strings.intern(&colorName[0], &colorName[6]);
+    if (!definedColors.get(uint64_t(name))) {
+      definedColors.insert(uint64_t(name), 1);
+      auto r = (1.f / 255.f)*((line->color >> 16) & 0xFF);
+      auto g = (1.f / 255.f)*((line->color >> 8) & 0xFF);
+      auto b = (1.f / 255.f)*((line->color) & 0xFF);
+      fprintf(mtl, "newmtl %s\n", name);
+      fprintf(mtl, "Ka %f %f %f\n", (2.f / 3.f)*r, (2.f / 3.f)*g, (2.f / 3.f)*b);
+      fprintf(mtl, "Kd %f %f %f\n", r, g, b);
+      fprintf(mtl, "Ks 0.5 0.5 0.5\n");
+    }
+    fprintf(out, "usemtl %s\n", name);
+
+    fprintf(out, "v %f %f %f\n", line->a[0], line->a[1], line->a[2]);
+    fprintf(out, "v %f %f %f\n", line->b[0], line->b[1], line->b[2]);
+    fprintf(out, "l -1 -2\n");
+    off_v += 2;
+  }
 }
 
 void ExportObj::beginFile(Group* group)

@@ -9,7 +9,7 @@ ChunkTiny::ChunkTiny(Flatten& flatten, unsigned vertexThreshold) : flatten(flatt
 
 void ChunkTiny::init(class Store& store)
 {
-  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCount());
+  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCountAllocated());
   stack_p = 0;
 }
 

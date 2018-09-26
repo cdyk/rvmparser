@@ -142,7 +142,7 @@ void Tessellator::init(class Store& store)
   this->store = &store;
   store.arenaTriangulation.clear();
 
-  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCount());
+  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCountAllocated());
   stack_p = 0;
 }
 

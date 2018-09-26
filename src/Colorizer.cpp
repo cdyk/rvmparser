@@ -236,7 +236,7 @@ void Colorizer::init(Store& store)
     colorAttribute = store.strings.intern(colorAttribute);
   }
 
-  stack = (StackItem*)arena.alloc(sizeof(StackItem) * store.groupCount());
+  stack = (StackItem*)arena.alloc(sizeof(StackItem) * store.groupCountAllocated());
   stack_p = 0;
 
 }

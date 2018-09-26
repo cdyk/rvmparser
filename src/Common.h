@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdlib>
 #include <cstdint>
 
 class Store;
@@ -28,6 +29,37 @@ struct Arena
   template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
 };
 
+struct BufferBase
+{
+protected:
+  char* ptr = nullptr;
+
+  ~BufferBase() { if (ptr) free(ptr - sizeof(size_t)); }
+
+  void _accommodate(size_t typeSize, size_t count)
+  {
+    if (count == 0) return;
+    if (ptr && count <= ((size_t*)ptr)[-1]) return;
+
+    if (ptr) free(ptr - sizeof(size_t));
+
+    ptr = (char*)xmalloc(typeSize * count + sizeof(size_t)) + sizeof(size_t);
+    ((size_t*)ptr)[-1] = count;
+  }
+
+};
+
+template<typename T>
+struct Buffer : public BufferBase
+{
+  T* data() { return (T*)ptr; }
+  T& operator[](size_t ix) { return data()[ix]; }
+  const T* data() const { return (T*)ptr; }
+  const T& operator[](size_t ix) const { return data()[ix]; }
+  void accommodate(size_t count) { _accommodate(sizeof(T), count); }
+};
+
+
 struct Map
 {
   ~Map();
@@ -55,3 +87,6 @@ struct StringInterning
 
 
 };
+
+
+void connect(Store* store, Logger logger);

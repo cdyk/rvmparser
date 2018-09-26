@@ -59,7 +59,7 @@ void Flatten::keepTag(const char* tag)
 void Flatten::init(class Store& otherStore)
 {
   assert(pass == 0);
-  stack = (Group**)arena.alloc(sizeof(Group*)*otherStore.groupCount());
+  stack = (Group**)arena.alloc(sizeof(Group*)*otherStore.groupCountAllocated());
   fprintf(stderr, "Initial number of tags: %zd\n", tags.fill);
 }
 

@@ -210,6 +210,10 @@ int main(int argc, char** argv)
     store->apply(&colorizer);
   }
 
+  if (rv == 0) {
+    connect(store, logger);
+  }
+
   if (rv == 0 && should_tessellate) {
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
