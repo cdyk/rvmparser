@@ -92,12 +92,22 @@ namespace {
     for (unsigned j = off; j < a_n; j++) {
       if (a[j].matched) continue;
 
-      for (unsigned i = j + 1; i < a_n /*&& a[i].p.x <= a[j].p.x + 10*e*/; i++) {
+      for (unsigned i = j + 1; i < a_n /*&& a[i].p.x <= a[j].p.x + e*/; i++) {
 
-        if (a[i].matched == false && distanceSquared(a[j].p, a[i].p) <= ee) {
+        bool canMatch = a[i].matched == false;
+        bool close = distanceSquared(a[j].p, a[i].p) <= ee;
+        bool aligned = dot(a[j].d, a[i].d) < -0.98f;
+
+        if (canMatch && close && aligned) {
           context->store->addDebugLine((a[j].p + 0.03f*a[j].d).data,
                                        (a[i].p + 0.03f*a[i].d).data,
                                        0x0000ff);
+          a[j].geo->conn_geo[a[j].o] = a[i].geo;
+          a[j].geo->conn_off[a[j].o] = a[i].o;
+
+          a[i].geo->conn_geo[a[i].o] = a[j].geo;
+          a[i].geo->conn_off[a[i].o] = a[j].o;
+
           a[j].matched = true;
           a[i].matched = true;
           context->anchors_matched+=2;
@@ -106,9 +116,12 @@ namespace {
     }
 
     // Remove matched anchors.
-    for (unsigned j = off; j < a_n; j++) {
+    for (unsigned j = off; j < a_n; ) {
       if (a[j].matched) {
         std::swap(a[j], a[--a_n]);
+      }
+      else {
+        j++;
       }
     }
     assert(off <= a_n);
@@ -141,6 +154,7 @@ namespace {
       switch (geo->kind) {
 
       case Geometry::Kind::Pyramid: {
+#if 0
         auto bx = 0.5f * geo->pyramid.bottom[0];
         auto by = 0.5f * geo->pyramid.bottom[1];
         auto tx = 0.5f * geo->pyramid.top[0];
@@ -164,11 +178,13 @@ namespace {
           Vec3f(-ox, -oy, -h2),
           Vec3f(ox, oy, h2)
         };
-        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, n[i], p[i], i);
+        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i);
+#endif
         break;
       }
 
       case Geometry::Kind::Box: {
+#if 0
         auto & box = geo->box;
         Vec3f n[6] = {
             Vec3f(-1,  0,  0), Vec3f(1,  0,  0),
@@ -183,18 +199,21 @@ namespace {
           Vec3f(0.f, ym, 0.f ), Vec3f(0.f, yp, 0.f ),
           Vec3f(0.f, 0.f, zm ), Vec3f(0.f, 0.f, zp )
         };
-        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, n[i], p[i], i);
+        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i);
+#endif
         break;
       }
 
       case Geometry::Kind::RectangularTorus: {
+#if 0
         auto & rt = geo->rectangularTorus;
         auto c = std::cos(rt.angle);
         auto s = std::sin(rt.angle);
         auto m = 0.5f*(rt.inner_radius + rt.outer_radius);
         Vec3f n[2] = { Vec3f( 0, -1, 0.f ), Vec3f( -s, c, 0.f ) };
         Vec3f p[2] = { Vec3f( geo->circularTorus.offset, 0, 0.f ), Vec3f( m * c, m * s, 0.f ) };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, n[i], p[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
+#endif
         break;
       }
 
@@ -202,9 +221,12 @@ namespace {
         auto & ct = geo->circularTorus;
         auto c = std::cos(ct.angle);
         auto s = std::sin(ct.angle);
+
+
+
         Vec3f n[2] = { Vec3f(0, -1, 0.f ), Vec3f(-s, c, 0.f ) };
         Vec3f p[2] = { Vec3f(ct.offset, 0, 0.f ), Vec3f(ct.offset * c, ct.offset * s, 0.f ) };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, n[i], p[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
         break;
       }
 
@@ -224,7 +246,7 @@ namespace {
           Vec3f(-0.5f*sn.offset[0], -0.5f*sn.offset[1], -0.5f*sn.height ),
           Vec3f(0.5f*sn.offset[0], 0.5f*sn.offset[1], 0.5f*sn.height )
         };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, n[i], p[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
         break;
       }
 
@@ -263,6 +285,7 @@ void connect(Store* store, Logger logger)
   context.anchors.accommodate(context.anchors_max);
 
 
+  context.anchors_n = 0;
   for (auto * root = store->getFirstRoot(); root != nullptr; root = root->next) {
     for (auto * model = root->groups.first; model != nullptr; model = model->next) {
       for (auto * group = model->groups.first; group != nullptr; group = group->next) {
@@ -277,7 +300,13 @@ void connect(Store* store, Logger logger)
 
     auto b = a.p + 0.02f*a.d;
 
-    context.store->addDebugLine(a.p.data, b.data, 0xff0000);
+    if (a.geo->kind == Geometry::Kind::Pyramid) {
+      context.store->addDebugLine(a.p.data, b.data, 0x003300);
+    }
+    else {
+      context.store->addDebugLine(a.p.data, b.data, 0xff0000);
+    }
+
   }
 
   logger(0, "Matched %u of %u anchors", context.anchors_matched, context.anchors_total);
