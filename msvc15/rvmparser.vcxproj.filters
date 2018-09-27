@@ -76,6 +76,9 @@
     <ClInclude Include="..\src\ChunkTiny.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\LinAlg.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -145,6 +148,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Connect.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\LinAlg.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

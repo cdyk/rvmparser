@@ -169,6 +169,7 @@
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
+    <ClCompile Include="..\src\LinAlg.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\ParserAtt.cpp" />
     <ClCompile Include="..\src\ParserRVM.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />
+    <ClInclude Include="..\src\LinAlg.h" />
     <ClInclude Include="..\src\Parser.h" />
     <ClInclude Include="..\src\StoreVisitor.h" />
     <ClInclude Include="..\src\Store.h" />
