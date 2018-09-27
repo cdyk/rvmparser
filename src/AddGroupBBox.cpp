@@ -56,8 +56,9 @@ void AddGroupBBox::EndGroup()
     stack[stack_p]->group.bbox = nullptr;
   }
   else if (0 < stack_p) {
-    auto * parentBox = stack[stack_p - 1]->group.bbox;
 
+    // include in parent
+    auto * parentBox = stack[stack_p - 1]->group.bbox;
     for (unsigned i = 0; i < 3; i++) {
       parentBox[0 + i] = std::min(parentBox[0 + i], bbox[0 + i]);
       parentBox[3 + i] = std::max(parentBox[3 + i], bbox[3 + i]);

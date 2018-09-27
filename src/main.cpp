@@ -210,7 +210,16 @@ int main(int argc, char** argv)
     store->apply(&colorizer);
   }
 
-  if (rv == 0 && should_tessellate) {
+  if (rv == 0 && (should_tessellate || !output_json.empty())) {
+    AddGroupBBox addGroupBBox;
+    store->apply(&addGroupBBox);
+
+    Tessellator tessellator(tolerance, tolerance*cullScale);
+    store->apply(&tessellator);
+  }
+
+
+  if (rv == 0 && should_tessellate ) {
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
 

@@ -70,6 +70,17 @@ void ExportJson::beginGroup(struct Group* group)
   fprintf(json, "{ \"name\": \"%s\",\n", group->group.name);
   indent += 2;
   doIndent(json, indent); fprintf(json, "\"material\": %u,\n", group->group.material);
+  if (group->group.bbox) {
+    doIndent(json, indent); fprintf(json, "\"bbox\": [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f],\n",
+                                    group->group.bbox[0],
+                                    group->group.bbox[1],
+                                    group->group.bbox[2],
+                                    group->group.bbox[3],
+                                    group->group.bbox[4],
+                                    group->group.bbox[5]);
+  }
+
+
 }
 
 void ExportJson::EndGroup()
