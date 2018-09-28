@@ -828,8 +828,8 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
 
   t0.resize(2 * samples);
   for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((twopi / samples)*i);
-    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+    t0[2 * i + 0] = std::cos((twopi / samples)*i + geo->sampleStartAngle);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i + geo->sampleStartAngle);
   }
   t1.resize(2 * samples);
   for (unsigned i = 0; i < 2 * samples; i++) {

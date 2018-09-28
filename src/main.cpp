@@ -204,10 +204,10 @@ int main(int argc, char** argv)
     }
   }
 
-  if (rv == 0) {
-    Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
-    store->apply(&colorizer);
-  }
+  //if (rv == 0) {
+  //  Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
+  //  store->apply(&colorizer);
+  //}
 
   if (rv == 0) {
     connect(store, logger);

@@ -1,6 +1,7 @@
 #include <cassert>
 #include <chrono>
 #include "Store.h"
+#include "LinAlgOps.h"
 
 namespace {
 
@@ -8,13 +9,15 @@ namespace {
   {
     Geometry* from;
     Connection* connection;
-    Vec3f up;
+    Vec3f upWorld;
   };
 
 
   struct Context
   {
     Buffer<QueueItem> queue;
+    Logger logger;
+    Store* store;
     unsigned front = 0;
     unsigned back = 0;
     unsigned connectedComponents = 0;
@@ -22,35 +25,78 @@ namespace {
 
   };
 
-  void enqueue(Context& context, Geometry* from, Connection* connection)
+  void enqueue(Context& context, Geometry* from, Connection* connection, const Vec3f& upWorld)
   {
     connection->temp = 1;
 
     assert(context.back < context.connections);
     context.queue[context.back].from = from;
     context.queue[context.back].connection = connection;
+    context.queue[context.back].upWorld = upWorld;
 
     context.back++;
   }
 
-  void enqueueConnections(Context& context, Geometry* geo)
+  void handleCylinder(Context& context, Geometry* geo, unsigned offset, const Vec3f& up)
   {
-    for (unsigned k = 0; k < 6; k++) {
-      if (geo->connections[k] && geo->connections[k]->temp == 0) {
-        enqueue(context, geo, geo->connections[k]);
+    auto M_inv = inverse(Mat3f(geo->M_3x4.data));
+
+    {
+      auto G = mul(M_inv, Mat3f(geo->M_3x4.data));
+      for (unsigned j = 0; j < 3; j++) {
+        for (unsigned i = 0; i < 3; i++) {
+          assert(std::abs((i == j ? 1.f : 0.f) - G.cols[j][i]) < 1e-5f);
+
+        }
       }
     }
+
+    auto upn = normalize(up);
+
+    auto upLocal = mul(M_inv, upn);
+    upLocal.z = 0.f;  // project to xy-plane
+
+    geo->sampleStartAngle = std::atan2(upLocal.y, upLocal.x);
+
+    if (!std::isfinite(geo->sampleStartAngle)) {
+      geo->sampleStartAngle = 0.f;
+    }
+
+    Vec3f upNewWorld = mul(Mat3f(geo->M_3x4.data), Vec3f(std::cos(geo->sampleStartAngle),
+                                                         std::sin(geo->sampleStartAngle),
+                                                         0.f));
+
+    if (true) {
+      Vec3f p0 = mul(geo->M_3x4, Vec3f(0, 0, -0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
+      Vec3f p1 = mul(geo->M_3x4, Vec3f(0, 0, 0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
+      context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+      context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+    }
+
+    for (unsigned k = 0; k < 2; k++) {
+      if (geo->connections[k] && geo->connections[k]->temp == 0) {
+        enqueue(context, geo, geo->connections[k], upNewWorld);
+      }
+    }
+
   }
+
 
   void processItem(Context& context)
   {
     auto & item = context.queue[context.front++];
 
+
+
     for (unsigned i = 0; i < 2; i++) {
       if (item.from != item.connection->geo[i]) {
         auto * geo = item.connection->geo[i];
-
-        enqueueConnections(context, geo);
+        switch (geo->kind) {
+        case Geometry::Kind::Cylinder:
+          handleCylinder(context, geo, item.connection->offset[i], item.upWorld);
+        default:
+          break;
+        }
       }
     }
   }
@@ -60,6 +106,8 @@ namespace {
 void align(Store* store, Logger logger)
 {
   Context context;
+  context.logger = logger;
+  context.store = store;
   auto time0 = std::chrono::high_resolution_clock::now();
   for (auto * connection = store->getFirstConnection(); connection != nullptr; connection = connection->next) {
     connection->temp = 0;
@@ -73,7 +121,7 @@ void align(Store* store, Logger logger)
 
     context.front = 0;
     context.back = 0;
-    enqueue(context, nullptr, connection);
+    enqueue(context, nullptr, connection, Vec3f(0.f));
     context.connectedComponents++;
     do {
       processItem(context);

@@ -33,6 +33,7 @@ private:
   FILE* out = nullptr;
   FILE* mtl = nullptr;
   Map definedColors;
+  Store* store = nullptr;
   unsigned off_v = 1;
   unsigned off_n = 1;
   struct Connectivity* conn = nullptr;

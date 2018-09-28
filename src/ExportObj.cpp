@@ -83,6 +83,7 @@ void ExportObj::init(class Store& store)
   assert(out);
   assert(mtl);
 
+  this->store = &store;
   conn = store.conn;
 
   char colorName[6];
@@ -189,7 +190,9 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
-  //if (geometry->composite && geometry->composite->size < 0.5f) return;
+  if (geometry->colorName == nullptr) {
+    geometry->colorName = store->strings.intern("default");
+  }
 
   if (!definedColors.get(uint64_t(geometry->colorName))) {
     definedColors.insert(uint64_t(geometry->colorName), 1);

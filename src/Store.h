@@ -61,14 +61,14 @@ struct Geometry
 
   Connection* connections[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   const char* colorName = nullptr;
-  uint32_t color = 0x505050u;
+  uint32_t color = 0x202020u;
 
   Kind kind;
   unsigned id;
 
   Mat3x4f M_3x4;
   BBox3f bbox;
-
+  float sampleStartAngle = 0.f;
   union {
     struct {
       float bottom[2];
