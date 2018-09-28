@@ -52,7 +52,7 @@ private:
   std::vector<float> t1;
   std::vector<float> t2;
 
-  unsigned sagittaBasedSampleCount(float arc, float radius, float scale);
+  unsigned sagittaBasedSegmentCount(float arc, float radius, float scale);
  
   float sagittaBasedError(float arc, float radius, float scale, unsigned samples);
 

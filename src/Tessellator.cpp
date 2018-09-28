@@ -389,15 +389,17 @@ void Tessellator::box(Geometry* geo, float scale)
   geo->triangulation = tri;
 }
 
-unsigned Tessellator::sagittaBasedSampleCount(float arc, float radius, float scale)
+unsigned Tessellator::sagittaBasedSegmentCount(float arc, float radius, float scale)
 {
-  float samples = arc / std::acos(std::max(0.f, 1.f - tolerance / (scale*radius)));
+  float samples = arc / std::acos(std::max(-1.f, 1.f - tolerance / (scale*radius)));
   return std::min(maxSamples, unsigned(std::max(float(minSamples), std::ceil(samples))));
 }
 
-float Tessellator::sagittaBasedError(float arc, float radius, float scale, unsigned samples)
+float Tessellator::sagittaBasedError(float arc, float radius, float scale, unsigned segments)
 {
-  return scale * radius*(1.f - std::cos(arc / (samples - 1.f)));  // Length of sagitta
+  auto s = scale * radius*(1.f - std::cos(arc / segments));  // Length of sagitta
+  assert(s <= tolerance);
+  return s;
 }
 
 
@@ -413,7 +415,10 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
   //  return;
   //}
 
-  auto samples = sagittaBasedSampleCount(tor.angle, tor.outer_radius, scale);
+  auto segments = sagittaBasedSegmentCount(tor.angle, tor.outer_radius, scale);
+  auto samples = segments + 1;  // Assumed to be open, add extra sample.
+
+  tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, segments);
 
   bool shell = true;
   bool cap0 = true;
@@ -427,15 +432,14 @@ void Tessellator::rectangularTorus(struct Geometry* geo, float scale)
     { tor.outer_radius, h2 },
   };
 
-  t0.resize(2 * samples);
+  // Not closed
+  t0.resize(2 * samples + 1);
   for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((tor.angle / (samples - 1.f))*i);
-    t0[2 * i + 1] = std::sin((tor.angle / (samples - 1.f))*i);
+    t0[2 * i + 0] = std::cos((tor.angle / segments)*i);
+    t0[2 * i + 1] = std::sin((tor.angle / segments)*i);
   }
 
   unsigned l = 0;
-
-  tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, samples);
 
   tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0);
   tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
@@ -533,10 +537,14 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   //  return;
   //}
 
-  unsigned samples_l = sagittaBasedSampleCount(ct.angle, ct.offset + ct.radius, scale); // large radius, toroidal direction
-  unsigned samples_s = sagittaBasedSampleCount(twopi, ct.radius, scale); // small radius, poloidal direction
+  unsigned segments_l = sagittaBasedSegmentCount(ct.angle, ct.offset + ct.radius, scale); // large radius, toroidal direction
+  unsigned segments_s = sagittaBasedSegmentCount(twopi, ct.radius, scale); // small radius, poloidal direction
 
-  logger(0, "C %d %d", samples_l, samples_s);
+  tri->error = std::max(sagittaBasedError(ct.angle, ct.offset + ct.radius, scale, segments_l),
+                        sagittaBasedError(twopi, ct.radius, scale, segments_s));
+
+  unsigned samples_l = segments_l + 1;  // Assumed to be open, add extra sample
+  unsigned samples_s = segments_s;      // Assumed to be closed
 
   bool shell = true;
   bool cap[2] = { true, true };
@@ -568,8 +576,6 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
     t1[2 * i + 1] = std::sin((twopi / samples_s)*i + geo->sampleStartAngle);
   }
 
-  tri->error = std::max(sagittaBasedError(ct.angle, ct.offset + ct.radius, scale, samples_l),
-                        sagittaBasedError(twopi, ct.radius, scale, samples_s));
 
   tri->vertices_n = ((shell ? samples_l : 0) + (cap[0] ? 1 : 0) + (cap[1] ? 1 : 0)) * samples_s;
   tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
@@ -670,8 +676,10 @@ void Tessellator::snout(struct Geometry* geo, float scale)
   //  tri->error = radius_max *scale;
   //  return;
   //}
-  unsigned samples = sagittaBasedSampleCount(twopi, radius_max, scale);
+  unsigned segments = sagittaBasedSegmentCount(twopi, radius_max, scale);
+  unsigned samples = segments;  // assumed to be closed
 
+  tri->error = sagittaBasedError(twopi, radius_max, scale, segments);
 
   bool shell = true;
   bool cap[2] = { true, true };
@@ -807,9 +815,10 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   //  tri->error = cy.radius * scale;
   //  return;
   //}
-  unsigned samples = sagittaBasedSampleCount(twopi, cy.radius, scale);
+  unsigned segments = sagittaBasedSegmentCount(twopi, cy.radius, scale);
+  unsigned samples = segments;  // Assumed to be closed
 
-  logger(0, "C %d", samples);
+  tri->error = sagittaBasedError(twopi, cy.radius, scale, segments);
 
   bool shell = true;
   bool cap[2] = { true, true };
@@ -905,7 +914,10 @@ void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc
   auto * tri = store->arenaTriangulation.alloc<Triangulation>();
   geo->triangulation = tri;
 
-  unsigned samples = sagittaBasedSampleCount(twopi, radius, scale);
+  unsigned segments = sagittaBasedSegmentCount(twopi, radius, scale);
+  unsigned samples = segments;  // Assumed to be closed
+
+  tri->error = sagittaBasedError(twopi, radius, scale, samples);
 
   bool is_sphere = false;
   if (pi - 1e-3 <= arc) {
@@ -935,7 +947,6 @@ void Tessellator::sphereBasedShape(struct Geometry* geo, float radius, float arc
     s += u0[r];
   }
 
-  tri->error = sagittaBasedError(twopi, radius, scale, samples);
 
   tri->vertices_n = 3 * s;
   tri->vertices = (float*)store->arenaTriangulation.alloc(3 * sizeof(float)*tri->vertices_n);
