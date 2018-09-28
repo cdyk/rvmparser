@@ -28,7 +28,15 @@ struct Triangulation {
   float error = 0.f;
 };
 
-struct Composite;
+struct Connection
+{
+  Connection* next = nullptr;
+  Geometry* geo[2] = { nullptr, nullptr };
+  unsigned offset[2];
+  Vec3f p;
+  Vec3f d;
+};
+
 
 struct Geometry
 {
@@ -48,14 +56,11 @@ struct Geometry
   };
   Geometry* next = nullptr;                 // Next geometry in the list of geometries in group.
   Triangulation* triangulation = nullptr;
-  Composite* composite = nullptr;           // Pointer to the composite this geometry belongs to.
   Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
 
-  Geometry* conn_geo[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+  Connection* connections[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   const char* colorName = nullptr;
   uint32_t color = 0x505050u;
-
-  unsigned conn_off[6];
 
   Kind kind;
   unsigned id;
@@ -131,14 +136,6 @@ struct Attribute
   const char* val = nullptr;
 };
 
-struct Composite
-{
-  Composite* next = nullptr;
-  Geometry* first_geo = nullptr;
-
-  float bbox[6];
-  float size;
-};
 
 struct Group
 {
@@ -210,9 +207,9 @@ public:
 
   Attribute* newAttribute(Group* group, const char* key);
 
-  Composite* newComposite();
-
   void addDebugLine(float* a, float* b, uint32_t color);
+
+  Connection* newConnection();
 
   void apply(StoreVisitor* visitor);
 
@@ -223,6 +220,7 @@ public:
   void setErrorString(const char* str);
 
   Group* getFirstRoot() { return roots.first; }
+  Connection* getFirstConnection() { return connections.first; }
   DebugLine* getFirstDebugLine() { return debugLines.first; }
 
   Arena arena;
@@ -241,6 +239,6 @@ private:
 
   ListHeader<Group> roots;
   ListHeader<DebugLine> debugLines;
-  ListHeader<Composite> comps;
+  ListHeader<Connection> connections;
   
 };

@@ -106,8 +106,3 @@ void DumpNames::geometry(struct Geometry* geometry)
   }
 }
 
-void DumpNames::composite(struct Composite* composite)
-{
-
-}
-

@@ -10,7 +10,7 @@ public:
   Tessellator(const Tessellator&) = delete;
   Tessellator& operator=(const Tessellator&) = delete;
 
-  Tessellator(float tolerance, float cullthreshold) : tolerance(tolerance), cullThreshold(cullthreshold) {}
+  Tessellator(Logger logger, float tolerance, float cullthreshold) : logger(logger), tolerance(tolerance), cullThreshold(cullthreshold) {}
 
   void init(class Store& store) override;
 
@@ -20,13 +20,16 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
+  void endModel() override;
+
 private:
+  Logger logger;
+  Arena arena;
+  Store * store = nullptr;
   float tolerance = 0.f / 0.f;
   float cullThreshold = 0.f / 0.f;
   unsigned minSamples = 3;
   unsigned maxSamples = 100;
-  Arena arena;
-  Store * store = nullptr;
 
   struct StackItem
   {
@@ -35,6 +38,8 @@ private:
 
   StackItem* stack = nullptr;
   unsigned stack_p = 0;
+
+  unsigned discardedCaps = 0;
 
   std::vector<float> vertices;
   std::vector<float> normals;

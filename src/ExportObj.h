@@ -29,8 +29,6 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
-  void composite(struct Composite* comp) override;
-
 private:
   FILE* out = nullptr;
   FILE* mtl = nullptr;

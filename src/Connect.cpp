@@ -1,6 +1,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include "Common.h"
 #include "Store.h"
 #include "LinAlgOps.h"
@@ -92,25 +93,32 @@ namespace {
     for (unsigned j = off; j < a_n; j++) {
       if (a[j].matched) continue;
 
-      for (unsigned i = j + 1; i < a_n /*&& a[i].p.x <= a[j].p.x + e*/; i++) {
+      for (unsigned i = j + 1; i < a_n && a[i].p.x <= a[j].p.x + e; i++) {
 
         bool canMatch = a[i].matched == false;
         bool close = distanceSquared(a[j].p, a[i].p) <= ee;
         bool aligned = dot(a[j].d, a[i].d) < -0.98f;
 
         if (canMatch && close && aligned) {
-          context->store->addDebugLine((a[j].p + 0.03f*a[j].d).data,
-                                       (a[i].p + 0.03f*a[i].d).data,
-                                       0x0000ff);
-          a[j].geo->conn_geo[a[j].o] = a[i].geo;
-          a[j].geo->conn_off[a[j].o] = a[i].o;
 
-          a[i].geo->conn_geo[a[i].o] = a[j].geo;
-          a[i].geo->conn_off[a[i].o] = a[j].o;
+          auto * connection = context->store->newConnection();
+          connection->geo[0] = a[j].geo;
+          connection->geo[1] = a[i].geo;
+          connection->offset[0] = a[j].o;
+          connection->offset[1] = a[i].o;
+          connection->p = a[j].p;
+          connection->d = a[j].d;
+
+          a[j].geo->connections[a[j].o] = connection;
+          a[i].geo->connections[a[i].o] = connection;
 
           a[j].matched = true;
           a[i].matched = true;
           context->anchors_matched+=2;
+
+          //context->store->addDebugLine((a[j].p + 0.03f*a[j].d).data,
+          //                             (a[i].p + 0.03f*a[i].d).data,
+          //                             0x0000ff);
         }
       }
     }
@@ -277,6 +285,7 @@ namespace {
 
 void connect(Store* store, Logger logger)
 {
+
   Context context;
   context.store = store;
   context.logger = logger;
@@ -285,6 +294,7 @@ void connect(Store* store, Logger logger)
   context.anchors.accommodate(context.anchors_max);
 
 
+  auto time0 = std::chrono::high_resolution_clock::now();
   context.anchors_n = 0;
   for (auto * root = store->getFirstRoot(); root != nullptr; root = root->next) {
     for (auto * model = root->groups.first; model != nullptr; model = model->next) {
@@ -293,22 +303,22 @@ void connect(Store* store, Logger logger)
       }
     }
   }
-
   for (unsigned i = 0; i < context.anchors_n; i++) {
     auto & a = context.anchors[i];
     assert(a.matched == false);
 
     auto b = a.p + 0.02f*a.d;
 
-    if (a.geo->kind == Geometry::Kind::Pyramid) {
-      context.store->addDebugLine(a.p.data, b.data, 0x003300);
-    }
-    else {
-      context.store->addDebugLine(a.p.data, b.data, 0xff0000);
-    }
-
+    //if (a.geo->kind == Geometry::Kind::Pyramid) {
+    //  context.store->addDebugLine(a.p.data, b.data, 0x003300);
+    //}
+    //else {
+    //  context.store->addDebugLine(a.p.data, b.data, 0xff0000);
+    //}
   }
+  auto time1 = std::chrono::high_resolution_clock::now();
+  auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
 
-  logger(0, "Matched %u of %u anchors", context.anchors_matched, context.anchors_total);
+  logger(0, "Matched %u of %u anchors (%lldms, match=%lldms).", context.anchors_matched, context.anchors_total, e0);
 
 }

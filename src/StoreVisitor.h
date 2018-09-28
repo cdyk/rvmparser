@@ -38,6 +38,4 @@ public:
 
   virtual void endGeometries() {}
 
-  virtual void composite(struct Composite* composite) {}
-
 };

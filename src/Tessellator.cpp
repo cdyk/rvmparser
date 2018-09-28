@@ -33,42 +33,31 @@ namespace {
   };
 
 
-  void getInterface(Interface& iface, Geometry* geo, unsigned o)
+  Interface getInterface(Geometry* geo, unsigned o)
   {
-    switch (geo->kind) {
+    Interface interface;
+    auto * connection = geo->connections[o];
+    auto ix = connection->geo[0] == geo ? 1 : 0;
+    auto * other = connection->geo[ix];
+    auto scale = getScale(other->M_3x4);
+    switch (other->kind) {
     case Geometry::Kind::Cylinder:
-      iface.kind = Interface::Kind::Circular;
-      iface.circular.radius = geo->cylinder.radius;
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * other->cylinder.radius;
       break;
     case Geometry::Kind::Snout:
-      iface.kind = Interface::Kind::Circular;
-      iface.circular.radius = o == 0 ? geo->snout.radius_b : geo->snout.radius_t;
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * (connection->offset[ix] == 0 ? other->snout.radius_b : other->snout.radius_t);
       break;
     case Geometry::Kind::CircularTorus:
-      iface.kind = Interface::Kind::Circular;
-      iface.circular.radius = geo->circularTorus.radius;
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * other->circularTorus.radius;
       break;
     default:
-      iface.kind = Interface::Kind::Undefined;
+      interface.kind = Interface::Kind::Undefined;
       break;
     }
-  }
-
-  bool smaller(Interface& a, Interface& b)
-  {
-    if (a.kind != b.kind) return false;
-    switch (a.kind)
-    {
-    case Interface::Kind::Undefined:
-      return false;
-    case Interface::Kind::Square:
-      return (a.square.w < b.square.w + 1e-5f) && (a.square.h < b.square.h + 1e-5f);
-    case Interface::Kind::Circular:
-      return a.circular.radius < b.circular.radius + 1e-3f;
-    default:
-      return false;
-    }
-
+    return interface;
   }
 
 
@@ -144,6 +133,11 @@ void Tessellator::init(class Store& store)
 
   stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCountAllocated());
   stack_p = 0;
+}
+
+void Tessellator::endModel()
+{
+  logger(0, "Discarded %u caps.", discardedCaps);
 }
 
 
@@ -545,11 +539,18 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   bool shell = true;
   bool cap[2] = { true, true };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->conn_geo[i]) {
-      Interface a, b;
-      getInterface(a, geo, i);
-      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
-      cap[i] = smaller(a, b) == false;
+    if (geo->connections[i]) {
+      auto * c = geo->connections[i];
+      auto interface = getInterface(geo, i);
+      cap[i] = true;
+      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*ct.radius) {
+        cap[i] = false;
+        discardedCaps++;
+      }
+      else {
+        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0xff00ff);
+        //logger(0, "%d %d", c->geo[0]->kind, c->geo[1]->kind);
+      }
     }
   }
 
@@ -666,15 +667,18 @@ void Tessellator::snout(struct Geometry* geo, float scale)
 
   bool shell = true;
   bool cap[2] = { true, true };
+  float radii[2] = { geo->snout.radius_b, geo->snout.radius_t };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->conn_geo[i]) {
-      Interface a, b;
-      getInterface(a, geo, i);
-      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
-      cap[i] = smaller(a, b) == false;
-
-      if (cap[i] == false) {
-        int a = 2;
+    if (geo->connections[i]) {
+      auto * c = geo->connections[i];
+      auto interface = getInterface(geo, i);
+      cap[i] = true;
+      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*radii[i]) {
+        cap[i] = false;
+        discardedCaps++;
+      }
+      else {
+        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0xffff00);
       }
 
     }
@@ -800,11 +804,18 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   bool shell = true;
   bool cap[2] = { true, true };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->conn_geo[i]) {
-      Interface a, b;
-      getInterface(a, geo, i);
-      getInterface(b, geo->conn_geo[i], geo->conn_off[i]);
-      cap[i] = smaller(a, b) == false;
+    if (geo->connections[i]) {
+      auto * c = geo->connections[i];
+      auto interface = getInterface(geo, i);
+      cap[i] = true;
+      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*cy.radius) {
+        cap[i] = false;
+        discardedCaps++;
+      }
+      else {
+        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0x00ffff);
+      }
+
     }
   }
 

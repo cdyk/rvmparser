@@ -217,7 +217,7 @@ int main(int argc, char** argv)
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
 
-    Tessellator tessellator(tolerance, tolerance*cullScale);
+    Tessellator tessellator(logger, tolerance, tolerance*cullScale);
     store->apply(&tessellator);
   }
 

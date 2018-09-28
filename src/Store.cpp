@@ -26,8 +26,10 @@ Store::Store()
 {
   roots.first = nullptr;
   roots.last = nullptr;
-  comps.first = nullptr;
-  comps.last = nullptr;
+  debugLines.first = nullptr;
+  debugLines.last = nullptr;
+  connections.first = nullptr;
+  connections.last = nullptr;
   setErrorString("");
 }
 
@@ -66,11 +68,11 @@ void Store::addDebugLine(float* a, float* b, uint32_t color)
 }
 
 
-Composite* Store::newComposite()
+Connection* Store::newConnection()
 {
-  auto * comp = arena.alloc<Composite>();
-  insert(comps, comp);
-  return comp;
+  auto * connection = arena.alloc<Connection>();
+  insert(connections, connection);
+  return connection;
 }
 
 Geometry* Store::newGeometry(Group* parent)
@@ -300,12 +302,5 @@ void Store::apply(StoreVisitor* visitor)
 
       visitor->endFile();
     }
-
-    for (auto * comp = comps.first; comp != nullptr; comp = comp->next) {
-      visitor->composite(comp);
-    }
-
   } while (visitor->done() == false);
-
-
 }
