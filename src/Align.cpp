@@ -59,9 +59,6 @@ namespace {
       geo->sampleStartAngle = 0.f;
     }
 
-
-//    Vec3f n[2] = { Vec3f(0, -1, 0.f), Vec3f(-s, c, 0.f) };
-
     auto ci = std::cos(geo->sampleStartAngle);
     auto si = std::sin(geo->sampleStartAngle);
     auto co = std::cos(ct.angle);
@@ -91,8 +88,18 @@ namespace {
       auto a1 = mul(geo->M_3x4, p1);
       auto b1 = a1 + 1.5f*ct.radius*upNewWorld[1];
 
-      context.store->addDebugLine(a0.data, b0.data, 0x000088);
-      context.store->addDebugLine(a1.data, b1.data, 0x000088);
+      if (context.front == 1) {
+        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x00ffff);
+        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x00ff88);
+      }
+      else if (offset == 0) {
+        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x0000ff);
+        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x000088);
+      }
+      else {
+        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x000088);
+        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x0000ff);
+      }
     }
 
 
@@ -137,8 +144,18 @@ namespace {
     if (true) {
       Vec3f p0 = mul(geo->M_3x4, Vec3f(0, 0, -0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
       Vec3f p1 = mul(geo->M_3x4, Vec3f(0, 0, 0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
-      context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
-      context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+      if (context.front == 1) {
+        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xffff00);
+        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x88ff00);
+      }
+      else if (offset == 0) {
+        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
+        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+      }
+      else {
+        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
+      }
     }
 
     for (unsigned k = 0; k < 2; k++) {
@@ -153,8 +170,6 @@ namespace {
   void processItem(Context& context)
   {
     auto & item = context.queue[context.front++];
-
-
 
     for (unsigned i = 0; i < 2; i++) {
       if (item.from != item.connection->geo[i]) {
@@ -193,13 +208,27 @@ void align(Store* store, Logger logger)
   for (auto * connection = store->getFirstConnection(); connection != nullptr; connection = connection->next) {
     if (connection->temp) continue;
 
+    // Create an arbitrary vector in plane of intersection as seed.
+    const auto & d = connection->d;
+    Vec3f b;
+    if (std::abs(d.x) > std::abs(d.y) && std::abs(d.x) > std::abs(d.z)) {
+      b = Vec3f(0.f, 1.f, 0.f);
+    }
+    else {
+      b = Vec3f(1.f, 0.f, 0.f);
+    }
+
+    auto upWorld = normalize(cross(d, b));
+    assert(std::isfinite(lengthSquared(upWorld)));
+
     context.front = 0;
     context.back = 0;
-    enqueue(context, nullptr, connection, Vec3f(0.f));
-    context.connectedComponents++;
+    enqueue(context, nullptr, connection, upWorld);
     do {
       processItem(context);
     } while (context.front < context.back);
+
+    context.connectedComponents++;
   }
   auto time1 = std::chrono::high_resolution_clock::now();
   auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
