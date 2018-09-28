@@ -143,10 +143,10 @@ namespace {
     auto * g = ctx->store->newGeometry(ctx->group_stack.back());
 
     for (unsigned i = 0; i < 12; i++) {
-      p = read_float32_be(g->M_3x4[i], p, e);
+      p = read_float32_be(g->M_3x4.data[i], p, e);
     }
     for (unsigned i = 0; i < 6; i++) {
-      p = read_float32_be(g->bbox[i], p, e);
+      p = read_float32_be(g->bbox.data[i], p, e);
     }
 
     switch (kind) {

@@ -5,6 +5,7 @@
 #include "ExportObj.h"
 #include "FindConnections.h"
 #include "Store.h"
+#include "LinAlgOps.h"
 
 namespace {
 
@@ -163,33 +164,23 @@ void ExportObj::EndGroup() { }
 
 namespace {
 
-  void getMidpoint(float* p, Geometry* geo)
+  void getMidpoint(Vec3f& p, Geometry* geo)
   {
-    const auto & M = geo->M_3x4;
-
-    float px = 0.f;
-    float py = 0.f;
-    float pz = 0.f;
-
     switch (geo->kind) {
     case Geometry::Kind::CircularTorus: {
       auto & ct = geo->circularTorus;
       auto c = std::cos(0.5f * ct.angle);
       auto s = std::sin(0.5f * ct.angle);
-      px = ct.offset * c;
-      py = ct.offset * s;
-      pz = 0.f;
+      p.x = ct.offset * c;
+      p.y = ct.offset * s;
+      p.z = 0.f;
       break;
     }
-
     default:
+      p = Vec3f(0.f);
       break;
     }
-
-    p[0] = M[0] * px + M[3] * py + M[6] * pz + M[9];
-    p[1] = M[1] * px + M[4] * py + M[7] * pz + M[10];
-    p[2] = M[2] * px + M[5] * py + M[8] * pz + M[11];
-
+    p = mul(geo->M_3x4, p);
   }
 
 }
@@ -217,21 +208,11 @@ void ExportObj::geometry(struct Geometry* geometry)
 
   
   if (geometry->kind == Geometry::Kind::Line) {
-    auto x0 = geometry->line.a;
-    auto x1 = geometry->line.b;
-
-    auto p0_x = M[0] * x0 + M[3] * 0.f + M[6] * 0.f + M[9];
-    auto p0_y = M[1] * x0 + M[4] * 0.f + M[7] * 0.f + M[10];
-    auto p0_z = M[2] * x0 + M[5] * 0.f + M[8] * 0.f + M[11];
-
-    auto p1_x = M[0] * x1 + M[3] * 0.f + M[6] * 0.f + M[9];
-    auto p1_y = M[1] * x1 + M[4] * 0.f + M[7] * 0.f + M[10];
-    auto p1_z = M[2] * x1 + M[5] * 0.f + M[8] * 0.f + M[11];
-
-    fprintf(out, "v %f %f %f\n", p0_x, p0_y, p0_z);
-    fprintf(out, "v %f %f %f\n", p1_x, p1_y, p1_z);
+    auto a = mul(geometry->M_3x4, Vec3f(geometry->line.a, 0, 0));
+    auto b = mul(geometry->M_3x4, Vec3f(geometry->line.b, 0, 0));
+    fprintf(out, "v %f %f %f\n", a.x, a.y, a.z);
+    fprintf(out, "v %f %f %f\n", b.x, b.y, b.z);
     fprintf(out, "l -1 -2\n");
-
     off_v += 2;
   }
   else {
@@ -244,32 +225,12 @@ void ExportObj::geometry(struct Geometry* geometry)
         fprintf(out, "# error=%f\n", geometry->triangulation->error);
       }
       for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
-        auto px = tri->vertices[i + 0];
-        auto py = tri->vertices[i + 1];
-        auto pz = tri->vertices[i + 2];
-        auto nx = tri->normals[i + 0];
-        auto ny = tri->normals[i + 1];
-        auto nz = tri->normals[i + 2];
 
-        float Px, Py, Pz, Nx, Ny, Nz;
-        Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
-        Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
-        Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
-        Nx = M[0] * nx + M[3] * ny + M[6] * nz;
-        Ny = M[1] * nx + M[4] * ny + M[7] * nz;
-        Nz = M[2] * nx + M[5] * ny + M[8] * nz;
+        auto p = mul(geometry->M_3x4, Vec3f(tri->vertices + i));
+        auto n = normalize(mul(Mat3f(geometry->M_3x4.data), Vec3f(tri->normals + i)));
 
-        float s = 1.f / std::sqrt(Nx*Nx + Ny * Ny + Nz * Nz);
-
-
-        if (true) {
-          fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-          fprintf(out, "vn %f %f %f\n", s*Nx, s*Ny, s*Nz);
-        }
-        else {
-          fprintf(out, "v %f %f %f\n", px, py, pz);
-          fprintf(out, "vn %f %f %f\n", nx, ny, nz);
-        }
+        fprintf(out, "v %f %f %f\n", p.x, p.y, p.z);
+        fprintf(out, "vn %f %f %f\n", n.x, n.y, n.z);
       }
       for (size_t i = 0; i < 3 * tri->triangles_n; i += 3) {
         fprintf(out, "f %d//%d %d//%d %d//%d\n",

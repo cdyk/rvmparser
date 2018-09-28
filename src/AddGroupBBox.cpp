@@ -3,6 +3,7 @@
 #include <cassert>
 #include "Store.h"
 #include "AddGroupBBox.h"
+#include "LinAlgOps.h"
 
 void AddGroupBBox::init(class Store& store)
 {
@@ -17,15 +18,12 @@ void AddGroupBBox::geometry(struct Geometry* geometry)
   const auto & M = geometry->M_3x4;
   auto * bbox = stack[stack_p - 1]->group.bbox;
   for (unsigned k = 0; k < 8; k++) {
-    float px = (k & 1) ? geometry->bbox[0] : geometry->bbox[3];
-    float py = (k & 2) ? geometry->bbox[1] : geometry->bbox[4];
-    float pz = (k & 4) ? geometry->bbox[2] : geometry->bbox[5];
+    Vec3f p((k & 1) ? geometry->bbox.min[0] : geometry->bbox.max[3],
+            (k & 2) ? geometry->bbox.min[1] : geometry->bbox.max[4],
+            (k & 4) ? geometry->bbox.min[2] : geometry->bbox.max[5]);
 
-    float P[3] = {
-      M[0] * px + M[3] * py + M[6] * pz + M[9],
-      M[1] * px + M[4] * py + M[7] * pz + M[10],
-      M[2] * px + M[5] * py + M[8] * pz + M[11],
-    };
+    auto P = mul(geometry->M_3x4, p);
+
     for (unsigned i = 0; i < 3; i++) {
       bbox[0 + i] = std::min(bbox[0 + i], P[i]);
       bbox[3 + i] = std::max(bbox[3 + i], P[i]);

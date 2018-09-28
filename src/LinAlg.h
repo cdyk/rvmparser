@@ -1,9 +1,11 @@
 #pragma once
-#include <cmath>
 
 struct Vec3f
 {
   Vec3f() = default;
+  Vec3f(const Vec3f&) = default;
+  Vec3f(float x) : x(x), y(x), z(x) {}
+  Vec3f(float* ptr) : x(ptr[0]), y(ptr[1]), z(ptr[2]) {}
   Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
   union {
     struct {
@@ -13,39 +15,31 @@ struct Vec3f
     };
     float data[3];
   };
+  float& operator[](unsigned i) { return data[i]; }
+  const float& operator[](unsigned i) const { return data[i]; }
 };
 
-inline Vec3f cross(const Vec3f& a, const Vec3f& b)
+
+struct BBox3f
 {
-  return Vec3f(a.y * b.z - a.z * b.y,
-               a.z * b.x - a.x * b.z,
-               a.x * b.y - a.y * b.x);
-}
+  BBox3f() = default;
+  BBox3f(const BBox3f&) = default;
+  BBox3f(const Vec3f& min, const Vec3f& max) : min(min), max(max) {}
+  BBox3f(const BBox3f& bbox, float margin);
 
-inline float dot(const Vec3f& a, const Vec3f& b) {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-inline Vec3f operator+(const Vec3f& a, const Vec3f& b) { return Vec3f(a.x + b.x, a.y + b.y, a.z + b.z); }
-
-inline Vec3f operator-(const Vec3f& a, const Vec3f& b) { return Vec3f(a.x - b.x, a.y - b.y, a.z - b.z); }
-
-inline Vec3f operator*(const float a, const Vec3f& b) { return Vec3f(a*b.x, a*b.y, a*b.z); }
-
-inline float lengthSquared(const Vec3f& a) { return dot(a, a); }
-
-inline float length(const Vec3f& a) { return std::sqrt(dot(a, a)); }
-
-inline float distanceSquared(const Vec3f& a, const Vec3f&b) { return lengthSquared(a - b); }
-
-inline float distance(const Vec3f& a, const Vec3f&b) { return length(a - b); }
-
-inline Vec3f normalize(const Vec3f& a) { return (1.f / length(a))*a; }
-
+  union {
+    struct {
+      Vec3f min;
+      Vec3f max;
+    };
+    float data[6];
+  };
+};
 
 struct Mat3f
 {
   Mat3f() = default;
+  Mat3f(const Mat3f&) = default;
   Mat3f(const float* ptr) { for (unsigned i = 0; i < 3 * 3; i++) data[i] = ptr[i]; }
   Mat3f(float m00, float m01, float m02,
         float m10, float m11, float m12,
@@ -73,21 +67,11 @@ struct Mat3f
   };
 };
 
-Mat3f inverse(const Mat3f& M);
-
-Mat3f mul(const Mat3f& A, const Mat3f& B);
-
-inline Vec3f mul(const Mat3f& A, const Vec3f& x)
-{
-  Vec3f r;
-  for (unsigned k = 0; k < 3; k++) {
-    r.data[k] = A.data[k] * x.data[0] + A.data[3 + k] * x.data[1] + A.data[6 + k] * x.data[2];
-  }
-  return r;
-}
 
 struct Mat3x4f
 {
+  Mat3x4f() = default;
+  Mat3x4f(const Mat3x4f&) = default;
   Mat3x4f(const float* ptr) { for (unsigned i = 0; i < 4 * 3; i++) data[i] = ptr[i]; }
 
   union {
@@ -112,12 +96,3 @@ struct Mat3x4f
     float data[4 * 3];
   };
 };
-
-inline Vec3f mul(const Mat3x4f& A, const Vec3f& x)
-{
-  Vec3f r;
-  for (unsigned k = 0; k < 3; k++) {
-    r.data[k] = A.data[k] * x.data[0] + A.data[3 + k] * x.data[1] + A.data[6 + k] * x.data[2] + A.data[9 + k];
-  }
-  return r;
-}

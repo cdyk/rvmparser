@@ -1,5 +1,5 @@
 #pragma once
-
+#if 0
 #include "Common.h"
 #include "StoreVisitor.h"
 
@@ -67,3 +67,4 @@ private:
   unsigned unique_points_i = 0;
 
 };
+#endif

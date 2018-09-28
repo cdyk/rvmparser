@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "Common.h"
+#include "LinAlg.h"
 
 struct Group;
 struct Geometry;
@@ -59,8 +60,8 @@ struct Geometry
   Kind kind;
   unsigned id;
 
-  float M_3x4[12];
-  float bbox[6];
+  Mat3x4f M_3x4;
+  BBox3f bbox;
 
   union {
     struct {

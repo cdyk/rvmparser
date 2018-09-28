@@ -79,6 +79,9 @@
     <ClInclude Include="..\src\LinAlg.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\LinAlgOps.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -150,7 +153,7 @@
     <ClCompile Include="..\src\Connect.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\LinAlg.cpp">
+    <ClCompile Include="..\src\LinAlgOps.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

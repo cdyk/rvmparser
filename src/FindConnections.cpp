@@ -4,6 +4,7 @@
 #include "FindConnections.h"
 #include "AddStats.h"
 #include "Store.h"
+#if 0
 
 void FindConnections::addAnchor(Geometry* geo, float* n, float* p, unsigned o)
 {
@@ -419,3 +420,4 @@ void FindConnections::findConnectedComponents()
 
 
 }
+#endif

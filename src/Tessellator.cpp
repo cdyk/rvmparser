@@ -7,7 +7,7 @@
 
 #include "Store.h"
 #include "Tessellator.h"
-
+#include "LinAlgOps.h"
 
 namespace {
 
@@ -183,11 +183,7 @@ void Tessellator::geometry(Geometry* geo)
     return;
   }
 
-  auto & M = geo->M_3x4;
-  float sx = std::sqrt(M[0] * M[0] + M[1] * M[1] + M[2] * M[2]);
-  float sy = std::sqrt(M[3] * M[3] + M[4] * M[4] + M[5] * M[5]);
-  float sz = std::sqrt(M[6] * M[6] + M[7] * M[7] + M[8] * M[8]);
-  float scale = std::max(std::max(sx, sy), sz);
+  auto scale = getScale(geo->M_3x4);
 
   switch (geo->kind) {
   case Geometry::Kind::Pyramid:

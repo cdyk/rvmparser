@@ -3,7 +3,7 @@
 #include <cmath>
 #include "Common.h"
 #include "Store.h"
-#include "LinAlg.h"
+#include "LinAlgOps.h"
 
 namespace {
 
@@ -135,7 +135,7 @@ namespace {
     Anchor a;
     a.geo = geo;
     a.p = mul(Mat3x4f(geo->M_3x4), p);
-    a.d = normalize(mul(Mat3f(geo->M_3x4), d));
+    a.d = normalize(mul(Mat3f(geo->M_3x4.data), d));
     a.o = o;
 
     assert(context->anchors_n < context->anchors_max);

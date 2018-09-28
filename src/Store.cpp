@@ -90,8 +90,8 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
 {
   auto * dst = newGeometry(parent);
   dst->kind = src->kind;
-  std::memcpy(dst->M_3x4, src->M_3x4, sizeof(src->M_3x4));
-  std::memcpy(dst->bbox, src->bbox, sizeof(src->bbox));
+  dst->M_3x4 = src->M_3x4;
+  dst->bbox = src->bbox;
   switch (dst->kind) {
     case Geometry::Kind::Pyramid:
     case Geometry::Kind::Box:

@@ -1,4 +1,4 @@
-#include "LinAlg.h"
+#include "LinAlgOps.h"
 
 
 Mat3f inverse(const Mat3f& M)
@@ -39,4 +39,13 @@ Mat3f mul(const Mat3f& A, const Mat3f& B)
                A20 * B00 + A21 * B10 + A22 * B20,
                A20 * B01 + A21 * B11 + A22 * B21,
                A20 * B02 + A21 * B12 + A22 * B22);
+}
+
+float getScale(const Mat3f& M)
+{
+  float sx = length(M.cols[0]);
+  float sy = length(M.cols[1]);
+  float sz = length(M.cols[2]);
+  auto t = sx > sy ? sx : sy;
+  return sz > t ? sz : t;
 }

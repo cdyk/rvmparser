@@ -8,7 +8,6 @@
 #include <algorithm>
 
 #include "Parser.h"
-#include "FindConnections.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
 #include "ExportJson.h"
