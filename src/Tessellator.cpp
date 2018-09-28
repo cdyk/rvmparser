@@ -536,6 +536,8 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   unsigned samples_l = sagittaBasedSampleCount(ct.angle, ct.offset + ct.radius, scale); // large radius, toroidal direction
   unsigned samples_s = sagittaBasedSampleCount(twopi, ct.radius, scale); // small radius, poloidal direction
 
+  logger(0, "C %d %d", samples_l, samples_s);
+
   bool shell = true;
   bool cap[2] = { true, true };
   for (unsigned i = 0; i < 2; i++) {
@@ -562,8 +564,8 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
 
   t1.resize(2 * samples_s);
   for (unsigned i = 0; i < samples_s; i++) {
-    t1[2 * i + 0] = std::cos((twopi / samples_s)*i);
-    t1[2 * i + 1] = std::sin((twopi / samples_s)*i);
+    t1[2 * i + 0] = std::cos((twopi / samples_s)*i + geo->sampleStartAngle);
+    t1[2 * i + 1] = std::sin((twopi / samples_s)*i + geo->sampleStartAngle);
   }
 
   tri->error = std::max(sagittaBasedError(ct.angle, ct.offset + ct.radius, scale, samples_l),
@@ -580,6 +582,12 @@ void Tessellator::circularTorus(struct Geometry* geo, float scale)
   unsigned l = 0;
 
   if (shell) {
+    //Vec3f n(cos(twopi *v) * cos(ct.angle * u),
+    //        cos(twopi *v) * sin(ct.angle * u),
+    //        std::sin(twopi *v));
+    //Vec3f p((ct.radius * cos(twopi *v) + ct.offset) * cos(ct.angle * u),
+    //        (ct.radius * cos(twopi *v) + ct.offset) * sin(ct.angle * u),
+    //        ct.radius * sin(twopi *v));
     for (unsigned u = 0; u < samples_l; u++) {
       for (unsigned v = 0; v < samples_s; v++) {
         tri->normals[l] = t1[2 * v + 0] * t0[2 * u + 0]; tri->vertices[l++] = ((ct.radius * t1[2 * v + 0] + ct.offset) * t0[2 * u + 0]);
@@ -800,6 +808,8 @@ void Tessellator::cylinder(struct Geometry* geo, float scale)
   //  return;
   //}
   unsigned samples = sagittaBasedSampleCount(twopi, cy.radius, scale);
+
+  logger(0, "C %d", samples);
 
   bool shell = true;
   bool cap[2] = { true, true };

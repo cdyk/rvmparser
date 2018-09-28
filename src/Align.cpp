@@ -37,7 +37,76 @@ namespace {
     context.back++;
   }
 
-  void handleCylinder(Context& context, Geometry* geo, unsigned offset, const Vec3f& up)
+  void handleCircularTorus(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
+  {
+    const auto & M = geo->M_3x4;
+    const auto N = Mat3f(M.data);
+    const auto N_inv = inverse(N);
+    auto & ct = geo->circularTorus;
+    auto c = std::cos(ct.angle);
+    auto s = std::sin(ct.angle);
+
+    auto upLocal = normalize(mul(N_inv, upWorld));
+
+    if (offset == 1) {
+      // rotate back to xz
+      upLocal = Vec3f(c*upLocal.x + s*upLocal.y,
+                      -s*upLocal.x + c*upLocal.y,
+                      upLocal.z);
+    }
+    geo->sampleStartAngle = std::atan2(upLocal.z, upLocal.x);
+    if (!std::isfinite(geo->sampleStartAngle)) {
+      geo->sampleStartAngle = 0.f;
+    }
+
+
+//    Vec3f n[2] = { Vec3f(0, -1, 0.f), Vec3f(-s, c, 0.f) };
+
+    auto ci = std::cos(geo->sampleStartAngle);
+    auto si = std::sin(geo->sampleStartAngle);
+    auto co = std::cos(ct.angle);
+    auto so = std::sin(ct.angle);
+
+    Vec3f upNew(ci, 0.f, si);
+
+    Vec3f upNewWorld[2];
+    upNewWorld[0] = mul(N, upNew);
+    upNewWorld[1] = mul(N, Vec3f(c * upNew.x - s * upNew.y,
+                                 s * upNew.x + c * upNew.y,
+                                 upNew.z));
+
+    if (true) {
+      Vec3f p0(ct.radius * ci + ct.offset,
+               0.f,
+               ct.radius * si);
+
+      Vec3f p1((ct.radius * ci + ct.offset) * co,
+               (ct.radius * ci + ct.offset) * so,
+               ct.radius * si);
+
+
+      auto a0 = mul(geo->M_3x4, p0);
+      auto b0 = a0 + 1.5f*ct.radius*upNewWorld[0];
+
+      auto a1 = mul(geo->M_3x4, p1);
+      auto b1 = a1 + 1.5f*ct.radius*upNewWorld[1];
+
+      context.store->addDebugLine(a0.data, b0.data, 0x000088);
+      context.store->addDebugLine(a1.data, b1.data, 0x000088);
+    }
+
+
+    for (unsigned k = 0; k < 2; k++) {
+      if (geo->connections[k] && geo->connections[k]->temp == 0) {
+        enqueue(context, geo, geo->connections[k], upNewWorld[k]);
+      }
+    }
+
+
+  }
+
+
+  void handleCylinder(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
   {
     auto M_inv = inverse(Mat3f(geo->M_3x4.data));
 
@@ -51,13 +120,12 @@ namespace {
       }
     }
 
-    auto upn = normalize(up);
+    auto upn = normalize(upWorld);
 
     auto upLocal = mul(M_inv, upn);
     upLocal.z = 0.f;  // project to xy-plane
 
     geo->sampleStartAngle = std::atan2(upLocal.y, upLocal.x);
-
     if (!std::isfinite(geo->sampleStartAngle)) {
       geo->sampleStartAngle = 0.f;
     }
@@ -92,8 +160,14 @@ namespace {
       if (item.from != item.connection->geo[i]) {
         auto * geo = item.connection->geo[i];
         switch (geo->kind) {
+        case Geometry::Kind::CircularTorus:
+          handleCircularTorus(context, geo, item.connection->offset[i], item.upWorld);
+          break;
+
         case Geometry::Kind::Cylinder:
           handleCylinder(context, geo, item.connection->offset[i], item.upWorld);
+          break;
+
         default:
           break;
         }
