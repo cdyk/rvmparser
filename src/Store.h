@@ -35,6 +35,7 @@ struct Connection
   unsigned offset[2];
   Vec3f p;
   Vec3f d;
+  unsigned temp;
 };
 
 

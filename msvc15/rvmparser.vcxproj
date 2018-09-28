@@ -160,6 +160,7 @@
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\AddGroupBBox.cpp" />
     <ClCompile Include="..\src\AddStats.cpp" />
+    <ClCompile Include="..\src\Align.cpp" />
     <ClCompile Include="..\src\ChunkTiny.cpp" />
     <ClCompile Include="..\src\Colorizer.cpp" />
     <ClCompile Include="..\src\Common.cpp" />

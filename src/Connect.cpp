@@ -319,6 +319,6 @@ void connect(Store* store, Logger logger)
   auto time1 = std::chrono::high_resolution_clock::now();
   auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
 
-  logger(0, "Matched %u of %u anchors (%lldms, match=%lldms).", context.anchors_matched, context.anchors_total, e0);
+  logger(0, "Matched %u of %u anchors (%lldms).", context.anchors_matched, context.anchors_total, e0);
 
 }

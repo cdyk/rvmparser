@@ -156,5 +156,8 @@
     <ClCompile Include="..\src\LinAlgOps.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Align.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

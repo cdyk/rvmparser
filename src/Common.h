@@ -90,3 +90,4 @@ struct StringInterning
 
 
 void connect(Store* store, Logger logger);
+void align(Store* store, Logger logger);

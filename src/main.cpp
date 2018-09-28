@@ -211,6 +211,7 @@ int main(int argc, char** argv)
 
   if (rv == 0) {
     connect(store, logger);
+    align(store, logger);
   }
 
   if (rv == 0 && should_tessellate) {
