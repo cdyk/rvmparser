@@ -176,6 +176,7 @@
     <ClCompile Include="..\src\ParserRVM.cpp" />
     <ClCompile Include="..\src\Store.cpp" />
     <ClCompile Include="..\src\Tessellator.cpp" />
+    <ClCompile Include="..\src\TriangulationFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libs\libtess2\Include\tesselator.h" />

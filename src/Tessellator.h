@@ -3,43 +3,39 @@
 #include "Common.h"
 #include "StoreVisitor.h"
 
-class Tessellator : public StoreVisitor
+class TriangulationFactory
 {
 public:
-  Tessellator() = delete;
-  Tessellator(const Tessellator&) = delete;
-  Tessellator& operator=(const Tessellator&) = delete;
+  TriangulationFactory(Store* store, Logger logger, float tolerance, unsigned minSamples, unsigned maxSamples);
 
-  Tessellator(Logger logger, float tolerance, float cullthreshold) : logger(logger), tolerance(tolerance), cullThreshold(cullthreshold) {}
+  unsigned sagittaBasedSegmentCount(float arc, float radius, float scale);
 
-  void init(class Store& store) override;
+  float sagittaBasedError(float arc, float radius, float scale, unsigned samples);
 
-  void beginGroup(struct Group* group)  override;
+  Triangulation* pyramid(Arena* arena, const Geometry* geo, float scale);
 
-  void EndGroup() override;
+  Triangulation* box(Arena* arena, const Geometry* geo, float scale);
 
-  void geometry(struct Geometry* geometry) override;
+  Triangulation* rectangularTorus(Arena* arena, const Geometry* geo, float scale);
 
-  void endModel() override;
+  Triangulation* circularTorus(Arena* arena, const Geometry* geo, float scale);
 
-private:
-  Logger logger;
-  Arena arena;
-  Store * store = nullptr;
-  float tolerance = 0.f / 0.f;
-  float cullThreshold = 0.f / 0.f;
-  unsigned minSamples = 3;
-  unsigned maxSamples = 100;
+  Triangulation* snout(Arena* arena, const  Geometry* geo, float scale);
 
-  struct StackItem
-  {
-    float groupError;   // Error induced if group is omitted.
-  };
+  Triangulation* cylinder(Arena* arena, const Geometry* geo, float scale);
 
-  StackItem* stack = nullptr;
-  unsigned stack_p = 0;
+  Triangulation* facetGroup(Arena* arena, const Geometry* geo, float scale);
+
+  Triangulation* sphereBasedShape(Arena* arena, const  Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale);
 
   unsigned discardedCaps = 0;
+
+private:
+  Store* store;
+  Logger logger;
+  float tolerance = 0.f / 0.f;
+  unsigned minSamples = 3;
+  unsigned maxSamples = 100;
 
   std::vector<float> vertices;
   std::vector<float> normals;
@@ -52,24 +48,69 @@ private:
   std::vector<float> t1;
   std::vector<float> t2;
 
-  unsigned sagittaBasedSegmentCount(float arc, float radius, float scale);
- 
-  float sagittaBasedError(float arc, float radius, float scale, unsigned samples);
+};
 
-  void pyramid(struct Geometry* geo, float scale);
+class Tessellator : public StoreVisitor
+{
+public:
+  Tessellator() = delete;
+  Tessellator(const Tessellator&) = delete;
+  Tessellator(Logger logger, float tolerance, float cullLeafThreshold, float cullGeometryThreshold, unsigned maxSamples);
 
-  void box(struct Geometry* geo, float scale);
+  Tessellator& operator=(const Tessellator&) = delete;
 
-  void rectangularTorus(struct Geometry* geo, float scale);
+  ~Tessellator();
 
-  void circularTorus(struct Geometry* geo, float scale);
+  void init(class Store& store) override;
 
-  void snout(struct Geometry* geo, float scale);
+  void beginGroup(struct Group* group)  override;
 
-  void cylinder(struct Geometry* geo, float scale);
+  void EndGroup() override;
 
-  void facetGroup(struct Geometry* geo, float scale);
+  void geometry(struct Geometry* geometry) override;
 
-  void sphereBasedShape(struct Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale);
+  void endModel() override;
 
+
+  unsigned leafCulled = 0;
+  unsigned geometryCulled = 0;
+  unsigned tessellated = 0;
+  unsigned processed = 0;
+
+
+protected:
+  struct CacheItem
+  {
+    struct CacheItem* next;
+    struct Geometry* src;
+    struct Triangulation* tri;
+  };
+
+  struct StackItem
+  {
+    float groupError;   // Error induced if group is omitted.
+  };
+
+  float tolerance = 0.f;
+  unsigned maxSamples = 100;
+  float cullLeafThresholdScaled = 0.f / 0.f;
+  float cullGeometryThresholdScaled = 0.f / 0.f;
+  Arena arena;
+  TriangulationFactory* factory = nullptr;
+  Logger logger;
+
+  Store * store = nullptr;
+
+  struct {
+    Map map;
+    CacheItem* items;
+    unsigned fill;
+  } cache;
+
+  StackItem* stack = nullptr;
+  unsigned stack_p = 0;
+
+  Triangulation* getTriangulation(Geometry* geo);
+
+  virtual void process(Geometry* geometry) {}
 };

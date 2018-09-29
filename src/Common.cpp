@@ -11,15 +11,6 @@ namespace {
     return x != 0 && (x & (x - 1)) == 0;
   }
 
-  uint64_t fnv_1a(const char* bytes, size_t l)
-  {
-    uint64_t hash = 0xcbf29ce484222325;
-    for (size_t i = 0; i < l; i++) {
-      hash = hash ^ bytes[i];
-      hash = hash * 0x100000001B3;
-    }
-    return hash;
-  }
 
   uint64_t hash_uint64(uint64_t x)
   {
@@ -29,6 +20,17 @@ namespace {
   }
 
 }
+
+uint64_t fnv_1a(const char* bytes, size_t l)
+{
+  uint64_t hash = 0xcbf29ce484222325;
+  for (size_t i = 0; i < l; i++) {
+    hash = hash ^ bytes[i];
+    hash = hash * 0x100000001B3;
+  }
+  return hash;
+}
+
 
 void* xmalloc(size_t size)
 {
@@ -55,6 +57,12 @@ void* xrealloc(void* ptr, size_t size)
 
   fprintf(stderr, "Failed to allocate memory.");
   exit(-1);
+}
+
+
+void BufferBase::free()
+{
+  if (ptr) ::free(ptr - sizeof(size_t));
 }
 
 void* Arena::alloc(size_t bytes)
@@ -116,8 +124,8 @@ void Arena::clear()
 
 Map::~Map()
 {
-  if (keys) free(keys);
-  if (vals) free(vals);
+  free(keys);
+  free(vals);
 }
 
 void Map::clear()
@@ -168,7 +176,7 @@ void Map::insert(uint64_t key, uint64_t value)
     fill = 0;
     capacity = capacity ? 2 * capacity : 16;
     keys = (uint64_t*)xcalloc(capacity, sizeof(uint64_t));
-    vals = (uint64_t*)malloc(capacity * sizeof(uint64_t));
+    vals = (uint64_t*)xmalloc(capacity * sizeof(uint64_t));
 
     unsigned g = 0;
     for (size_t i = 0; i < old_capacity; i++) {

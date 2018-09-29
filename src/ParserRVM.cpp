@@ -384,6 +384,8 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
   ctx.group_stack.pop_back();
   ctx.group_stack.pop_back();
 
+  store->updateCounts();
+
   return true;
 }
 

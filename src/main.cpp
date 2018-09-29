@@ -218,7 +218,11 @@ int main(int argc, char** argv)
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
 
-    Tessellator tessellator(logger, tolerance, tolerance*cullScale);
+    float cullLeafThreshold = -1.f;
+    float cullGeometryThreshold = -1.f;
+    unsigned maxSamples = 100;
+
+    Tessellator tessellator(logger, tolerance, cullLeafThreshold, cullGeometryThreshold, maxSamples);
     store->apply(&tessellator);
   }
 
@@ -243,9 +247,9 @@ int main(int argc, char** argv)
   }
 
   if (do_flatten) {
-    store->apply(&flatten);
+    auto * storeNew = flatten.run();
     delete store;
-    store = flatten.result();
+    store = storeNew;
   }
 
 

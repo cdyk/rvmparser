@@ -1,8 +1,9 @@
 #pragma once
-#include <cstdlib>
 #include <cstdint>
 
 class Store;
+
+struct Triangulation;
 
 typedef void(*Logger)(unsigned level, const char* msg, ...);
 
@@ -12,9 +13,15 @@ void* xcalloc(size_t count, size_t size);
 
 void* xrealloc(void* ptr, size_t size);
 
+uint64_t fnv_1a(const char* bytes, size_t l);
+
 
 struct Arena
 {
+  Arena() = default;
+  Arena(const Arena&) = delete;
+  Arena& operator=(const Arena&) = delete;
+
   ~Arena() { clear(); }
 
   uint8_t * first = nullptr;
@@ -34,14 +41,16 @@ struct BufferBase
 protected:
   char* ptr = nullptr;
 
-  ~BufferBase() { if (ptr) free(ptr - sizeof(size_t)); }
+  ~BufferBase() { free(); }
+
+  void free();
 
   void _accommodate(size_t typeSize, size_t count)
   {
     if (count == 0) return;
     if (ptr && count <= ((size_t*)ptr)[-1]) return;
 
-    if (ptr) free(ptr - sizeof(size_t));
+    free();
 
     ptr = (char*)xmalloc(typeSize * count + sizeof(size_t)) + sizeof(size_t);
     ((size_t*)ptr)[-1] = count;
@@ -62,6 +71,11 @@ struct Buffer : public BufferBase
 
 struct Map
 {
+  Map() = default;
+  Map(const Map&) = delete;
+  Map& operator=(const Map&) = delete;
+
+
   ~Map();
 
   uint64_t* keys = nullptr;
@@ -84,9 +98,10 @@ struct StringInterning
 
   const char* intern(const char* a, const char* b);
   const char* intern(const char* str);  // null terminanted
-
-
 };
+
+uint64_t fnv_1a(const char* bytes, size_t l);
+uint64_t fnv_1a(const char* bytes, size_t l);
 
 
 void connect(Store* store, Logger logger);

@@ -22,12 +22,12 @@ namespace {
     return false;
   }
 
-  void wireBoundingBox(FILE* out, unsigned& off_v, const float* bbox)
+  void wireBoundingBox(FILE* out, unsigned& off_v, const BBox3f& bbox)
   {
     for (unsigned i = 0; i < 8; i++) {
-      float px = (i & 1) ? bbox[0] : bbox[3];
-      float py = (i & 2) ? bbox[1] : bbox[4];
-      float pz = (i & 4) ? bbox[2] : bbox[5];
+      float px = (i & 1) ? bbox.min[0] : bbox.min[3];
+      float py = (i & 2) ? bbox.min[1] : bbox.min[4];
+      float pz = (i & 4) ? bbox.min[2] : bbox.min[5];
       fprintf(out, "v %f %f %f\n", px, py, pz);
     }
     fprintf(out, "l %d %d %d %d %d\n",
@@ -154,7 +154,7 @@ void ExportObj::beginGroup(Group* group)
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 
   fprintf(out, "o %s\n", group->group.name);
-  if (groupBoundingBoxes && group->group.bbox) {
+  if (groupBoundingBoxes && !isEmpty(group->group.bbox)) {
     fprintf(out, "usemtl group_bbox\n");
     wireBoundingBox(out, off_v, group->group.bbox);
   }

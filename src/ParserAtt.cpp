@@ -242,9 +242,11 @@ bool parseAtt(class Store* store, Logger logger, const void * ptr, size_t size, 
 
 
   free(ctx.stack);
+  store->updateCounts();
   return true;
 
 error:
   free(ctx.stack);
+  store->updateCounts();
   return false;
 }

@@ -25,6 +25,7 @@ struct Triangulation {
   uint32_t* indices = 0;
   uint32_t vertices_n = 0;
   uint32_t triangles_n = 0;
+  int32_t id = 0;
   float error = 0.f;
 };
 
@@ -128,6 +129,22 @@ struct ListHeader
 {
   T* first;
   T* last;
+
+  void clear()
+  {
+    first = last = nullptr;
+  }
+
+  void insert(T* item)
+  {
+    if (first == nullptr) {
+      first = last = item;
+    }
+    else {
+      last->next = item;
+      last = item;
+    }
+  }
 };
 
 struct Attribute
@@ -140,6 +157,8 @@ struct Attribute
 
 struct Group
 {
+  Group() {}
+
   enum struct Kind
   {
     File,
@@ -166,10 +185,12 @@ struct Group
     } model;
     struct {
       ListHeader<Geometry> geometries;
-      float* bbox;
       const char* name;
+      BBox3f bbox;
       uint32_t material;
+      int32_t id = 0;
       float translation[3];
+      uint32_t clientTag;     // For use by passes to stuff temporary info
     } group;
   };
 
@@ -214,7 +235,12 @@ public:
 
   void apply(StoreVisitor* visitor);
 
+  unsigned groupCount_() const { return numGroups; }
   unsigned groupCountAllocated() const { return numGroupsAllocated; }
+  unsigned leafCount() const { return numLeaves; }
+  unsigned emptyLeafCount() const { return numEmptyLeaves; }
+  unsigned nonEmptyNonLeafCount() const { return numNonEmptyNonLeaves; }
+  unsigned geometryCount_() const { return numGeometries; }
   unsigned geometryCountAllocated() const { return numGeometriesAllocated; }
 
   const char* errorString() const { return error_str; }
@@ -230,11 +256,23 @@ public:
   struct Connectivity* conn = nullptr;
 
   StringInterning strings;
+
+  void updateCounts();
+
+  void forwardGroupIdToGeometries();
+
 private:
+  unsigned numGroups = 0;
   unsigned numGroupsAllocated = 0;
+  unsigned numLeaves = 0;
+  unsigned numEmptyLeaves = 0;
+  unsigned numNonEmptyNonLeaves = 0;
+  unsigned numGeometries = 0;
   unsigned numGeometriesAllocated = 0;
 
   const char* error_str = nullptr;
+
+  void updateCountsRecurse(Group* group);
 
   void apply(StoreVisitor* visitor, Group* group);
 
