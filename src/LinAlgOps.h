@@ -94,9 +94,13 @@ inline void engulf(BBox3f& target, const BBox3f& other)
   target.max = max(target.max, other.max);
 }
 
+BBox3f transform(const Mat3x4f& M, const BBox3f& bbox);
+
 inline float diagonal(const BBox3f& b) { return distance(b.min, b.max); }
 
 inline bool isEmpty(const BBox3f& b) { return b.max.x < b.min.x; }
+
+inline bool isNotEmpty(const BBox3f& b) { return b.min.x <= b.max.x; }
 
 inline float maxSideLength(const BBox3f& b)
 {
@@ -118,9 +122,9 @@ inline bool isStrictlyInside(const BBox3f& a, const BBox3f& b)
 
 inline bool isNotOverlapping(const BBox3f& a, const BBox3f& b)
 {
-  auto lx = b.min.x < a.min.x;
-  auto ly = b.min.y < a.min.y;
-  auto lz = b.min.z < a.min.z;
+  auto lx = b.max.x < a.min.x;
+  auto ly = b.max.y < a.min.y;
+  auto lz = b.max.z < a.min.z;
   auto ux = a.max.x < b.min.x;
   auto uy = a.max.y < b.min.y;
   auto uz = a.max.z < b.min.z;

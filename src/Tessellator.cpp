@@ -80,9 +80,8 @@ void Tessellator::endModel()
 void Tessellator::beginGroup(struct Group* group)
 {
   StackItem item = { 0 };
-  auto & bbox = group->group.bbox;
-  if (!isEmpty(bbox)) {
-    item.groupError = diagonal(bbox);
+  if (!isEmpty(group->group.bboxWorld)) {
+    item.groupError = diagonal(group->group.bboxWorld);
   }
   stack[stack_p++] = item;
 }
@@ -113,7 +112,7 @@ void Tessellator::geometry(Geometry* geo)
     return;
   }
   else {
-    auto scaledDiagonal = scale * diagonal(geo->bbox);
+    auto scaledDiagonal = diagonal(geo->bboxWorld);
     if (scaledDiagonal < cullGeometryThresholdScaled) {
       geo->triangulation = store->arenaTriangulation.alloc<Triangulation>();
       geo->triangulation->error = scaledDiagonal;

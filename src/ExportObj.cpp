@@ -154,9 +154,9 @@ void ExportObj::beginGroup(Group* group)
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 
   fprintf(out, "o %s\n", group->group.name);
-  if (groupBoundingBoxes && !isEmpty(group->group.bbox)) {
+  if (groupBoundingBoxes && !isEmpty(group->group.bboxWorld)) {
     fprintf(out, "usemtl group_bbox\n");
-    wireBoundingBox(out, off_v, group->group.bbox);
+    wireBoundingBox(out, off_v, group->group.bboxWorld);
   }
 
 }

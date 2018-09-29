@@ -10,6 +10,8 @@
 
 #include <cassert>
 
+#include "LinAlgOps.h"
+
 namespace {
 
   struct Context
@@ -146,8 +148,9 @@ namespace {
       p = read_float32_be(g->M_3x4.data[i], p, e);
     }
     for (unsigned i = 0; i < 6; i++) {
-      p = read_float32_be(g->bbox.data[i], p, e);
+      p = read_float32_be(g->bboxLocal.data[i], p, e);
     }
+    g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
 
     switch (kind) {
     case 1:

@@ -90,7 +90,8 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
   auto * dst = newGeometry(parent);
   dst->kind = src->kind;
   dst->M_3x4 = src->M_3x4;
-  dst->bbox = src->bbox;
+  dst->bboxLocal = src->bboxLocal;
+  dst->bboxWorld = src->bboxWorld;
   dst->id = src->id;
   dst->sampleStartAngle = src->sampleStartAngle;
   switch (dst->kind) {
@@ -227,7 +228,7 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
     break;
   case Group::Kind::Group:
     dst->group.name = strings.intern(src->group.name);
-    dst->group.bbox = src->group.bbox;
+    dst->group.bboxWorld = src->group.bboxWorld;
     dst->group.material = src->group.material;
     dst->group.id = src->group.id;
     for (unsigned k = 0; k < 3; k++) dst->group.translation[k] = src->group.translation[k];

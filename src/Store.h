@@ -62,13 +62,15 @@ struct Geometry
 
   Connection* connections[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
   const char* colorName = nullptr;
+  void * clientData = nullptr;
   uint32_t color = 0x202020u;
 
   Kind kind;
   unsigned id;
 
   Mat3x4f M_3x4;
-  BBox3f bbox;
+  BBox3f bboxLocal;
+  BBox3f bboxWorld;
   float sampleStartAngle = 0.f;
   union {
     struct {
@@ -166,11 +168,23 @@ struct Group
     Group
   };
 
+  enum struct Flags
+  {
+    None = 0,
+    ClientFlagStart = 1
+  };
+
   Group* next = nullptr;
   ListHeader<Group> groups;
   ListHeader<Attribute> attributes;
 
   Kind kind = Kind::Group;
+  Flags flags = Flags::None;
+
+  void setFlag(Flags flag) { flags = (Flags)((unsigned)flags | (unsigned)flag); }
+  void unsetFlag(Flags flag) { flags = (Flags)((unsigned)flags & (~(unsigned)flag)); }
+  bool hasFlag(Flags flag) const { return ((unsigned)flags & (unsigned)flag) != 0; }
+
   union {
     struct {
       const char* info;
@@ -186,7 +200,7 @@ struct Group
     struct {
       ListHeader<Geometry> geometries;
       const char* name;
-      BBox3f bbox;
+      BBox3f bboxWorld;
       uint32_t material;
       int32_t id = 0;
       float translation[3];
