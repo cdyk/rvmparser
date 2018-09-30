@@ -2,6 +2,7 @@
 
 #include "ExportJson.h"
 #include "Store.h"
+#include "LinAlgOps.h"
 
 namespace {
 
@@ -70,6 +71,16 @@ void ExportJson::beginGroup(struct Group* group)
   fprintf(json, "{ \"name\": \"%s\",\n", group->group.name);
   indent += 2;
   doIndent(json, indent); fprintf(json, "\"material\": %u,\n", group->group.material);
+  if (isNotEmpty(group->group.bboxWorld)) {
+    doIndent(json, indent); fprintf(json, "\"bbox\": [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f],\n",
+                                    group->group.bboxWorld.min.x,
+                                    group->group.bboxWorld.min.y,
+                                    group->group.bboxWorld.min.z,
+                                    group->group.bboxWorld.max.x,
+                                    group->group.bboxWorld.max.y,
+                                    group->group.bboxWorld.max.z);
+  }
+
 }
 
 void ExportJson::EndGroup()

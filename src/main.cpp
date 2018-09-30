@@ -214,10 +214,12 @@ int main(int argc, char** argv)
     align(store, logger);
   }
 
-  if (rv == 0 && should_tessellate) {
+  if (rv == 0 && (should_tessellate || !output_json.empty())) {
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
+  }
 
+  if (rv == 0 && should_tessellate ) {
     float cullLeafThreshold = -1.f;
     float cullGeometryThreshold = -1.f;
     unsigned maxSamples = 100;
