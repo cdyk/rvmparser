@@ -10,6 +10,8 @@
 
 #include <cassert>
 
+#include "LinAlgOps.h"
+
 namespace {
 
   struct Context
@@ -143,11 +145,12 @@ namespace {
     auto * g = ctx->store->newGeometry(ctx->group_stack.back());
 
     for (unsigned i = 0; i < 12; i++) {
-      p = read_float32_be(g->M_3x4[i], p, e);
+      p = read_float32_be(g->M_3x4.data[i], p, e);
     }
     for (unsigned i = 0; i < 6; i++) {
-      p = read_float32_be(g->bbox[i], p, e);
+      p = read_float32_be(g->bboxLocal.data[i], p, e);
     }
+    g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
 
     switch (kind) {
     case 1:
@@ -383,6 +386,8 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
   assert(ctx.group_stack.size() == 2);
   ctx.group_stack.pop_back();
   ctx.group_stack.pop_back();
+
+  store->updateCounts();
 
   return true;
 }

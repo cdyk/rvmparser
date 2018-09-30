@@ -8,7 +8,6 @@
 #include <algorithm>
 
 #include "Parser.h"
-#include "FindConnections.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
 #include "ExportJson.h"
@@ -205,25 +204,27 @@ int main(int argc, char** argv)
     }
   }
 
+  //if (rv == 0) {
+  //  Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
+  //  store->apply(&colorizer);
+  //}
+
   if (rv == 0) {
-    Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
-    store->apply(&colorizer);
+    connect(store, logger);
+    align(store, logger);
   }
 
   if (rv == 0 && (should_tessellate || !output_json.empty())) {
     AddGroupBBox addGroupBBox;
     store->apply(&addGroupBBox);
-
-    Tessellator tessellator(tolerance, tolerance*cullScale);
-    store->apply(&tessellator);
   }
 
-
   if (rv == 0 && should_tessellate ) {
-    AddGroupBBox addGroupBBox;
-    store->apply(&addGroupBBox);
+    float cullLeafThreshold = -1.f;
+    float cullGeometryThreshold = -1.f;
+    unsigned maxSamples = 100;
 
-    Tessellator tessellator(tolerance, tolerance*cullScale);
+    Tessellator tessellator(logger, tolerance, cullLeafThreshold, cullGeometryThreshold, maxSamples);
     store->apply(&tessellator);
   }
 
@@ -248,9 +249,9 @@ int main(int argc, char** argv)
   }
 
   if (do_flatten) {
-    store->apply(&flatten);
+    auto * storeNew = flatten.run();
     delete store;
-    store = flatten.result();
+    store = storeNew;
   }
 
 

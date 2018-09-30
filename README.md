@@ -4,6 +4,9 @@ Code to work with AVEVA PDMS RVM files. Written completely from scratch, intende
 
 Includes a sample application that:
 - Reads AVEVA PDMS binary RVM and attribute files.
+- Tries to match adjacent geometries to:
+  - Avoid adding internal caps between adjacent shapes.
+  - Align circumferential sample points between adjacent shapes.
 - Triangulate primitive shapes with a prescribed error tolerance.
 - Optionally merges groups using a prescribed list of groups.
 - Exports geometry as Wavefront OBJ files

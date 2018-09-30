@@ -4,6 +4,7 @@
 #include "FindConnections.h"
 #include "AddStats.h"
 #include "Store.h"
+#if 0
 
 void FindConnections::addAnchor(Geometry* geo, float* n, float* p, unsigned o)
 {
@@ -73,7 +74,7 @@ void FindConnections::init(class Store& store)
 
 void FindConnections::geometry(struct Geometry* geo)
 {
-  nodes[geo->index] = geo;
+  nodes[geo->id] = geo;
 
   switch (geo->kind) {
   case Geometry::Kind::Pyramid: {
@@ -384,7 +385,7 @@ void FindConnections::findConnectedComponents()
       g->next_comp = comp->first_geo;
       comp->first_geo = g;
 
-      visited[g->index] = 1;
+      visited[g->id] = 1;
 
       const auto & M = g->M_3x4;
       for (unsigned k = 0; k < 8; k++) {
@@ -404,7 +405,7 @@ void FindConnections::findConnectedComponents()
       }
 
       for (unsigned k = 0; k < 6; k++) {
-        if (g->conn_geo[k] && (visited[g->conn_geo[k]->index] == 0)) stack[stack_i++] = g->conn_geo[k];
+        if (g->conn_geo[k] && (visited[g->conn_geo[k]->id] == 0)) stack[stack_i++] = g->conn_geo[k];
       }
     }
 
@@ -419,3 +420,4 @@ void FindConnections::findConnectedComponents()
 
 
 }
+#endif

@@ -24,10 +24,9 @@ namespace {
 
 Store::Store()
 {
-  roots.first = nullptr;
-  roots.last = nullptr;
-  comps.first = nullptr;
-  comps.last = nullptr;
+  roots.clear();
+  debugLines.clear();
+  connections.clear();
   setErrorString("");
 }
 
@@ -54,11 +53,23 @@ Group* Store::findRootGroup(const char* name)
 }
 
 
-Composite* Store::newComposite()
+void Store::addDebugLine(float* a, float* b, uint32_t color)
 {
-  auto * comp = arena.alloc<Composite>();
-  insert(comps, comp);
-  return comp;
+  auto line = arena.alloc<DebugLine>();
+  for (unsigned k = 0; k < 3; k++) {
+    line->a[k] = a[k];
+    line->b[k] = b[k];
+  }
+  line->color = color;
+  insert(debugLines, line);
+}
+
+
+Connection* Store::newConnection()
+{
+  auto * connection = arena.alloc<Connection>();
+  insert(connections, connection);
+  return connection;
 }
 
 Geometry* Store::newGeometry(Group* parent)
@@ -68,7 +79,7 @@ Geometry* Store::newGeometry(Group* parent)
 
   auto * geo =  arena.alloc<Geometry>();
   geo->next = nullptr;
-  geo->index = geo_n++;
+  geo->id = numGeometriesAllocated++;
 
   insert(parent->group.geometries, geo);
   return geo;
@@ -78,8 +89,11 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
 {
   auto * dst = newGeometry(parent);
   dst->kind = src->kind;
-  std::memcpy(dst->M_3x4, src->M_3x4, sizeof(src->M_3x4));
-  std::memcpy(dst->bbox, src->bbox, sizeof(src->bbox));
+  dst->M_3x4 = src->M_3x4;
+  dst->bboxLocal = src->bboxLocal;
+  dst->bboxWorld = src->bboxWorld;
+  dst->id = src->id;
+  dst->sampleStartAngle = src->sampleStartAngle;
   switch (dst->kind) {
     case Geometry::Kind::Pyramid:
     case Geometry::Kind::Box:
@@ -126,6 +140,7 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
     const auto * stri = src->triangulation;
     auto * dtri = dst->triangulation;
     dtri->error = stri->error;
+    dtri->id = stri->id;
     if (stri->vertices_n) {
       dtri->vertices_n = stri->vertices_n;
       dtri->vertices = (float*)arena.dup(stri->vertices, 3 * sizeof(float) * dtri->vertices_n);
@@ -153,10 +168,8 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
     insert(parent->groups, grp);
   }
 
-  grp_n++;
-
   grp->kind = kind;
-  grp_n++;
+  numGroupsAllocated++;
   return grp;
 }
 
@@ -215,12 +228,10 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
     break;
   case Group::Kind::Group:
     dst->group.name = strings.intern(src->group.name);
+    dst->group.bboxWorld = src->group.bboxWorld;
     dst->group.material = src->group.material;
+    dst->group.id = src->group.id;
     for (unsigned k = 0; k < 3; k++) dst->group.translation[k] = src->group.translation[k];
-
-    if (src->group.bbox) {
-      dst->group.bbox = (float*)arena.dup(src->group.bbox, sizeof(float) * 6);
-    }
     break;
   default:
     assert(false && "Group has invalid kind.");
@@ -290,12 +301,73 @@ void Store::apply(StoreVisitor* visitor)
 
       visitor->endFile();
     }
+  } while (visitor->done() == false);
+}
 
-    for (auto * comp = comps.first; comp != nullptr; comp = comp->next) {
-      visitor->composite(comp);
+void Store::updateCountsRecurse(Group* group)
+{
+
+  for (auto * child = group->groups.first; child != nullptr; child = child->next) {
+    updateCountsRecurse(child);
+  }
+
+  numGroups++;
+  if (group->groups.first == nullptr) {
+    numLeaves++;
+  }
+
+  if (group->kind == Group::Kind::Group) {
+    if (group->groups.first == nullptr && group->group.geometries.first == nullptr) {
+      numEmptyLeaves++;
     }
 
-  } while (visitor->done() == false);
+    if (group->groups.first != nullptr && group->group.geometries.first != nullptr) {
+      numNonEmptyNonLeaves++;
+    }
 
+    for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
+      numGeometries++;
+    }
+  }
 
 }
+
+void Store::updateCounts()
+{
+  numGroups = 0;
+  numLeaves = 0;
+  numEmptyLeaves = 0;
+  numNonEmptyNonLeaves = 0;
+  numGeometries = 0;
+  for (auto * root = roots.first; root != nullptr; root = root->next) {
+    updateCountsRecurse(root);
+  }
+
+}
+
+namespace {
+
+  void storeGroupIndexInGeometriesRecurse(Group* group)
+  {
+    for (auto * child = group->groups.first; child != nullptr; child = child->next) {
+      storeGroupIndexInGeometriesRecurse(child);
+    }
+    if (group->kind == Group::Kind::Group) {
+      for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
+        geo->id = group->group.id;
+        if (geo->triangulation) {
+          geo->triangulation->id = group->group.id;
+        }
+      }
+    }
+  }
+}
+
+
+void Store::forwardGroupIdToGeometries()
+{
+  for (auto * root = roots.first; root != nullptr; root = root->next) {
+    storeGroupIndexInGeometriesRecurse(root);
+  }
+}
+

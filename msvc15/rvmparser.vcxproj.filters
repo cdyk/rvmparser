@@ -76,6 +76,12 @@
     <ClInclude Include="..\src\ChunkTiny.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\LinAlg.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\LinAlgOps.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -142,6 +148,18 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ChunkTiny.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Connect.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\LinAlgOps.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Align.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\TriangulationFactory.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

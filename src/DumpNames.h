@@ -23,8 +23,6 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
-  void composite(struct Composite* composite) override;
-
   void setOutput(FILE* o) { out = o; }
 
 private:

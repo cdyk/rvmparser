@@ -160,19 +160,23 @@
     <ClCompile Include="..\libs\libtess2\Source\tess.c" />
     <ClCompile Include="..\src\AddGroupBBox.cpp" />
     <ClCompile Include="..\src\AddStats.cpp" />
+    <ClCompile Include="..\src\Align.cpp" />
     <ClCompile Include="..\src\ChunkTiny.cpp" />
     <ClCompile Include="..\src\Colorizer.cpp" />
     <ClCompile Include="..\src\Common.cpp" />
+    <ClCompile Include="..\src\Connect.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
+    <ClCompile Include="..\src\LinAlgOps.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\ParserAtt.cpp" />
     <ClCompile Include="..\src\ParserRVM.cpp" />
     <ClCompile Include="..\src\Store.cpp" />
     <ClCompile Include="..\src\Tessellator.cpp" />
+    <ClCompile Include="..\src\TriangulationFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libs\libtess2\Include\tesselator.h" />
@@ -193,6 +197,8 @@
     <ClInclude Include="..\src\ExportObj.h" />
     <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />
+    <ClInclude Include="..\src\LinAlg.h" />
+    <ClInclude Include="..\src\LinAlgOps.h" />
     <ClInclude Include="..\src\Parser.h" />
     <ClInclude Include="..\src\StoreVisitor.h" />
     <ClInclude Include="..\src\Store.h" />

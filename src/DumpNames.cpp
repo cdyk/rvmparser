@@ -10,7 +10,7 @@ void DumpNames::init(class Store& store)
   assert(stack == nullptr);
   assert(stack_p == 0);
   arena = new Arena();
-  stack = (const char**)arena->alloc(sizeof(const char*)*store.groupCount());
+  stack = (const char**)arena->alloc(sizeof(const char*)*store.groupCountAllocated());
 };
 
 bool DumpNames::done()
@@ -104,10 +104,5 @@ void DumpNames::geometry(struct Geometry* geometry)
   else {
     geometries++;
   }
-}
-
-void DumpNames::composite(struct Composite* composite)
-{
-
 }
 

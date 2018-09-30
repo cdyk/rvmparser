@@ -3,6 +3,8 @@
 
 class Store;
 
+struct Triangulation;
+
 typedef void(*Logger)(unsigned level, const char* msg, ...);
 
 void* xmalloc(size_t size);
@@ -11,9 +13,15 @@ void* xcalloc(size_t count, size_t size);
 
 void* xrealloc(void* ptr, size_t size);
 
+uint64_t fnv_1a(const char* bytes, size_t l);
+
 
 struct Arena
 {
+  Arena() = default;
+  Arena(const Arena&) = delete;
+  Arena& operator=(const Arena&) = delete;
+
   ~Arena() { clear(); }
 
   uint8_t * first = nullptr;
@@ -28,8 +36,46 @@ struct Arena
   template<typename T> T * alloc() { return new(alloc(sizeof(T))) T(); }
 };
 
+struct BufferBase
+{
+protected:
+  char* ptr = nullptr;
+
+  ~BufferBase() { free(); }
+
+  void free();
+
+  void _accommodate(size_t typeSize, size_t count)
+  {
+    if (count == 0) return;
+    if (ptr && count <= ((size_t*)ptr)[-1]) return;
+
+    free();
+
+    ptr = (char*)xmalloc(typeSize * count + sizeof(size_t)) + sizeof(size_t);
+    ((size_t*)ptr)[-1] = count;
+  }
+
+};
+
+template<typename T>
+struct Buffer : public BufferBase
+{
+  T* data() { return (T*)ptr; }
+  T& operator[](size_t ix) { return data()[ix]; }
+  const T* data() const { return (T*)ptr; }
+  const T& operator[](size_t ix) const { return data()[ix]; }
+  void accommodate(size_t count) { _accommodate(sizeof(T), count); }
+};
+
+
 struct Map
 {
+  Map() = default;
+  Map(const Map&) = delete;
+  Map& operator=(const Map&) = delete;
+
+
   ~Map();
 
   uint64_t* keys = nullptr;
@@ -52,6 +98,11 @@ struct StringInterning
 
   const char* intern(const char* a, const char* b);
   const char* intern(const char* str);  // null terminanted
-
-
 };
+
+uint64_t fnv_1a(const char* bytes, size_t l);
+uint64_t fnv_1a(const char* bytes, size_t l);
+
+
+void connect(Store* store, Logger logger);
+void align(Store* store, Logger logger);
