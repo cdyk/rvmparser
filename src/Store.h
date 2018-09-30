@@ -31,12 +31,23 @@ struct Triangulation {
 
 struct Connection
 {
+  enum struct Flags : uint8_t {
+    None = 0,
+    HasCircularSide =     1<<0,
+    HasRectangularSide =  1<<1
+  };
+
   Connection* next = nullptr;
   Geometry* geo[2] = { nullptr, nullptr };
   unsigned offset[2];
   Vec3f p;
   Vec3f d;
   unsigned temp;
+  Flags flags = Flags::None;
+
+  void setFlag(Flags flag) { flags = (Flags)((uint8_t)flags | (uint8_t)flag); }
+  bool hasFlag(Flags flag) { return (uint8_t)flags & (uint8_t)flag; }
+
 };
 
 

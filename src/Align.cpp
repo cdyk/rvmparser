@@ -16,11 +16,12 @@ namespace {
   struct Context
   {
     Buffer<QueueItem> queue;
-    Logger logger;
-    Store* store;
+    Logger logger = nullptr;
+    Store* store = nullptr;
     unsigned front = 0;
     unsigned back = 0;
     unsigned connectedComponents = 0;
+    unsigned circularConnections = 0;
     unsigned connections = 0;
 
   };
@@ -102,10 +103,10 @@ namespace {
       }
     }
 
-
     for (unsigned k = 0; k < 2; k++) {
-      if (geo->connections[k] && geo->connections[k]->temp == 0) {
-        enqueue(context, geo, geo->connections[k], upNewWorld[k]);
+      auto * con = geo->connections[k];
+      if (con && !con->hasFlag(Connection::Flags::HasRectangularSide) && con->temp == 0) {
+        enqueue(context, geo, con, upNewWorld[k]);
       }
     }
 
@@ -159,8 +160,9 @@ namespace {
     }
 
     for (unsigned k = 0; k < 2; k++) {
-      if (geo->connections[k] && geo->connections[k]->temp == 0) {
-        enqueue(context, geo, geo->connections[k], upNewWorld);
+      auto * con = geo->connections[k];
+      if (con && !con->hasFlag(Connection::Flags::HasRectangularSide) && con->temp == 0) {
+        enqueue(context, geo, con, upNewWorld);
       }
     }
 
@@ -175,6 +177,21 @@ namespace {
       if (item.from != item.connection->geo[i]) {
         auto * geo = item.connection->geo[i];
         switch (geo->kind) {
+
+        case Geometry::Kind::Pyramid:
+        case Geometry::Kind::Box:
+        case Geometry::Kind::RectangularTorus:
+        case Geometry::Kind::Sphere:
+        case Geometry::Kind::Line:
+        case Geometry::Kind::FacetGroup:
+          assert(false && "Got geometry with non-circular intersection.");
+          break;
+
+        case Geometry::Kind::Snout:
+        case Geometry::Kind::EllipticalDish:
+        case Geometry::Kind::SphericalDish:
+          break;
+
         case Geometry::Kind::CircularTorus:
           handleCircularTorus(context, geo, item.connection->offset[i], item.upWorld);
           break;
@@ -184,6 +201,7 @@ namespace {
           break;
 
         default:
+          assert(false && "Illegal kind");
           break;
         }
       }
@@ -200,13 +218,17 @@ void align(Store* store, Logger logger)
   auto time0 = std::chrono::high_resolution_clock::now();
   for (auto * connection = store->getFirstConnection(); connection != nullptr; connection = connection->next) {
     connection->temp = 0;
+
+    if (connection->flags == Connection::Flags::HasCircularSide) {
+      context.circularConnections++;
+    }
     context.connections++;
   }
 
 
   context.queue.accommodate(context.connections);
   for (auto * connection = store->getFirstConnection(); connection != nullptr; connection = connection->next) {
-    if (connection->temp) continue;
+    if (connection->temp || connection->hasFlag(Connection::Flags::HasRectangularSide)) continue;
 
     // Create an arbitrary vector in plane of intersection as seed.
     const auto & d = connection->d;
@@ -233,5 +255,5 @@ void align(Store* store, Logger logger)
   auto time1 = std::chrono::high_resolution_clock::now();
   auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
 
-  logger(0, "%d connected components in %d connections (%lldms).", context.connectedComponents, context.connections, e0);
+  logger(0, "%d connected components in %d circular connections (%lldms).", context.connectedComponents, context.circularConnections, e0);
 }

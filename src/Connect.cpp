@@ -8,61 +8,14 @@
 
 namespace {
 
-  inline float dot3(const float *a, const float *b)
-  {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  }
-
-  inline float length3(const float* v)
-  {
-    return std::sqrt(dot3(v, v));
-  }
-
-  inline float distanceSquared3(const float *a, const float *b)
-  {
-    auto dx = b[0] - a[0];
-    auto dy = b[1] - a[1];
-    auto dz = b[2] - a[2];
-    return dx * dx + dy * dy + dz * dz;
-  }
-
-  inline void add3(float* dst, const float *a, const float *b)
-  {
-    for (unsigned k = 0; k < 3; k++) dst[k] = a[k] + b[k];
-  }
-
-  inline void madd3(float* dst, const float *a, const float *b, const float c)
-  {
-    for (unsigned k = 0; k < 3; k++) dst[k] = a[k] + c*b[k];
-  }
-
-  inline void scale3(float* dst, float s)
-  {
-    for (unsigned k = 0; k < 3; k++) dst[k] *= s;
-  }
-
-  inline void transformPos3(float* r, const float *M, const float *p)
-  {
-    for (unsigned k = 0; k < 3; k++) {
-      r[k] = M[k]*p[0] + M[3+k]*p[1] + M[6+k]*p[2] + M[9+k];
-    }
-  }
-
-  inline void transformDir3(float* r, const float *M, const float *d)
-  {
-    for (unsigned k = 0; k < 3; k++) {
-      r[k] = M[k]*d[0] + M[3+k]*d[1] + M[6+k]*d[2];
-    }
-  }
-
-
   struct Anchor
   {
-    Geometry* geo;
+    Geometry* geo = nullptr;
     Vec3f p;
     Vec3f d;
     unsigned o;
-    unsigned matched = 0;
+    Connection::Flags flags;
+    uint8_t matched = 0;
   };
 
   struct Context
@@ -108,6 +61,9 @@ namespace {
           connection->offset[1] = a[i].o;
           connection->p = a[j].p;
           connection->d = a[j].d;
+          connection->flags = Connection::Flags::None;
+          connection->setFlag(a[i].flags);
+          connection->setFlag(a[j].flags);
 
           a[j].geo->connections[a[j].o] = connection;
           a[i].geo->connections[a[i].o] = connection;
@@ -137,7 +93,7 @@ namespace {
     context->anchors_n = a_n;
   }
 
-  void addAnchor(Context* context, Geometry* geo, const Vec3f& p, const Vec3f& d, unsigned o)
+  void addAnchor(Context* context, Geometry* geo, const Vec3f& p, const Vec3f& d, unsigned o, Connection::Flags flags)
   {
 
     Anchor a;
@@ -145,6 +101,7 @@ namespace {
     a.p = mul(Mat3x4f(geo->M_3x4), p);
     a.d = normalize(mul(Mat3f(geo->M_3x4.data), d));
     a.o = o;
+    a.flags = flags;
 
     assert(context->anchors_n < context->anchors_max);
     context->anchors[context->anchors_n++] = a;
@@ -229,18 +186,15 @@ namespace {
         auto & ct = geo->circularTorus;
         auto c = std::cos(ct.angle);
         auto s = std::sin(ct.angle);
-
-
-
         Vec3f n[2] = { Vec3f(0, -1, 0.f ), Vec3f(-s, c, 0.f ) };
         Vec3f p[2] = { Vec3f(ct.offset, 0, 0.f ), Vec3f(ct.offset * c, ct.offset * s, 0.f ) };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasCircularSide);
         break;
       }
 
       case Geometry::Kind::EllipticalDish:
       case Geometry::Kind::SphericalDish: {
-        addAnchor(context, geo, Vec3f(0, 0, -1), Vec3f(0,0,0), 0);
+        addAnchor(context, geo, Vec3f(0, 0, -1), Vec3f(0,0,0), 0, Connection::Flags::HasCircularSide);
         break;
       }
 
@@ -254,14 +208,14 @@ namespace {
           Vec3f(-0.5f*sn.offset[0], -0.5f*sn.offset[1], -0.5f*sn.height ),
           Vec3f(0.5f*sn.offset[0], 0.5f*sn.offset[1], 0.5f*sn.height )
         };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasCircularSide);
         break;
       }
 
       case Geometry::Kind::Cylinder: {
         Vec3f d[2] = { Vec3f(0, 0, -1.f), Vec3f(0, 0, 1.f) };
         Vec3f p[2] = { Vec3f(0, 0, -0.5f * geo->cylinder.height), Vec3f(0, 0, 0.5f * geo->cylinder.height) };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], d[i], i);
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], d[i], i, Connection::Flags::HasCircularSide);
         break;
       }
 
