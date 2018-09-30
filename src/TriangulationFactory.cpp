@@ -351,7 +351,7 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
     if (doInterfacesMatch(geo, con)) {
       cap[i] = false;
       discardedCaps++;
-      store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+      //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
     }
   }
 
@@ -452,7 +452,7 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
     if (doInterfacesMatch(geo, con)) {
       faces[i] = false;
       discardedCaps++;
-      store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+      //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
     }
 
   }
@@ -521,7 +521,7 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
       if (doInterfacesMatch(geo, con)) {
         cap[i] = false;
         discardedCaps++;
-        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+        //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
       }
     }
   }
@@ -658,7 +658,7 @@ Triangulation* TriangulationFactory::circularTorus(Arena* arena, const Geometry*
         discardedCaps++;
       }
       else {
-        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
+        //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
     }
   }
@@ -791,7 +791,7 @@ Triangulation* TriangulationFactory::snout(Arena* arena, const Geometry* geo, fl
         discardedCaps++;
       }
       else {
-        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
+        //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
     }
   }
@@ -923,7 +923,7 @@ Triangulation* TriangulationFactory::cylinder(Arena* arena, const Geometry* geo,
         discardedCaps++;
       }
       else {
-        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
+        //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
     }
   }

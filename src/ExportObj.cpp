@@ -194,22 +194,22 @@ void ExportObj::geometry(struct Geometry* geometry)
     geometry->colorName = store->strings.intern("default");
   }
 
-  if (geometry->kind == Geometry::Kind::Box) {
-    geometry->colorName = store->strings.intern("blah-red");
-    geometry->color = 0x880088;
-  }
-  if (geometry->kind == Geometry::Kind::Pyramid) {
-    geometry->colorName = store->strings.intern("blah-green");
-    geometry->color = 0x008800;
-  }
-  if (geometry->kind == Geometry::Kind::RectangularTorus) {
-    geometry->colorName = store->strings.intern("blah-blue");
-    geometry->color = 0x000088;
-  }
-  if (geometry->kind == Geometry::Kind::FacetGroup) {
-    geometry->colorName = store->strings.intern("blah-redgg");
-    geometry->color = 0x888800;
-  }
+  //if (geometry->kind == Geometry::Kind::Box) {
+  //  geometry->colorName = store->strings.intern("blah-red");
+  //  geometry->color = 0x880088;
+  //}
+  //if (geometry->kind == Geometry::Kind::Pyramid) {
+  //  geometry->colorName = store->strings.intern("blah-green");
+  //  geometry->color = 0x008800;
+  //}
+  //if (geometry->kind == Geometry::Kind::RectangularTorus) {
+  //  geometry->colorName = store->strings.intern("blah-blue");
+  //  geometry->color = 0x000088;
+  //}
+  //if (geometry->kind == Geometry::Kind::FacetGroup) {
+  //  geometry->colorName = store->strings.intern("blah-redgg");
+  //  geometry->color = 0x888800;
+  //}
 
   if (!definedColors.get(uint64_t(geometry->colorName))) {
     definedColors.insert(uint64_t(geometry->colorName), 1);

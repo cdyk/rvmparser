@@ -115,7 +115,7 @@ namespace {
     a.o = o;
     a.flags = flags;
 
-    context->store->addDebugLine(a.p.data, (a.p + 0.02*a.d).data, 0x008800);
+    //context->store->addDebugLine(a.p.data, (a.p + 0.02*a.d).data, 0x008800);
 
     assert(context->anchors_n < context->anchors_max);
     context->anchors[context->anchors_n++] = a;
