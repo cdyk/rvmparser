@@ -120,20 +120,40 @@ namespace {
       }
       break;
     }
-    case Geometry::Kind::Cylinder:
-      interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * other->cylinder.radius;
-      break;
-    case Geometry::Kind::Snout:
-      interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * (connection->offset[ix] == 0 ? other->snout.radius_b : other->snout.radius_t);
-      break;
     case Geometry::Kind::CircularTorus:
       interface.kind = Interface::Kind::Circular;
       interface.circular.radius = scale * other->circularTorus.radius;
       break;
-    default:
+
+    case Geometry::Kind::EllipticalDish:
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * 0.5f*geo->ellipticalDish.diameter;
+      break;
+
+    case Geometry::Kind::SphericalDish: {
+      float r_circ = 0.5f * geo->sphericalDish.diameter;
+      auto h = geo->sphericalDish.height;
+      float r_sphere = (r_circ*r_circ + h * h) / (2.f*h);
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * r_sphere;
+      break;
+    }
+    case Geometry::Kind::Snout:
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * (connection->offset[ix] == 0 ? other->snout.radius_b : other->snout.radius_t);
+      break;
+    case Geometry::Kind::Cylinder:
+      interface.kind = Interface::Kind::Circular;
+      interface.circular.radius = scale * other->cylinder.radius;
+      break;
+    case Geometry::Kind::Sphere:
+    case Geometry::Kind::Line:
+    case Geometry::Kind::FacetGroup:
       interface.kind = Interface::Kind::Undefined;
+      break;
+
+    default:
+      assert(false && "Unhandled primitive type");
       break;
     }
     return interface;
