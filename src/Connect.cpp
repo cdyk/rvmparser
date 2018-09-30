@@ -166,7 +166,6 @@ namespace {
       }
 
       case Geometry::Kind::Box: {
-#if 0
         auto & box = geo->box;
         Vec3f n[6] = {
             Vec3f(-1,  0,  0), Vec3f(1,  0,  0),
@@ -181,21 +180,18 @@ namespace {
           Vec3f(0.f, ym, 0.f ), Vec3f(0.f, yp, 0.f ),
           Vec3f(0.f, 0.f, zm ), Vec3f(0.f, 0.f, zp )
         };
-        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i);
-#endif
+        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
         break;
       }
 
       case Geometry::Kind::RectangularTorus: {
-#if 0
         auto & rt = geo->rectangularTorus;
         auto c = cos(rt.angle);
         auto s = sin(rt.angle);
         auto m = 0.5f*(rt.inner_radius + rt.outer_radius);
         Vec3f n[2] = { Vec3f( 0, -1, 0.f ), Vec3f( -s, c, 0.f ) };
         Vec3f p[2] = { Vec3f( geo->circularTorus.offset, 0, 0.f ), Vec3f( m * c, m * s, 0.f ) };
-        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i);
-#endif
+        for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
         break;
       }
 

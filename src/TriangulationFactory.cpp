@@ -81,6 +81,45 @@ namespace {
       }
       break;
     }
+    case Geometry::Kind::Box: {
+      auto & box = geo->box;
+      auto xp = 0.5f * box.lengths[0]; auto xm = -xp;
+      auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
+      auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
+      Vec3f V[6][4] = {
+        { Vec3f(xm, ym, zp), Vec3f(xm, yp, zp), Vec3f(xm, yp, zm), Vec3f(xm, ym, zm) },
+        { Vec3f(xp, ym, zm), Vec3f(xp, yp, zm), Vec3f(xp, yp, zp), Vec3f(xp, ym, zp) },
+        { Vec3f(xp, ym, zm), Vec3f(xp, ym, zp), Vec3f(xm, ym, zp), Vec3f(xm, ym, zm) },
+        { Vec3f(xm, yp, zm), Vec3f(xm, yp, zp), Vec3f(xp, yp, zp), Vec3f(xp, yp, zm) },
+        { Vec3f(xm, yp, zm), Vec3f(xp, yp, zm), Vec3f(xp, ym, zm), Vec3f(xm, ym, zm) },
+        { Vec3f(xm, ym, zp), Vec3f(xp, ym, zp), Vec3f(xp, yp, zp), Vec3f(xm, yp, zp) }
+      };
+      for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, V[o][k].data);
+      break;
+    }
+    case Geometry::Kind::RectangularTorus: {
+      auto & tor = geo->rectangularTorus;
+      auto h2 = 0.5f*tor.height;
+      float square[4][2] = {
+        { tor.outer_radius, -h2 },
+        { tor.inner_radius, -h2 },
+        { tor.inner_radius, h2 },
+        { tor.outer_radius, h2 },
+      };
+      if (o == 0) {
+        for (unsigned k = 0; k < 4; k++) {
+          interface.square.p[k] = mul(geo->M_3x4, Vec3f(square[k][0], 0.f, square[k][1]));
+        }
+      }
+      else {
+        for (unsigned k = 0; k < 4; k++) {
+          interface.square.p[k] = mul(geo->M_3x4, Vec3f(square[k][0] * cos(tor.angle),
+                                                        square[k][0] * sin(tor.angle),
+                                                        square[k][1]));
+        }
+      }
+      break;
+    }
     case Geometry::Kind::Cylinder:
       interface.kind = Interface::Kind::Circular;
       interface.circular.radius = scale * other->cylinder.radius;
@@ -360,6 +399,24 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
   auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
   auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
 
+  Vec3f V[6][4] = {
+    { Vec3f(xm, ym, zp ), Vec3f(xm, yp, zp ), Vec3f(xm, yp, zm ), Vec3f(xm, ym, zm ) },
+    { Vec3f(xp, ym, zm ), Vec3f(xp, yp, zm ), Vec3f(xp, yp, zp ), Vec3f(xp, ym, zp ) },
+    { Vec3f(xp, ym, zm ), Vec3f(xp, ym, zp ), Vec3f(xm, ym, zp ), Vec3f(xm, ym, zm ) },
+    { Vec3f(xm, yp, zm ), Vec3f(xm, yp, zp ), Vec3f(xp, yp, zp ), Vec3f(xp, yp, zm ) },
+    { Vec3f(xm, yp, zm ), Vec3f(xp, yp, zm ), Vec3f(xp, ym, zm ), Vec3f(xm, ym, zm ) },
+    { Vec3f(xm, ym, zp ), Vec3f(xp, ym, zp ), Vec3f(xp, yp, zp ), Vec3f(xm, yp, zp ) }
+  };
+
+  Vec3f N[6] = {
+    Vec3f(-1,  0,  0),
+    Vec3f(1,  0,  0 ),
+    Vec3f(0, -1,  0 ),
+    Vec3f(0,  1,  0 ),
+    Vec3f(0,  0, -1 ),
+    Vec3f(0,  0,  1 )
+  };
+
   bool faces[6] = {
     1e-5 <= box.lengths[0],
     1e-5 <= box.lengths[0],
@@ -368,24 +425,17 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
     1e-5 <= box.lengths[2],
     1e-5 <= box.lengths[2],
   };
+  for (unsigned i = 0; i < 6; i++) {
+    auto * con = geo->connections[i];
+    if (faces[i] == false || con == nullptr || con->flags != Connection::Flags::HasRectangularSide) continue;
 
-  float V[6][4][3] = {
-    { { xm, ym, zp }, { xm, yp, zp }, { xm, yp, zm }, { xm, ym, zm } },
-    { { xp, ym, zm }, { xp, yp, zm }, { xp, yp, zp }, { xp, ym, zp } },
-    { { xp, ym, zm }, { xp, ym, zp }, { xm, ym, zp }, { xm, ym, zm } },
-    { { xm, yp, zm }, { xm, yp, zp }, { xp, yp, zp }, { xp, yp, zm } },
-    { { xm, yp, zm }, { xp, yp, zm }, { xp, ym, zm }, { xm, ym, zm } },
-    { { xm, ym, zp }, { xp, ym, zp }, { xp, yp, zp }, { xm, yp, zp } }
-  };
+    if (doInterfacesMatch(geo, con)) {
+      faces[i] = false;
+      discardedCaps++;
+      store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+    }
 
-  float N[6][3] = {
-    { -1,  0,  0 },
-    {  1,  0,  0 },
-    {  0, -1,  0 },
-    {  0,  1,  0 },
-    {  0,  0, -1 },
-    {  0,  0,  1 }
-  };
+  }
 
   unsigned faces_n = 0;
   for(unsigned i=0; i<6; i++) {
@@ -410,7 +460,7 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
       if (!faces[f]) continue;
 
       for (unsigned i = 0; i < 4; i++) {
-        i_v = vertex(tri->normals, tri->vertices, i_v, N[f], V[f][i]);
+        i_v = vertex(tri->normals, tri->vertices, i_v, N[f].data, V[f][i].data);
       }
       i_p = quadIndices(tri->indices, i_p, o, 0, 1, 2, 3);
 
@@ -440,8 +490,21 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
   tri->error = sagittaBasedError(tor.angle, tor.outer_radius, scale, segments);
 
   bool shell = true;
-  bool cap0 = true;
-  bool cap1 = true;
+  bool cap[2] = {
+    true,
+    true
+  };
+
+  for (unsigned i = 0; i < 2; i++) {
+    auto * con = geo->connections[i];
+    if (con && con->flags == Connection::Flags::HasRectangularSide) {
+      if (doInterfacesMatch(geo, con)) {
+        cap[i] = false;
+        discardedCaps++;
+        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+      }
+    }
+  }
 
   auto h2 = 0.5f*tor.height;
   float square[4][2] = {
@@ -460,7 +523,7 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
 
   unsigned l = 0;
 
-  tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap0 ? 4 : 0) + (cap1 ? 4 : 0);
+  tri->vertices_n = (shell ? 4 * 2 * samples : 0) + (cap[0] ? 4 : 0) + (cap[1] ? 4 : 0);
   tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
   tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
 
@@ -486,14 +549,14 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
       }
     }
   }
-  if (cap0) {
+  if (cap[0]) {
     for (unsigned k = 0; k < 4; k++) {
       tri->normals[l] =  0.f; tri->vertices[l++] = square[k][0] * t0[0];
       tri->normals[l] = -1.f; tri->vertices[l++] = square[k][0] * t0[1];
       tri->normals[l] =  0.f; tri->vertices[l++] = square[k][1];
     }
   }
-  if (cap1) {
+  if (cap[1]) {
     for (unsigned k = 0; k < 4; k++) {
       tri->normals[l] = -t0[2 * (samples - 1) + 1]; tri->vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 0];
       tri->normals[l] =  t0[2 * (samples - 1) + 0]; tri->vertices[l++] = square[k][0] * t0[2 * (samples - 1) + 1];
@@ -505,7 +568,7 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
   l = 0;
   unsigned o = 0;
 
-  tri->triangles_n = (shell ? 4 * 2 * (samples - 1) : 0) + (cap0 ? 2 : 0) + (cap1 ? 2 : 0);
+  tri->triangles_n = (shell ? 4 * 2 * (samples - 1) : 0) + (cap[0] ? 2 : 0) + (cap[1] ? 2 : 0);
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t)*tri->triangles_n);
 
   if (shell) {
@@ -522,7 +585,7 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
     }
     o += 4 * 2 * samples;
   }
-  if (cap0) {
+  if (cap[0]) {
     tri->indices[l++] = o + 0;
     tri->indices[l++] = o + 2;
     tri->indices[l++] = o + 1;
@@ -531,7 +594,7 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
     tri->indices[l++] = o + 3;
     o += 4;
   }
-  if (cap1) {
+  if (cap[1]) {
     tri->indices[l++] = o + 0;
     tri->indices[l++] = o + 1;
     tri->indices[l++] = o + 2;
