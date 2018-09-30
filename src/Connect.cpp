@@ -207,7 +207,7 @@ namespace {
 
       case Geometry::Kind::EllipticalDish:
       case Geometry::Kind::SphericalDish: {
-        addAnchor(context, geo, Vec3f(0, 0, -1), Vec3f(0,0,0), 0, Connection::Flags::HasCircularSide);
+        addAnchor(context, geo, Vec3f(0,0,0), Vec3f(0, 0, -1), 0, Connection::Flags::HasCircularSide);
         break;
       }
 

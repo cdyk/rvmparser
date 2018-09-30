@@ -798,8 +798,8 @@ Triangulation* TriangulationFactory::snout(Arena* arena, const Geometry* geo, fl
 
   t0.resize(2 * samples);
   for (unsigned i = 0; i < samples; i++) {
-    t0[2 * i + 0] = std::cos((twopi / samples)*i);
-    t0[2 * i + 1] = std::sin((twopi / samples)*i);
+    t0[2 * i + 0] = std::cos((twopi / samples)*i + geo->sampleStartAngle);
+    t0[2 * i + 1] = std::sin((twopi / samples)*i + geo->sampleStartAngle);
   }
   t1.resize(2 * samples);
   for (unsigned i = 0; i < 2 * samples; i++) {
@@ -1048,7 +1048,7 @@ Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geomet
 
     auto phi_scale = twopi / n;
     for (unsigned i = 0; i < n; i++) {
-      auto phi = phi_scale * i;
+      auto phi = phi_scale * i + geo->sampleStartAngle;
       auto nx = w * std::cos(phi);
       auto ny = w * std::sin(phi);
       l = vertex(tri->normals, tri->vertices, l, nx, ny, nz / scale_z, radius*nx, radius*ny, z);

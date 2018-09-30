@@ -114,19 +114,9 @@ namespace {
   }
 
 
-  void handleCylinder(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
+  void handleCylinderSnoutAndDish(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
   {
     auto M_inv = inverse(Mat3f(geo->M_3x4.data));
-
-    {
-      auto G = mul(M_inv, Mat3f(geo->M_3x4.data));
-      for (unsigned j = 0; j < 3; j++) {
-        for (unsigned i = 0; i < 3; i++) {
-          assert(std::abs((i == j ? 1.f : 0.f) - G.cols[j][i]) < 1e-5f);
-
-        }
-      }
-    }
 
     auto upn = normalize(upWorld);
 
@@ -142,32 +132,13 @@ namespace {
                                                          std::sin(geo->sampleStartAngle),
                                                          0.f));
 
-    //if (true) {
-    //  Vec3f p0 = mul(geo->M_3x4, Vec3f(0, 0, -0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
-    //  Vec3f p1 = mul(geo->M_3x4, Vec3f(0, 0, 0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
-    //  if (context.front == 1) {
-    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xffff00);
-    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x88ff00);
-    //  }
-    //  else if (offset == 0) {
-    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
-    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
-    //  }
-    //  else {
-    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
-    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
-    //  }
-    //}
-
     for (unsigned k = 0; k < 2; k++) {
       auto * con = geo->connections[k];
       if (con && !con->hasFlag(Connection::Flags::HasRectangularSide) && con->temp == 0) {
         enqueue(context, geo, con, upNewWorld);
       }
     }
-
   }
-
 
   void processItem(Context& context)
   {
@@ -190,14 +161,12 @@ namespace {
         case Geometry::Kind::Snout:
         case Geometry::Kind::EllipticalDish:
         case Geometry::Kind::SphericalDish:
+        case Geometry::Kind::Cylinder:
+          handleCylinderSnoutAndDish(context, geo, item.connection->offset[i], item.upWorld);
           break;
 
         case Geometry::Kind::CircularTorus:
           handleCircularTorus(context, geo, item.connection->offset[i], item.upWorld);
-          break;
-
-        case Geometry::Kind::Cylinder:
-          handleCylinder(context, geo, item.connection->offset[i], item.upWorld);
           break;
 
         default:
