@@ -194,6 +194,11 @@ void ExportObj::geometry(struct Geometry* geometry)
     geometry->colorName = store->strings.intern("default");
   }
 
+  if (geometry->kind == Geometry::Kind::Pyramid) {
+    geometry->colorName = store->strings.intern("blah-red");
+    geometry->color = 0x880088;
+  }
+
   if (!definedColors.get(uint64_t(geometry->colorName))) {
     definedColors.insert(uint64_t(geometry->colorName), 1);
 
@@ -209,10 +214,11 @@ void ExportObj::geometry(struct Geometry* geometry)
 
   fprintf(out, "usemtl %s\n", geometry->colorName);
 
+  auto scale = 1.f;
   
   if (geometry->kind == Geometry::Kind::Line) {
-    auto a = mul(geometry->M_3x4, Vec3f(geometry->line.a, 0, 0));
-    auto b = mul(geometry->M_3x4, Vec3f(geometry->line.b, 0, 0));
+    auto a = scale * mul(geometry->M_3x4, Vec3f(geometry->line.a, 0, 0));
+    auto b = scale * mul(geometry->M_3x4, Vec3f(geometry->line.b, 0, 0));
     fprintf(out, "v %f %f %f\n", a.x, a.y, a.z);
     fprintf(out, "v %f %f %f\n", b.x, b.y, b.z);
     fprintf(out, "l -1 -2\n");
@@ -229,7 +235,7 @@ void ExportObj::geometry(struct Geometry* geometry)
       }
       for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
 
-        auto p = mul(geometry->M_3x4, Vec3f(tri->vertices + i));
+        auto p = scale * mul(geometry->M_3x4, Vec3f(tri->vertices + i));
         auto n = normalize(mul(Mat3f(geometry->M_3x4.data), Vec3f(tri->normals + i)));
 
         fprintf(out, "v %f %f %f\n", p.x, p.y, p.z);

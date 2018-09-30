@@ -3,6 +3,11 @@
 #include <cfloat>
 #include "LinAlg.h"
 
+inline Vec2f operator*(const float a, const Vec2f& b) { return Vec2f(a*b.x, a*b.y); }
+
+inline Vec2f operator-(const Vec2f& a, const Vec2f& b) { return Vec2f(a.x - b.x, a.y - b.y); }
+
+inline Vec2f operator+(const Vec2f& a, const Vec2f& b) { return Vec2f(a.x + b.x, a.y + b.y); }
 
 inline Vec3f cross(const Vec3f& a, const Vec3f& b)
 {
@@ -30,6 +35,8 @@ inline float distanceSquared(const Vec3f& a, const Vec3f&b) { return lengthSquar
 inline float distance(const Vec3f& a, const Vec3f&b) { return length(a - b); }
 
 inline Vec3f normalize(const Vec3f& a) { return (1.f / length(a))*a; }
+
+inline void write(float* dst, const Vec3f& a) { *dst++ = a.data[0]; *dst++ = a.data[1]; *dst++ = a.data[2]; }
 
 inline Vec3f max(const Vec3f& a, const Vec3f& b)
 {

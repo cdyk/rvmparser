@@ -27,8 +27,7 @@ namespace {
 
     union {
       struct {
-        float w;
-        float h;
+        Vec3f p[4];
       } square;
       struct {
         float radius;
@@ -36,7 +35,6 @@ namespace {
     };
 
   };
-
 
   Interface getInterface(const Geometry* geo, unsigned o)
   {
@@ -46,6 +44,43 @@ namespace {
     auto * other = connection->geo[ix];
     auto scale = getScale(other->M_3x4);
     switch (other->kind) {
+    case Geometry::Kind::Pyramid: {
+      auto bx = 0.5f * geo->pyramid.bottom[0];
+      auto by = 0.5f * geo->pyramid.bottom[1];
+      auto tx = 0.5f * geo->pyramid.top[0];
+      auto ty = 0.5f * geo->pyramid.top[1];
+      auto ox = 0.5f * geo->pyramid.offset[0];
+      auto oy = 0.5f * geo->pyramid.offset[1];
+      auto h2 = 0.5f * geo->pyramid.height;
+      Vec3f quad[2][4] =
+      {
+        {
+          Vec3f(-bx - ox, -by - oy, -h2),
+          Vec3f(bx - ox, -by - oy, -h2),
+          Vec3f(bx - ox,  by - oy, -h2),
+          Vec3f(-bx - ox,  by - oy, -h2)
+        },
+        {
+           Vec3f(-tx + ox, -ty + oy, h2),
+           Vec3f(tx + ox, -ty + oy, h2),
+           Vec3f(tx + ox,  ty + oy, h2),
+           Vec3f(-tx + ox,  ty + oy, h2)
+        },
+      };
+
+      interface.kind = Interface::Kind::Square;
+      if (o < 4) {
+        unsigned oo = (o + 1) & 3;
+        interface.square.p[0] = mul(geo->M_3x4, quad[0][o]);
+        interface.square.p[1] = mul(geo->M_3x4, quad[0][oo]);
+        interface.square.p[2] = mul(geo->M_3x4, quad[1][oo]);
+        interface.square.p[3] = mul(geo->M_3x4, quad[1][o]);
+      }
+      else {
+        for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, quad[o - 4][k].data);
+      }
+      break;
+    }
     case Geometry::Kind::Cylinder:
       interface.kind = Interface::Kind::Circular;
       interface.circular.radius = scale * other->cylinder.radius;
@@ -64,6 +99,37 @@ namespace {
     }
     return interface;
   }
+
+  bool doInterfacesMatch(const Geometry* geo, const Connection* con)
+  {
+    unsigned k = geo == con->geo[0] ? 0 : 1;
+    unsigned l = geo == con->geo[0] ? 1 : 0;
+
+    auto iface0 = getInterface(con->geo[k], con->offset[k]);
+    auto iface1 = getInterface(con->geo[l], con->offset[l]);
+
+    if (iface0.kind != iface1.kind) return false;
+
+    if (iface0.kind == Interface::Kind::Circular) {
+      if (iface0.circular.radius <= 1.05f*iface1.circular.radius) {
+        return true;
+      }
+      return false;
+    }
+    else {
+      for (unsigned j = 0; j < 4; j++) {
+        bool found = false;
+        for (unsigned i = 0; i < 4; i++) {
+          if (distanceSquared(iface0.square.p[j], iface1.square.p[i]) < 0.001f*0.001f) {
+            found = true;
+          }
+        }
+        if (!found) return false;
+      }
+      return true;
+    }
+  }
+
 
   // FIXME: replace use of these with stuff from linalg.
   inline void sub3(float* dst, float *a, float *b)
@@ -171,11 +237,10 @@ float TriangulationFactory::sagittaBasedError(float arc, float radius, float sca
 }
 
 
+
+
 Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, float scale)
 {
-  bool cap0 = 1e-7f <= std::min(std::abs(geo->pyramid.bottom[0]), std::abs(geo->pyramid.bottom[1]));
-  bool cap1 = 1e-7f <= std::min(std::abs(geo->pyramid.top[0]), std::abs(geo->pyramid.top[1]));
-
   auto bx = 0.5f * geo->pyramid.bottom[0];
   auto by = 0.5f * geo->pyramid.bottom[1];
   auto tx = 0.5f * geo->pyramid.top[0];
@@ -184,71 +249,99 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
   auto oy = 0.5f * geo->pyramid.offset[1];
   auto h2 = 0.5f * geo->pyramid.height;
 
-  float quad[2][4][3] =
+  
+
+  Vec3f quad[2][4] =
   {
     {
-      { -bx - ox, -by - oy, -h2 },
-      {  bx - ox, -by - oy, -h2 },
-      {  bx - ox,  by - oy, -h2 },
-      { -bx - ox,  by - oy, -h2 }
+      Vec3f( -bx - ox, -by - oy, -h2 ),
+      Vec3f(  bx - ox, -by - oy, -h2 ),
+      Vec3f(  bx - ox,  by - oy, -h2 ),
+      Vec3f(-bx - ox,  by - oy, -h2 )
     },
     {
-      { -tx + ox, -ty + oy, h2 },
-      {  tx + ox, -ty + oy, h2 },
-      {  tx + ox,  ty + oy, h2 },
-      { -tx + ox,  ty + oy, h2 }
+       Vec3f(-tx + ox, -ty + oy, h2),
+       Vec3f(tx + ox, -ty + oy, h2),
+       Vec3f(tx + ox,  ty + oy, h2),
+       Vec3f(-tx + ox,  ty + oy, h2)
     },
   };
 
-  float n[4][3] = {
-    { 0.f, -h2,  (quad[1][0][1] - quad[0][0][1]) },
-    {  h2, 0.f, -(quad[1][1][0] - quad[0][1][0]) },
-    { 0.f,  h2, -(quad[1][2][1] - quad[0][2][1]) },
-    { -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) },
+  Vec3f n[6] = {
+    Vec3f( 0.f, -h2,  (quad[1][0][1] - quad[0][0][1]) ),
+    Vec3f(  h2, 0.f, -(quad[1][1][0] - quad[0][1][0]) ),
+    Vec3f( 0.f,  h2, -(quad[1][2][1] - quad[0][2][1]) ),
+    Vec3f( -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) ),
+    Vec3f(0, 0, -1 ),
+    Vec3f(0, 0, 1),
   };
+
+  bool cap[6] = {
+      true,
+      true,
+      true,
+      true,
+      1e-7f <= std::min(std::abs(geo->pyramid.bottom[0]), std::abs(geo->pyramid.bottom[1])),
+      1e-7f <= std::min(std::abs(geo->pyramid.top[0]), std::abs(geo->pyramid.top[1]))
+  };
+
+  for (unsigned i = 0; i < 6; i++) {
+    auto * con = geo->connections[i];
+    if (cap[i] == false || con == nullptr || con->flags != Connection::Flags::HasRectangularSide) continue;
+
+    if (doInterfacesMatch(geo, con)) {
+      cap[i] = false;
+      discardedCaps++;
+      store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+    }
+  }
+
+  unsigned caps = 0;
+  for (unsigned i = 0; i < 6; i++) if (cap[i]) caps++;
 
   auto * tri = arena->alloc<Triangulation>();
   tri->error = 0.f;
 
-  tri->vertices_n = 4 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
-  tri->triangles_n = 2 * (4 + (cap0 ? 1 : 0) + (cap1 ? 1 : 0));
+  tri->vertices_n = 4 * caps;
+  tri->triangles_n = 2 * caps;
 
   tri->vertices = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
   tri->normals = (float*)arena->alloc(3 * sizeof(float)*tri->vertices_n);
 
   unsigned l = 0;
   for (unsigned i = 0; i < 4; i++) {
+    if (cap[i] == false) continue;
     unsigned ii = (i + 1) & 3;
-    l = vertex(tri->normals, tri->vertices, l, n[i], quad[0][i]);
-    l = vertex(tri->normals, tri->vertices, l, n[i], quad[0][ii]);
-    l = vertex(tri->normals, tri->vertices, l, n[i], quad[1][ii]);
-    l = vertex(tri->normals, tri->vertices, l, n[i], quad[1][i]);
+    l = vertex(tri->normals, tri->vertices, l, n[i].data, quad[0][i].data);
+    l = vertex(tri->normals, tri->vertices, l, n[i].data, quad[0][ii].data);
+    l = vertex(tri->normals, tri->vertices, l, n[i].data, quad[1][ii].data);
+    l = vertex(tri->normals, tri->vertices, l, n[i].data, quad[1][i].data);
   }
-  if (cap0) {
-    float n[3] = { 0, 0, -1 };
+  if (cap[4]) {
     for (unsigned i = 0; i < 4; i++) {
-      l = vertex(tri->normals, tri->vertices, l, n, quad[0][i]);
+      l = vertex(tri->normals, tri->vertices, l, n[4].data, quad[0][i].data);
     }
   }
-  if (cap1) {
-    float n[3] = { 0, 0, 1 };
+  if (cap[5]) {
     for (unsigned i = 0; i < 4; i++) {
-      l = vertex(tri->normals, tri->vertices, l, n, quad[1][i]);
+      l = vertex(tri->normals, tri->vertices, l, n[5].data, quad[1][i].data);
     }
   }
   assert(l == 3*tri->vertices_n);
 
   l = 0;
+  unsigned o = 0;
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t) * tri->triangles_n);
   for (unsigned i = 0; i < 4; i++) {
+    if (cap[i] == false) continue;
     l = quadIndices(tri->indices, l, 4 * i, 0, 1, 2, 3);
+    o += 4;
   }
-  unsigned o = 4 * 4;
-  if (cap0) {
+  if (cap[4]) {
     l = quadIndices(tri->indices, l, o, 3, 2, 1, 0);
     o += 4;
   }
-  if (cap1) {
+  if (cap[5]) {
     l = quadIndices(tri->indices, l, o, 0, 1, 2, 3);
     o += 4;
   }
@@ -475,17 +568,14 @@ Triangulation* TriangulationFactory::circularTorus(Arena* arena, const Geometry*
   bool shell = true;
   bool cap[2] = { true, true };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->connections[i]) {
-      auto * c = geo->connections[i];
-      auto interface = getInterface(geo, i);
-      cap[i] = true;
-      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*ct.radius) {
+    auto * con = geo->connections[i];
+    if (con && con->flags == Connection::Flags::HasCircularSide) {
+      if (doInterfacesMatch(geo, con)) {
         cap[i] = false;
         discardedCaps++;
       }
       else {
-        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0xff00ff);
-        //logger(0, "%d %d", c->geo[0]->kind, c->geo[1]->kind);
+        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
     }
   }
@@ -611,18 +701,15 @@ Triangulation* TriangulationFactory::snout(Arena* arena, const Geometry* geo, fl
   bool cap[2] = { true, true };
   float radii[2] = { geo->snout.radius_b, geo->snout.radius_t };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->connections[i]) {
-      auto * c = geo->connections[i];
-      auto interface = getInterface(geo, i);
-      cap[i] = true;
-      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*radii[i]) {
+    auto * con = geo->connections[i];
+    if (con && con->flags == Connection::Flags::HasCircularSide) {
+      if (doInterfacesMatch(geo, con)) {
         cap[i] = false;
         discardedCaps++;
       }
       else {
-        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0xffff00);
+        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
-
     }
   }
 
@@ -746,18 +833,15 @@ Triangulation* TriangulationFactory::cylinder(Arena* arena, const Geometry* geo,
   bool shell = true;
   bool cap[2] = { true, true };
   for (unsigned i = 0; i < 2; i++) {
-    if (geo->connections[i]) {
-      auto * c = geo->connections[i];
-      auto interface = getInterface(geo, i);
-      cap[i] = true;
-      if (interface.kind == Interface::Kind::Circular && interface.circular.radius <= 1.05f*scale*cy.radius) {
+    auto * con = geo->connections[i];
+    if (con && con->flags == Connection::Flags::HasCircularSide) {
+      if (doInterfacesMatch(geo, con)) {
         cap[i] = false;
         discardedCaps++;
       }
       else {
-        store->addDebugLine(c->p.data, (c->p.data + 0.05f*c->d).data, 0x00ffff);
+        store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
       }
-
     }
   }
 

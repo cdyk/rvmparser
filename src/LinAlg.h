@@ -1,5 +1,24 @@
 #pragma once
 
+struct Vec2f
+{
+  Vec2f() = default;
+  Vec2f(const Vec2f&) = default;
+  Vec2f(float x) : x(x), y(x) {}
+  Vec2f(float* ptr) : x(ptr[0]), y(ptr[1]) {}
+  Vec2f(float x, float y) : x(x), y(y) {}
+  union {
+    struct {
+      float x;
+      float y;
+    };
+    float data[2];
+  };
+  float& operator[](unsigned i) { return data[i]; }
+  const float& operator[](unsigned i) const { return data[i]; }
+};
+
+
 struct Vec3f
 {
   Vec3f() = default;
@@ -7,6 +26,8 @@ struct Vec3f
   Vec3f(float x) : x(x), y(x), z(x) {}
   Vec3f(float* ptr) : x(ptr[0]), y(ptr[1]), z(ptr[2]) {}
   Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
+  Vec3f(const Vec2f& a, float z) : x(a.x), y(a.y), z(z) {}
+
   union {
     struct {
       float x;

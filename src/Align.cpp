@@ -89,18 +89,18 @@ namespace {
       auto a1 = mul(geo->M_3x4, p1);
       auto b1 = a1 + 1.5f*ct.radius*upNewWorld[1];
 
-      if (context.front == 1) {
-        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x00ffff);
-        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x00ff88);
-      }
-      else if (offset == 0) {
-        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x0000ff);
-        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x000088);
-      }
-      else {
-        if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x000088);
-        if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x0000ff);
-      }
+      //if (context.front == 1) {
+      //  if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x00ffff);
+      //  if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x00ff88);
+      //}
+      //else if (offset == 0) {
+      //  if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x0000ff);
+      //  if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x000088);
+      //}
+      //else {
+      //  if (geo->connections[0]) context.store->addDebugLine(a0.data, b0.data, 0x000088);
+      //  if (geo->connections[1]) context.store->addDebugLine(a1.data, b1.data, 0x0000ff);
+      //}
     }
 
     for (unsigned k = 0; k < 2; k++) {
@@ -142,22 +142,22 @@ namespace {
                                                          std::sin(geo->sampleStartAngle),
                                                          0.f));
 
-    if (true) {
-      Vec3f p0 = mul(geo->M_3x4, Vec3f(0, 0, -0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
-      Vec3f p1 = mul(geo->M_3x4, Vec3f(0, 0, 0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
-      if (context.front == 1) {
-        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xffff00);
-        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x88ff00);
-      }
-      else if (offset == 0) {
-        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
-        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
-      }
-      else {
-        if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
-        if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
-      }
-    }
+    //if (true) {
+    //  Vec3f p0 = mul(geo->M_3x4, Vec3f(0, 0, -0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
+    //  Vec3f p1 = mul(geo->M_3x4, Vec3f(0, 0, 0.5f * geo->cylinder.height)) + geo->cylinder.radius*upNewWorld;
+    //  if (context.front == 1) {
+    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xffff00);
+    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x88ff00);
+    //  }
+    //  else if (offset == 0) {
+    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
+    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+    //  }
+    //  else {
+    //    if (geo->connections[0])context.store->addDebugLine(p0.data, (p0 + geo->cylinder.radius*upNewWorld).data, 0x880000);
+    //    if (geo->connections[1])context.store->addDebugLine(p1.data, (p1 + geo->cylinder.radius*upNewWorld).data, 0xff0000);
+    //  }
+    //}
 
     for (unsigned k = 0; k < 2; k++) {
       auto * con = geo->connections[k];

@@ -6,7 +6,19 @@
 #include "Store.h"
 #include "LinAlgOps.h"
 
+using std::sin;
+using std::cos;
+
 namespace {
+  uint32_t colors[6] =
+  {
+    0x0000AA,
+    0x00AA00,
+    0x00AAAA,
+    0xAA0000,
+    0xAA00AA,
+    0xAA5500
+  };
 
   struct Anchor
   {
@@ -103,6 +115,8 @@ namespace {
     a.o = o;
     a.flags = flags;
 
+    context->store->addDebugLine(a.p.data, (a.p + 0.02*a.d).data, 0x008800);
+
     assert(context->anchors_n < context->anchors_max);
     context->anchors[context->anchors_n++] = a;
     context->anchors_total++;
@@ -119,32 +133,35 @@ namespace {
       switch (geo->kind) {
 
       case Geometry::Kind::Pyramid: {
-#if 0
-        auto bx = 0.5f * geo->pyramid.bottom[0];
-        auto by = 0.5f * geo->pyramid.bottom[1];
-        auto tx = 0.5f * geo->pyramid.top[0];
-        auto ty = 0.5f * geo->pyramid.top[1];
-        auto ox = 0.5f * geo->pyramid.offset[0];
-        auto oy = 0.5f * geo->pyramid.offset[1];
-        auto h2 = 0.5f * geo->pyramid.height;
+        auto b = 0.5f * Vec2f(geo->pyramid.bottom);
+        auto t = 0.5f * Vec2f(geo->pyramid.top);
+        auto m = 0.5f * (b + t);
+        auto o = 0.5f * Vec2f(geo->pyramid.offset);
+
+        auto h = 0.5f * geo->pyramid.height;
+
+        auto & M = geo->M_3x4;
+        auto N = Mat3f(M.data);
+
         Vec3f n[6] = {
-           Vec3f(0.f, -h2,  (-ty + oy) - (-by - oy)),
-           Vec3f(h2, 0.f, -((tx + ox) - (bx - ox))),
-           Vec3f(0.f,  h2, -((ty + oy) - (by - oy))),
-           Vec3f(-h2, 0.f,  (-tx + ox) - (-bx - ox)),
+           Vec3f(0.f, -h,  (-t.y + o.y) - (-b.y - o.y)),
+           Vec3f(h, 0.f, -((t.x + o.x) - (b.x - o.x))),
+           Vec3f(0.f,  h, -((t.y + o.y) - (b.y - o.y))),
+           Vec3f(-h, 0.f,  (-t.x + o.x) - (-b.x - o.x)),
            Vec3f(0.f, 0.f, -1.f),
            Vec3f(0.f, 0.f, 1.f)
         };
         Vec3f p[6] = {
-          Vec3f(0.f, -0.5f*(by + ty), 0.f),
-          Vec3f(0.5f*(bx + tx), 0.f, 0.f),
-          Vec3f(0.f, 0.5f*(by + ty), 0.f),
-          Vec3f(-0.5f*(bx + tx), 0.f, 0.f),
-          Vec3f(-ox, -oy, -h2),
-          Vec3f(ox, oy, h2)
+          Vec3f(0.f, -m.y, 0.f),
+          Vec3f(m.x, 0.f, 0.f),
+          Vec3f(0.f, m.y, 0.f),
+          Vec3f(-m.x, 0.f, 0.f),
+          Vec3f(-o.x, -o.y, -h),
+          Vec3f(o.x, o.y, h)
         };
-        for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i);
-#endif
+        for (unsigned i = 0; i < 6; i++) {
+          addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
+        }
         break;
       }
 
@@ -172,8 +189,8 @@ namespace {
       case Geometry::Kind::RectangularTorus: {
 #if 0
         auto & rt = geo->rectangularTorus;
-        auto c = std::cos(rt.angle);
-        auto s = std::sin(rt.angle);
+        auto c = cos(rt.angle);
+        auto s = sin(rt.angle);
         auto m = 0.5f*(rt.inner_radius + rt.outer_radius);
         Vec3f n[2] = { Vec3f( 0, -1, 0.f ), Vec3f( -s, c, 0.f ) };
         Vec3f p[2] = { Vec3f( geo->circularTorus.offset, 0, 0.f ), Vec3f( m * c, m * s, 0.f ) };
@@ -184,8 +201,8 @@ namespace {
 
       case Geometry::Kind::CircularTorus: {
         auto & ct = geo->circularTorus;
-        auto c = std::cos(ct.angle);
-        auto s = std::sin(ct.angle);
+        auto c = cos(ct.angle);
+        auto s = sin(ct.angle);
         Vec3f n[2] = { Vec3f(0, -1, 0.f ), Vec3f(-s, c, 0.f ) };
         Vec3f p[2] = { Vec3f(ct.offset, 0, 0.f ), Vec3f(ct.offset * c, ct.offset * s, 0.f ) };
         for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasCircularSide);
@@ -201,8 +218,8 @@ namespace {
       case Geometry::Kind::Snout: {
         auto & sn = geo->snout;
         Vec3f n[2] = {
-          Vec3f(std::sin(sn.bshear[0])*std::cos(sn.bshear[1]), std::sin(sn.bshear[1]), -std::cos(sn.bshear[0])*std::cos(sn.bshear[1]) ),
-          Vec3f(-std::sin(sn.tshear[0])*std::cos(sn.tshear[1]), -std::sin(sn.tshear[1]), std::cos(sn.tshear[0])*std::cos(sn.tshear[1]))
+          Vec3f(sin(sn.bshear[0])*cos(sn.bshear[1]), sin(sn.bshear[1]), -cos(sn.bshear[0])*cos(sn.bshear[1]) ),
+          Vec3f(-sin(sn.tshear[0])*cos(sn.tshear[1]), -sin(sn.tshear[1]), cos(sn.tshear[0])*cos(sn.tshear[1]))
         };
         Vec3f p[2] = {
           Vec3f(-0.5f*sn.offset[0], -0.5f*sn.offset[1], -0.5f*sn.height ),
