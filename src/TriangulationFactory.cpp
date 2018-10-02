@@ -1185,46 +1185,59 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
       }
     }
     else  {
+
+      bool anyData = false;
+
       auto tess = tessNewTess(nullptr);
       for (unsigned c = 0; c < poly.contours_n; c++) {
         auto & cont = poly.contours[c];
+        if (cont.vertices_n < 3) {
+          logger(1, "Ignoring degenerate contour with %d vertices.", cont.vertices_n);
+          continue;
+        }
         tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
+        anyData = true;
       }
 
-      if (tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, nullptr)) {
-        auto vo = uint32_t(vertices.size()) / 3;
-        auto vn = unsigned(tessGetVertexCount(tess));
+      if (anyData == false) {
+        logger(1, "Ignoring polygon with no valid contours.");
+      }
+      else {
+        if (tessTesselate(tess, TESS_WINDING_ODD, TESS_POLYGONS, 3, 3, nullptr)) {
+          auto vo = uint32_t(vertices.size()) / 3;
+          auto vn = unsigned(tessGetVertexCount(tess));
 
-        vertices.resize(vertices.size() + 3 * vn);
-        std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
+          vertices.resize(vertices.size() + 3 * vn);
+          std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
 
-        auto * remap = tessGetVertexIndices(tess);
-        normals.resize(vertices.size());
-        for (unsigned i = 0; i < vn; i++) {
-          if (remap[i] != TESS_UNDEF) {
-            unsigned ix = remap[i];
-            for (unsigned c = 0; c < poly.contours_n; c++) {
-              auto & cont = poly.contours[c];
-              if (ix < cont.vertices_n) {
-                normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
-                normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];
-                normals[3 * (vo + i) + 2] = cont.normals[3 * ix + 2];
-                break;
+          auto * remap = tessGetVertexIndices(tess);
+          normals.resize(vertices.size());
+          for (unsigned i = 0; i < vn; i++) {
+            if (remap[i] != TESS_UNDEF) {
+              unsigned ix = remap[i];
+              for (unsigned c = 0; c < poly.contours_n; c++) {
+                auto & cont = poly.contours[c];
+                if (ix < cont.vertices_n) {
+                  normals[3 * (vo + i) + 0] = cont.normals[3 * ix + 0];
+                  normals[3 * (vo + i) + 1] = cont.normals[3 * ix + 1];
+                  normals[3 * (vo + i) + 2] = cont.normals[3 * ix + 2];
+                  break;
+                }
+                ix -= cont.vertices_n;
               }
-              ix -= cont.vertices_n;
             }
           }
-        }
 
-        auto io = uint32_t(indices.size());
-        auto * elements = tessGetElements(tess);
-        auto elements_n = unsigned(tessGetElementCount(tess));
-        for (unsigned e = 0; e < elements_n; e++) {
-          auto ix = elements + 3 * e;
-          if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
-            indices.push_back(ix[0] + vo);
-            indices.push_back(ix[1] + vo);
-            indices.push_back(ix[2] + vo);
+          auto io = uint32_t(indices.size());
+          auto * elements = tessGetElements(tess);
+          auto elements_n = unsigned(tessGetElementCount(tess));
+          for (unsigned e = 0; e < elements_n; e++) {
+            auto ix = elements + 3 * e;
+            if ((ix[0] != TESS_UNDEF) && (ix[1] != TESS_UNDEF) && (ix[2] != TESS_UNDEF)) {
+              indices.push_back(ix[0] + vo);
+              indices.push_back(ix[1] + vo);
+              indices.push_back(ix[2] + vo);
+            }
           }
         }
       }
