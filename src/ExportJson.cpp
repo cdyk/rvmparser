@@ -30,6 +30,16 @@ namespace {
       }
       jGroup.AddMember("bbox", bbox, alloc);
     }
+
+    if (group->attributes.first) {
+      rj::Value jAttributes(rj::kObjectType);
+
+      for (auto * att = group->attributes.first; att; att = att->next) {
+        jAttributes.AddMember(rj::GenericStringRef(att->key), rj::Value(att->val, alloc), alloc);
+      }
+      jGroup.AddMember("attributes", jAttributes, alloc);
+    }
+
     if (group->groups.first) {
       rj::Value jChildren(rj::kArrayType);
       for (auto * child = group->groups.first; child; child = child->next) {
