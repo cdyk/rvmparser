@@ -176,6 +176,8 @@ void Tessellator::geometry(Geometry* geo)
   }
 
   geo->triangulation = tri;
+  vertices += uint64_t(tri->vertices_n);
+  triangles += uint64_t(tri->triangles_n);
 
   BBox3f box = createEmptyBBox3f();
   for (unsigned i = 0; i < geo->triangulation->vertices_n; i++) {

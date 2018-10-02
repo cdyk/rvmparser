@@ -77,6 +77,8 @@ public:
   unsigned tessellated = 0;
   unsigned processed = 0;
 
+  uint64_t vertices = 0;
+  uint64_t triangles = 0;
 
 protected:
   struct CacheItem

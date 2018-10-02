@@ -5,6 +5,7 @@
 #include <cassert>
 #include <string>
 #include <cctype>
+#include <chrono>
 #include <algorithm>
 
 #include "Parser.h"
@@ -224,8 +225,14 @@ int main(int argc, char** argv)
     float cullGeometryThreshold = -1.f;
     unsigned maxSamples = 100;
 
+    auto time0 = std::chrono::high_resolution_clock::now();
     Tessellator tessellator(logger, tolerance, cullLeafThreshold, cullGeometryThreshold, maxSamples);
     store->apply(&tessellator);
+    auto time1 = std::chrono::high_resolution_clock::now();
+    auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
+    logger(0, "Tessellated %u items of %u into %llu vertices and %llu triangles (tol=%f, %lluk, %lldms)",
+           tessellator.tessellated, tessellator.processed, tessellator.vertices, tessellator.triangles,
+           tolerance, (4*3*tessellator.vertices, 4*3*tessellator.triangles)/1024,  e0);
   }
 
   bool do_flatten = false;
