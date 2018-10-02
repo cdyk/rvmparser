@@ -11,7 +11,6 @@
 #include "Parser.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
-#include "ExportJson.h"
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
@@ -263,16 +262,17 @@ int main(int argc, char** argv)
 
 
   if (rv == 0 && !output_json.empty()) {
-    ExportJson exportJson;
-    if (exportJson.open(output_json.c_str())) {
-      store->apply(&exportJson);
+    auto time0 = std::chrono::high_resolution_clock::now();
+    if (exportJson(store, logger, output_json.c_str())) {
+      auto time1 = std::chrono::high_resolution_clock::now();
+      auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
+      logger(0, "Exported json into %s (%lldms)", output_json.c_str(), e);
     }
     else {
-      fprintf(stderr, "Failed to export obj file.\n");
+      logger(2, "Failed to export obj file.\n");
       rv = -1;
     }
   }
-
 
   if (rv == 0 && !output_txt.empty()) {
     FILE* out;
@@ -286,13 +286,19 @@ int main(int argc, char** argv)
 
   if (rv == 0 && !output_obj_stem.empty()) {
     assert(should_tessellate);
+ 
+    auto time0 = std::chrono::high_resolution_clock::now();
     ExportObj exportObj;
     exportObj.groupBoundingBoxes = groupBoundingBoxes;
     if (exportObj.open((output_obj_stem + ".obj").c_str(), (output_obj_stem + ".mtl").c_str())) {
       store->apply(&exportObj);
+
+      auto time1 = std::chrono::high_resolution_clock::now();
+      auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
+      logger(0, "Exported obj into %s(.obj|.mtl) (%lldms)", output_obj_stem.c_str(), e);
     }
     else {
-      fprintf(stderr, "Failed to export obj file.\n");
+      logger(2, "Failed to export obj file.\n");
       rv = -1;
     }
   }
@@ -301,25 +307,25 @@ int main(int argc, char** argv)
   store->apply(&addStats);
   auto * stats = store->stats;
   if (stats) {
-    fprintf(stderr, "Stats:\n");
-    fprintf(stderr, "    Groups                 %d\n", stats->group_n);
-    fprintf(stderr, "    Geometries             %d (grp avg=%.1f)\n", stats->geometry_n, stats->geometry_n / float(stats->group_n));
-    fprintf(stderr, "        Pyramids           %d\n", stats->pyramid_n);
-    fprintf(stderr, "        Boxes              %d\n", stats->box_n);
-    fprintf(stderr, "        Rectangular tori   %d\n", stats->rectangular_torus_n);
-    fprintf(stderr, "        Circular tori      %d\n", stats->circular_torus_n);
-    fprintf(stderr, "        Elliptical dish    %d\n", stats->elliptical_dish_n);
-    fprintf(stderr, "        Spherical dish     %d\n", stats->spherical_dish_n);
-    fprintf(stderr, "        Snouts             %d\n", stats->snout_n);
-    fprintf(stderr, "        Cylinders          %d\n", stats->cylinder_n);
-    fprintf(stderr, "        Spheres            %d\n", stats->sphere_n);
-    fprintf(stderr, "        Facet groups       %d\n", stats->facetgroup_n);
-    fprintf(stderr, "            triangles      %d\n", stats->facetgroup_triangles_n);
-    fprintf(stderr, "            quads          %d\n", stats->facetgroup_quads_n);
-    fprintf(stderr, "            polygons       %d (fgrp avg=%.1f)\n", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n / float(stats->facetgroup_n)));
-    fprintf(stderr, "                contours   %d (poly avg=%.1f)\n", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
-    fprintf(stderr, "                vertices   %d (cont avg=%.1f)\n", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
-    fprintf(stderr, "        Lines              %d\n", stats->line_n);
+    logger(0, "Stats:");
+    logger(0, "    Groups                 %d", stats->group_n);
+    logger(0, "    Geometries             %d (grp avg=%.1f)", stats->geometry_n, stats->geometry_n / float(stats->group_n));
+    logger(0, "        Pyramids           %d", stats->pyramid_n);
+    logger(0, "        Boxes              %d", stats->box_n);
+    logger(0, "        Rectangular tori   %d", stats->rectangular_torus_n);
+    logger(0, "        Circular tori      %d", stats->circular_torus_n);
+    logger(0, "        Elliptical dish    %d", stats->elliptical_dish_n);
+    logger(0, "        Spherical dish     %d", stats->spherical_dish_n);
+    logger(0, "        Snouts             %d", stats->snout_n);
+    logger(0, "        Cylinders          %d", stats->cylinder_n);
+    logger(0, "        Spheres            %d", stats->sphere_n);
+    logger(0, "        Facet groups       %d", stats->facetgroup_n);
+    logger(0, "            triangles      %d", stats->facetgroup_triangles_n);
+    logger(0, "            quads          %d", stats->facetgroup_quads_n);
+    logger(0, "            polygons       %d (fgrp avg=%.1f)", stats->facetgroup_polygon_n, (stats->facetgroup_polygon_n / float(stats->facetgroup_n)));
+    logger(0, "                contours   %d (poly avg=%.1f)", stats->facetgroup_polygon_n_contours_n, (stats->facetgroup_polygon_n_contours_n / float(stats->facetgroup_polygon_n)));
+    logger(0, "                vertices   %d (cont avg=%.1f)", stats->facetgroup_polygon_n_vertices_n, (stats->facetgroup_polygon_n_vertices_n / float(stats->facetgroup_polygon_n_contours_n)));
+    logger(0, "        Lines              %d", stats->line_n);
   }
 
   delete store;

@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;$(ProjectDir)..\libs\rapidjson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,7 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\libs\libtess2\include;$(ProjectDir)..\libs\rapidjson\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -168,7 +168,6 @@
     <ClCompile Include="..\src\DumpNames.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
-    <ClCompile Include="..\src\FindConnections.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
     <ClCompile Include="..\src\LinAlgOps.cpp" />
     <ClCompile Include="..\src\main.cpp" />
@@ -187,15 +186,49 @@
     <ClInclude Include="..\libs\libtess2\Source\priorityq.h" />
     <ClInclude Include="..\libs\libtess2\Source\sweep.h" />
     <ClInclude Include="..\libs\libtess2\Source\tess.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\allocators.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\cursorstreamwrapper.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\document.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\encodedstream.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\encodings.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\error\en.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\error\error.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\filereadstream.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\filewritestream.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\fwd.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\biginteger.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\diyfp.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\dtoa.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\ieee754.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\itoa.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\meta.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\pow10.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\regex.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\stack.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\strfunc.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\strtod.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\internal\swap.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\istreamwrapper.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\memorybuffer.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\memorystream.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\msinttypes\inttypes.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\msinttypes\stdint.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\ostreamwrapper.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\pointer.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\prettywriter.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\rapidjson.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\reader.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\schema.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\stream.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\stringbuffer.h" />
+    <ClInclude Include="..\libs\rapidjson\include\rapidjson\writer.h" />
     <ClInclude Include="..\src\AddGroupBBox.h" />
     <ClInclude Include="..\src\AddStats.h" />
     <ClInclude Include="..\src\ChunkTiny.h" />
     <ClInclude Include="..\src\Colorizer.h" />
     <ClInclude Include="..\src\Common.h" />
     <ClInclude Include="..\src\DumpNames.h" />
-    <ClInclude Include="..\src\ExportJson.h" />
     <ClInclude Include="..\src\ExportObj.h" />
-    <ClInclude Include="..\src\FindConnections.h" />
     <ClInclude Include="..\src\Flatten.h" />
     <ClInclude Include="..\src\LinAlg.h" />
     <ClInclude Include="..\src\LinAlgOps.h" />

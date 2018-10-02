@@ -1,3 +1,6 @@
 [submodule "libs/libtess2"]
 	path = libs/libtess2
 	url = https://github.com/memononen/libtess2.git
+[submodule "libs/rapidjson"]
+	path = libs/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
