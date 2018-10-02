@@ -106,3 +106,4 @@ uint64_t fnv_1a(const char* bytes, size_t l);
 
 void connect(Store* store, Logger logger);
 void align(Store* store, Logger logger);
+bool exportJson(Store* store, Logger logger, const char* path);
