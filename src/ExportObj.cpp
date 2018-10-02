@@ -3,7 +3,6 @@
 #include <string>
 #include <algorithm>
 #include "ExportObj.h"
-#include "FindConnections.h"
 #include "Store.h"
 #include "LinAlgOps.h"
 

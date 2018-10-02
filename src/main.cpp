@@ -11,7 +11,6 @@
 #include "Parser.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
-#include "ExportJson.h"
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
