@@ -41,9 +41,8 @@ namespace {
     Interface interface;
     auto * connection = geo->connections[o];
     auto ix = connection->geo[0] == geo ? 1 : 0;
-    auto * other = connection->geo[ix];
-    auto scale = getScale(other->M_3x4);
-    switch (other->kind) {
+    auto scale = getScale(geo->M_3x4);
+    switch (geo->kind) {
     case Geometry::Kind::Pyramid: {
       auto bx = 0.5f * geo->pyramid.bottom[0];
       auto by = 0.5f * geo->pyramid.bottom[1];
@@ -122,7 +121,7 @@ namespace {
     }
     case Geometry::Kind::CircularTorus:
       interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * other->circularTorus.radius;
+      interface.circular.radius = scale * geo->circularTorus.radius;
       break;
 
     case Geometry::Kind::EllipticalDish:
@@ -140,11 +139,11 @@ namespace {
     }
     case Geometry::Kind::Snout:
       interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * (connection->offset[ix] == 0 ? other->snout.radius_b : other->snout.radius_t);
+      interface.circular.radius = scale * (connection->offset[ix] == 0 ? geo->snout.radius_b : geo->snout.radius_t);
       break;
     case Geometry::Kind::Cylinder:
       interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * other->cylinder.radius;
+      interface.circular.radius = scale * geo->cylinder.radius;
       break;
     case Geometry::Kind::Sphere:
     case Geometry::Kind::Line:
@@ -161,25 +160,29 @@ namespace {
 
   bool doInterfacesMatch(const Geometry* geo, const Connection* con)
   {
-    unsigned k = geo == con->geo[0] ? 0 : 1;
-    unsigned l = geo == con->geo[0] ? 1 : 0;
+    bool isFirst = geo == con->geo[0];
 
-    auto iface0 = getInterface(con->geo[k], con->offset[k]);
-    auto iface1 = getInterface(con->geo[l], con->offset[l]);
+    auto * thisGeo = con->geo[isFirst ? 0 : 1];
+    auto thisOffset = con->offset[isFirst ? 0 : 1];
+    auto thisIFace = getInterface(thisGeo, thisOffset);
 
-    if (iface0.kind != iface1.kind) return false;
+    auto * thatGeo = con->geo[isFirst ? 1 : 0];
+    auto thatOffset = con->offset[isFirst ? 1 : 0];
+    auto thatIFace = getInterface(thatGeo, thatOffset);
 
-    if (iface0.kind == Interface::Kind::Circular) {
-      if (iface0.circular.radius <= 1.05f*iface1.circular.radius) {
-        return true;
-      }
-      return false;
+
+    if (thisIFace.kind != thatIFace.kind) return false;
+
+    if (thisIFace.kind == Interface::Kind::Circular) {
+
+      return thisIFace.circular.radius <= 1.05f*thatIFace.circular.radius;
+
     }
     else {
       for (unsigned j = 0; j < 4; j++) {
         bool found = false;
         for (unsigned i = 0; i < 4; i++) {
-          if (distanceSquared(iface0.square.p[j], iface1.square.p[i]) < 0.001f*0.001f) {
+          if (distanceSquared(thisIFace.square.p[j], thatIFace.square.p[i]) < 0.001f*0.001f) {
             found = true;
           }
         }
@@ -291,7 +294,7 @@ unsigned TriangulationFactory::sagittaBasedSegmentCount(float arc, float radius,
 float TriangulationFactory::sagittaBasedError(float arc, float radius, float scale, unsigned segments)
 {
   auto s = scale * radius*(1.f - std::cos(arc / segments));  // Length of sagitta
-  assert(s <= tolerance);
+  //assert(s <= tolerance);
   return s;
 }
 
