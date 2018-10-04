@@ -85,6 +85,8 @@ void ExportObj::init(class Store& store)
   this->store = &store;
   conn = store.conn;
 
+  stack.accommodate(store.groupCountAllocated());
+
   char colorName[6];
   for (auto * line = store.getFirstDebugLine(); line != nullptr; line = line->next) {
 
@@ -152,7 +154,18 @@ void ExportObj::beginGroup(Group* group)
 {
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 
-  fprintf(out, "o %s\n", group->group.name);
+  stack[stack_p++] = group->group.name;
+
+  fprintf(out, "o %s", stack[0]);
+  for (unsigned i = 1; i < stack_p; i++) {
+    fprintf(out, "/%s", stack[i]);
+  }
+  fprintf(out, "\n");
+ 
+
+//  fprintf(out, "o %s\n", group->group.name);
+
+
   if (groupBoundingBoxes && !isEmpty(group->group.bboxWorld)) {
     fprintf(out, "usemtl group_bbox\n");
     wireBoundingBox(out, off_v, group->group.bboxWorld);
@@ -160,7 +173,10 @@ void ExportObj::beginGroup(Group* group)
 
 }
 
-void ExportObj::EndGroup() { }
+void ExportObj::EndGroup() {
+  assert(stack_p);
+  stack_p--;
+}
 
 namespace {
 

@@ -34,6 +34,8 @@ private:
   FILE* mtl = nullptr;
   Map definedColors;
   Store* store = nullptr;
+  Buffer<const char*> stack;
+  unsigned stack_p = 0;
   unsigned off_v = 1;
   unsigned off_n = 1;
   struct Connectivity* conn = nullptr;
