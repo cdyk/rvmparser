@@ -396,7 +396,7 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
   tri->indices = (uint32_t*)arena->alloc(3 * sizeof(uint32_t) * tri->triangles_n);
   for (unsigned i = 0; i < 4; i++) {
     if (cap[i] == false) continue;
-    l = quadIndices(tri->indices, l, 4 * i, 0, 1, 2, 3);
+    l = quadIndices(tri->indices, l, o /*4 * i*/, 0, 1, 2, 3);
     o += 4;
   }
   if (cap[4]) {
