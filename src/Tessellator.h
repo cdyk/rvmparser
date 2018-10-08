@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "StoreVisitor.h"
+#include "LinAlg.h"
 
 class TriangulationFactory
 {
@@ -38,6 +39,7 @@ private:
   unsigned maxSamples = 100;
 
   std::vector<float> vertices;
+  std::vector<Vec3f> vec3;
   std::vector<float> normals;
   std::vector<uint32_t> indices;
 

@@ -1191,6 +1191,15 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
 
       bool anyData = false;
 
+      BBox3f bbox = createEmptyBBox3f();
+      for (unsigned c = 0; c < poly.contours_n; c++) {
+        for (unsigned i = 0; i < poly.contours[c].vertices_n; i++) {
+          const auto p = Vec3f(poly.contours[c].vertices + 3 * i);
+          engulf(bbox, p);
+        }
+      }
+      auto m = 0.5f*(Vec3f(bbox.min) + Vec3f(bbox.max));
+
       auto tess = tessNewTess(nullptr);
       for (unsigned c = 0; c < poly.contours_n; c++) {
         auto & cont = poly.contours[c];
@@ -1198,7 +1207,12 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
           logger(1, "Ignoring degenerate contour with %d vertices.", cont.vertices_n);
           continue;
         }
-        tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
+        vec3.resize(cont.vertices_n);
+        for (unsigned i = 0; i < cont.vertices_n; i++) {
+          vec3[i] = Vec3f(cont.vertices + 3 * i) - m;
+        }
+        tessAddContour(tess, 3, vec3.data(), 3 * sizeof(float), cont.vertices_n);
+        //tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
         anyData = true;
       }
 
@@ -1211,7 +1225,14 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
           auto vn = unsigned(tessGetVertexCount(tess));
 
           vertices.resize(vertices.size() + 3 * vn);
-          std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
+
+          auto * src = tessGetVertices(tess);
+          for (unsigned i = 0; i < vn; i++) {
+            auto p = Vec3f((float*)(src + 3 * i)) + m;
+            write(vertices.data() + 3 * (vo + i), p);
+          }
+
+          //std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
 
           auto * remap = tessGetVertexIndices(tess);
           normals.resize(vertices.size());
