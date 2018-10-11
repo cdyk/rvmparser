@@ -145,6 +145,7 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
       dtri->vertices_n = stri->vertices_n;
       dtri->vertices = (float*)arena.dup(stri->vertices, 3 * sizeof(float) * dtri->vertices_n);
       dtri->normals = (float*)arena.dup(stri->normals, 3 * sizeof(float) * dtri->vertices_n);
+      dtri->texCoords = (float*)arena.dup(stri->texCoords, 2 * sizeof(float) * dtri->vertices_n);
     }
     if (stri->triangles_n) {
       dtri->triangles_n = stri->triangles_n;

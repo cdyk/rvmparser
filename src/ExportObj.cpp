@@ -268,14 +268,32 @@ void ExportObj::geometry(struct Geometry* geometry)
         fprintf(out, "v %f %f %f\n", p.x, p.y, p.z);
         fprintf(out, "vn %f %f %f\n", n.x, n.y, n.z);
       }
-      for (size_t i = 0; i < 3 * tri->triangles_n; i += 3) {
-        fprintf(out, "f %d//%d %d//%d %d//%d\n",
-          tri->indices[i + 0] + off_v, tri->indices[i + 0] + off_n,
-          tri->indices[i + 1] + off_v, tri->indices[i + 1] + off_n,
-          tri->indices[i + 2] + off_v, tri->indices[i + 2] + off_n);
+      if (tri->texCoords) {
+        for (size_t i = 0; i < tri->vertices_n; i++) {
+          const Vec2f vt(tri->texCoords + 2 * i);
+          fprintf(out, "vt %f %f\n", vt.x, vt.y);
+        }
       }
+      else {
+        for (size_t i = 0; i < tri->vertices_n; i++) {
+          auto p = scale * mul(geometry->M_3x4, Vec3f(tri->vertices + 3*i));
+          fprintf(out, "vt %f %f\n", 0*p.x, 0*p.y);
+        }
+
+        for (size_t i = 0; i < 3 * tri->triangles_n; i += 3) {
+          auto a = tri->indices[i + 0];
+          auto b = tri->indices[i + 1];
+          auto c = tri->indices[i + 2];
+          fprintf(out, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                  a + off_v, a + off_t, a + off_n,
+                  b + off_v, b + off_t, b + off_n,
+                  c + off_v, c + off_t, c + off_n);
+        }
+      }
+
       off_v += tri->vertices_n;
       off_n += tri->vertices_n;
+      off_t += tri->vertices_n;
     }
   }
 

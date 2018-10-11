@@ -22,6 +22,7 @@ struct Polygon
 struct Triangulation {
   float* vertices = nullptr;
   float* normals = nullptr;
+  float* texCoords = nullptr;
   uint32_t* indices = 0;
   uint32_t vertices_n = 0;
   uint32_t triangles_n = 0;
