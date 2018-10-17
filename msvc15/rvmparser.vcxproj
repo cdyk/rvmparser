@@ -165,6 +165,7 @@
     <ClCompile Include="..\src\Colorizer.cpp" />
     <ClCompile Include="..\src\Common.cpp" />
     <ClCompile Include="..\src\Connect.cpp" />
+    <ClCompile Include="..\src\DiscardGroups.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
