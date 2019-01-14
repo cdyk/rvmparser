@@ -141,11 +141,11 @@ void Tessellator::geometry(Geometry* geo)
     break;
 
   case Geometry::Kind::EllipticalDish:
-    tri = factory->sphereBasedShape(&store->arenaTriangulation, geo, 0.5f*geo->ellipticalDish.diameter, half_pi, 0.f, 2.f * geo->ellipticalDish.radius / geo->ellipticalDish.diameter, scale);
+    tri = factory->sphereBasedShape(&store->arenaTriangulation, geo, geo->ellipticalDish.baseRadius, half_pi, 0.f, geo->ellipticalDish.height / geo->ellipticalDish.baseRadius, scale);
     break;
 
   case Geometry::Kind::SphericalDish: {
-    float r_circ = 0.5f * geo->sphericalDish.diameter;
+    float r_circ = geo->sphericalDish.baseRadius;
     auto h = geo->sphericalDish.height;
     float r_sphere = (r_circ*r_circ + h * h) / (2.f*h);
     float arc = asin(r_circ / r_sphere);

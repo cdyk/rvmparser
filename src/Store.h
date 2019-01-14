@@ -106,11 +106,11 @@ struct Geometry
       float angle;
     } circularTorus;
     struct {
-      float diameter;
-      float radius;
+      float baseRadius;
+      float height;
     } ellipticalDish;
     struct {
-      float diameter;
+      float baseRadius;
       float height;
     } sphericalDish;
     struct {

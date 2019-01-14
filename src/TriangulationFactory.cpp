@@ -126,11 +126,11 @@ namespace {
 
     case Geometry::Kind::EllipticalDish:
       interface.kind = Interface::Kind::Circular;
-      interface.circular.radius = scale * 0.5f*geo->ellipticalDish.diameter;
+      interface.circular.radius = scale * geo->ellipticalDish.baseRadius;
       break;
 
     case Geometry::Kind::SphericalDish: {
-      float r_circ = 0.5f * geo->sphericalDish.diameter;
+      float r_circ = geo->sphericalDish.baseRadius;
       auto h = geo->sphericalDish.height;
       float r_sphere = (r_circ*r_circ + h * h) / (2.f*h);
       interface.kind = Interface::Kind::Circular;
