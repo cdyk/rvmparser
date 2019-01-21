@@ -188,13 +188,13 @@ namespace {
 
     case 5:
       g->kind = Geometry::Kind::EllipticalDish;
-      p = read_float32_be(g->ellipticalDish.diameter, p, e);
-      p = read_float32_be(g->ellipticalDish.radius, p, e);
+      p = read_float32_be(g->ellipticalDish.baseRadius, p, e);
+      p = read_float32_be(g->ellipticalDish.height, p, e);
       break;
 
     case 6:
       g->kind = Geometry::Kind::SphericalDish;
-      p = read_float32_be(g->sphericalDish.diameter, p, e);
+      p = read_float32_be(g->sphericalDish.baseRadius, p, e);
       p = read_float32_be(g->sphericalDish.height, p, e);
       break;
 
