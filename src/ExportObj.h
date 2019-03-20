@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdio>
+#include <cstring>
 
 #include "Common.h"
 #include "StoreVisitor.h"

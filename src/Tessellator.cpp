@@ -32,7 +32,7 @@ Tessellator::~Tessellator()
 
 Triangulation* Tessellator::getTriangulation(Geometry* geo)
 {
-  auto a = offsetof(Geometry, Geometry::kind);
+  auto a = offsetof(struct Geometry, kind);
   auto n = sizeof(Geometry) - a;
 
   auto hash = fnv_1a((const char*)geo + a, n);

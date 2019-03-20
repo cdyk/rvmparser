@@ -291,6 +291,7 @@ int main(int argc, char** argv)
 
   if (rv == 0 && !output_json.empty()) {
     auto time0 = std::chrono::high_resolution_clock::now();
+    /*
     if (exportJson(store, logger, output_json.c_str())) {
       auto time1 = std::chrono::high_resolution_clock::now();
       auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
@@ -300,6 +301,7 @@ int main(int argc, char** argv)
       logger(2, "Failed to export obj file.\n");
       rv = -1;
     }
+    */
   }
 
   if (rv == 0 && !output_txt.empty()) {

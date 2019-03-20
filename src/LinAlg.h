@@ -38,6 +38,7 @@ struct Vec3f
   };
   float& operator[](unsigned i) { return data[i]; }
   const float& operator[](unsigned i) const { return data[i]; }
+  float X(){return Vec3f::x;}
 };
 
 
