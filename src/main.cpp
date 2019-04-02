@@ -11,6 +11,7 @@
 #include "Parser.h"
 #include "Tessellator.h"
 #include "ExportObj.h"
+#include "ExportOFF.h"
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
@@ -116,6 +117,7 @@ int main(int argc, char** argv)
   std::string output_json;
   std::string output_txt;
   std::string output_obj_stem;
+  std::string output_off_stem;
   std::string color_attribute;
   
 
@@ -161,6 +163,11 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-obj") {
           output_obj_stem = val;
+          should_tessellate = true;
+          continue;
+        }
+        else if (key == "--output-off") {
+          output_off_stem = val;
           should_tessellate = true;
           continue;
         }
@@ -326,6 +333,25 @@ int main(int argc, char** argv)
       auto time1 = std::chrono::high_resolution_clock::now();
       auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
       logger(0, "Exported obj into %s(.obj|.mtl) (%lldms)", output_obj_stem.c_str(), e);
+    }
+    else {
+      logger(2, "Failed to export obj file.\n");
+      rv = -1;
+    }
+  }
+  
+  if (rv == 0 && !output_off_stem.empty()) {
+    assert(should_tessellate);
+ 
+    auto time0 = std::chrono::high_resolution_clock::now();
+    ExportOFF exportObj;
+    exportObj.groupBoundingBoxes = groupBoundingBoxes;
+    if (exportObj.open((output_off_stem + ".off").c_str())) {
+      store->apply(&exportObj);
+
+      auto time1 = std::chrono::high_resolution_clock::now();
+      auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
+      logger(0, "Exported obj into %s(.off) (%lldms)", output_off_stem.c_str(), e);
     }
     else {
       logger(2, "Failed to export obj file.\n");

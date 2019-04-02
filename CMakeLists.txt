@@ -30,4 +30,4 @@ list(REMOVE_ITEM SOURCES
 
 add_library (${PROJECT_NAME} STATIC ${SOURCES})
 add_executable(${PROJECT_NAME}test "${CMAKE_SOURCE_DIR}/src/main.cpp")
-target_link_libraries(${PROJECT_NAME}test  -l${PROJECT_NAME} -static-libgcc -static-libstdc++ -lpthread)
+target_link_libraries(${PROJECT_NAME}test  -l${PROJECT_NAME} -static -static-libgcc -static-libstdc++ -lpthread)
