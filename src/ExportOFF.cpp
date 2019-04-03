@@ -106,7 +106,7 @@ void ExportOFF::endFile() {
   //    off_v += 2;
   //  }
   //}
-  fprintf(out,"%d %d 0\n",verts.size()/3,faces.size()/3);
+  fprintf(out,"%d %d 0\n",verts.size() / 3,faces.size() / 3);
   for(unsigned i=0;i<verts.size();i+=3)
     fprintf(out,"%f %f %f\n",verts[i],verts[i+1],verts[i+2]);
   for(unsigned i=0;i<faces.size();i+=3)
@@ -238,9 +238,9 @@ void ExportOFF::geometry(struct Geometry* geometry)
           auto a = tri->indices[i + 0];
           auto b = tri->indices[i + 1];
           auto c = tri->indices[i + 2];
-          faces.push_back(a + off_v);
-          faces.push_back(b + off_v);
-          faces.push_back(c + off_v);
+          faces.push_back(a + off_v - 1);
+          faces.push_back(b + off_v - 1);
+          faces.push_back(c + off_v - 1);
         }
       }
 
