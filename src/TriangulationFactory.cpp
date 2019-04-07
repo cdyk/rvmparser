@@ -351,11 +351,11 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
     auto * con = geo->connections[i];
     if (cap[i] == false || con == nullptr || con->flags != Connection::Flags::HasRectangularSide) continue;
 
-    if (doInterfacesMatch(geo, con)) {
-      cap[i] = false;
-      discardedCaps++;
-      //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
-    }
+    // if (doInterfacesMatch(geo, con)) {
+      // cap[i] = false;
+      // discardedCaps++;
+      // store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
+    // }
   }
 
   unsigned caps = 0;
@@ -452,11 +452,11 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
     auto * con = geo->connections[i];
     if (faces[i] == false || con == nullptr || con->flags != Connection::Flags::HasRectangularSide) continue;
 
-    if (doInterfacesMatch(geo, con)) {
-      faces[i] = false;
-      discardedCaps++;
+    // if (doInterfacesMatch(geo, con)) {
+      // faces[i] = false;
+      // discardedCaps++;
       //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
-    }
+    // }
 
   }
 
@@ -521,11 +521,11 @@ Triangulation* TriangulationFactory::rectangularTorus(Arena* arena, const Geomet
   for (unsigned i = 0; i < 2; i++) {
     auto * con = geo->connections[i];
     if (con && con->flags == Connection::Flags::HasRectangularSide) {
-      if (doInterfacesMatch(geo, con)) {
-        cap[i] = false;
-        discardedCaps++;
+      // if (doInterfacesMatch(geo, con)) {
+        // cap[i] = false;
+        // discardedCaps++;
         //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0xff0000);
-      }
+      // }
     }
   }
 
@@ -656,13 +656,13 @@ Triangulation* TriangulationFactory::circularTorus(Arena* arena, const Geometry*
   for (unsigned i = 0; i < 2; i++) {
     auto * con = geo->connections[i];
     if (con && con->flags == Connection::Flags::HasCircularSide) {
-      if (doInterfacesMatch(geo, con)) {
-        cap[i] = false;
-        discardedCaps++;
-      }
-      else {
+      // if (doInterfacesMatch(geo, con)) {
+        // cap[i] = false;
+        // discardedCaps++;
+      // }
+      // else {
         //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
-      }
+      // }
     }
   }
 
@@ -789,13 +789,13 @@ Triangulation* TriangulationFactory::snout(Arena* arena, const Geometry* geo, fl
   for (unsigned i = 0; i < 2; i++) {
     auto * con = geo->connections[i];
     if (con && con->flags == Connection::Flags::HasCircularSide) {
-      if (doInterfacesMatch(geo, con)) {
-        cap[i] = false;
-        discardedCaps++;
-      }
-      else {
+      // if (doInterfacesMatch(geo, con)) {
+        // cap[i] = false;
+        // discardedCaps++;
+      // }
+      // else {
         //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
-      }
+      // }
     }
   }
 
@@ -921,13 +921,13 @@ Triangulation* TriangulationFactory::cylinder(Arena* arena, const Geometry* geo,
   for (unsigned i = 0; i < 2; i++) {
     auto * con = geo->connections[i];
     if (con && con->flags == Connection::Flags::HasCircularSide) {
-      if (doInterfacesMatch(geo, con)) {
-        cap[i] = false;
-        discardedCaps++;
-      }
-      else {
+      // if (doInterfacesMatch(geo, con)) {
+        // cap[i] = false;
+        // discardedCaps++;
+      // }
+      // else {
         //store->addDebugLine(con->p.data, (con->p.data + 0.05f*con->d).data, 0x00ffff);
-      }
+      // }
     }
   }
 

@@ -4,15 +4,13 @@
 
 #include "Common.h"
 #include "StoreVisitor.h"
-#include "LinAlg.h"
-#include "cork.h"
 
-class ExportOFF : public StoreVisitor
+class ExportSCAD : public StoreVisitor
 {
 public:
   bool groupBoundingBoxes = false;
 
-  ~ExportOFF();
+  ~ExportSCAD();
 
   bool open(const char* path_obj);
 
@@ -34,11 +32,8 @@ public:
 
 private:
   FILE* out = nullptr;
-  FILE* oneout = nullptr;
-  std::vector<CorkTriMesh> c_mesh;
   std::vector<float> verts;
-  std::vector<uint32_t> faces;
-  Map definedColors;
+  std::vector<uint32_t> tris;
   Store* store = nullptr;
   Buffer<const char*> stack;
   unsigned stack_p = 0;
@@ -51,4 +46,5 @@ private:
   bool anchors = false;
   bool primitiveBoundingBoxes = false;
   bool compositeBoundingBoxes = false;
+
 };

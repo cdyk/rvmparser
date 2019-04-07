@@ -12,6 +12,7 @@
 #include "Tessellator.h"
 #include "ExportObj.h"
 #include "ExportOFF.h"
+#include "ExportSCAD.h"
 #include "Store.h"
 #include "Flatten.h"
 #include "AddStats.h"
@@ -92,6 +93,8 @@ void printHelp(const char* argv0)
   fprintf(stderr, "    --output-txt=filename.txt      Dump all group names to a text file.\n");
   fprintf(stderr, "    --output-obj=filenamestem      Write geometry to an obj file, .obj and .mtl\n");
   fprintf(stderr, "                                   are added to filenamestem.\n");
+  fprintf(stderr, "    --output-off=filenamestem      Write geometry to an off file (.off)\n");
+  fprintf(stderr, "    --output-scad=filenamestem     Write geometry to an OpenSCAD file (.scad)\n");
   fprintf(stderr, "    --group-bounding-boxes         Include wireframe of boundingboxes of groups in output.\n");
   fprintf(stderr, "    --color-attribute=key          Specify which attributes that contain color, empty\n");
   fprintf(stderr, "                                   imply that material id of group is used.\n");
@@ -118,6 +121,7 @@ int main(int argc, char** argv)
   std::string output_txt;
   std::string output_obj_stem;
   std::string output_off_stem;
+  std::string output_scad_stem;
   std::string color_attribute;
   
 
@@ -168,6 +172,11 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-off") {
           output_off_stem = val;
+          should_tessellate = true;
+          continue;
+        }
+        else if (key == "--output-scad") {
+          output_scad_stem = val;
           should_tessellate = true;
           continue;
         }
@@ -351,10 +360,29 @@ int main(int argc, char** argv)
 
       auto time1 = std::chrono::high_resolution_clock::now();
       auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
-      logger(0, "Exported obj into %s(.off) (%lldms)", output_off_stem.c_str(), e);
+      logger(0, "Exported off into %s(.off) (%lldms)", output_off_stem.c_str(), e);
     }
     else {
-      logger(2, "Failed to export obj file.\n");
+      logger(2, "Failed to export off file.\n");
+      rv = -1;
+    }
+  }
+
+  if (rv == 0 && !output_scad_stem.empty()) {
+    assert(should_tessellate);
+ 
+    auto time0 = std::chrono::high_resolution_clock::now();
+    ExportSCAD exportObj;
+    exportObj.groupBoundingBoxes = groupBoundingBoxes;
+    if (exportObj.open((output_scad_stem + ".scad").c_str())) {
+      store->apply(&exportObj);
+
+      auto time1 = std::chrono::high_resolution_clock::now();
+      auto e = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
+      logger(0, "Exported geometry into %s(.scad) (%lldms)", output_scad_stem.c_str(), e);
+    }
+    else {
+      logger(2, "Failed to export scad file.\n");
       rv = -1;
     }
   }

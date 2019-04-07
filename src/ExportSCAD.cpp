@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <algorithm>
-#include "ExportOFF.h"
+#include "ExportSCAD.h"
 #include "Store.h"
 #include "LinAlgOps.h"
 
@@ -51,45 +51,38 @@ namespace {
     p = mul(geo->M_3x4, p);
   }
   
-  bool same_mesh(CorkTriMesh m1,CorkTriMesh m2){
-    if(m1.n_vertices!=m2.n_vertices || m1.n_triangles!=m2.n_triangles)
-      return false;
-    for(int i=0;i<m1.n_vertices;i++)
-      if(m1.vertices[i]!=m2.vertices[i])
-        return false;
-    for(int i=0;i<m1.n_triangles;i++)
-      if(m1.triangles[i]!=m2.triangles[i])
-        return false;
-    return true;
+  char * mat2string(Mat3x4f m){
+    char res[1024];
+    // sprintf(res,"m=[[%f,%f,%f,%f],[%f,%f,%f,%f],[%f,%f,%f,%f],[0,0,0,1]]",
+    // m.m01,m.m02,m.m03,
+    // m.m11,m.m12,m.m13,
+    // m.m21,m.m22,m.m23);
+    sprintf(res,"m=[[%f,%f,%f,%f],[%f,%f,%f,%f],[%f,%f,%f,%f],[0,0,0,1]]",
+    m.m00,m.m01,m.m02,m.m03,
+    m.m10,m.m11,m.m12,m.m13,
+    m.m20,m.m21,m.m22,m.m23);
+    return res;
   }
   
-  void fprintCTM(FILE* f,CorkTriMesh m){
-    fprintf(f,"OFF\n%d %d 0\n",m.n_vertices,m.n_triangles);
-    for(int i=0;i<m.n_vertices;i++)
-      fprintf(f,"%f %f %f\n",m.vertices[3*i],m.vertices[3*i+1],m.vertices[3*i+2]);
-    for(int i=0;i<m.n_triangles;i++)
-      fprintf(f,"3 %d %d %d\n",m.triangles[3*i],m.triangles[3*i+1],m.triangles[3*i+2]);
-  }
-
 }
 
 
 
-ExportOFF::~ExportOFF()
+ExportSCAD::~ExportSCAD()
 {
   if (out) {
     fclose(out);
   }
 }
 
-bool ExportOFF::open(const char* path_obj)
+bool ExportSCAD::open(const char* path_obj)
 {
   if (!open_w(&out, path_obj)) return false;
   return true;
 }
 
 
-void ExportOFF::init(class Store& store)
+void ExportSCAD::init(class Store& store)
 {
   assert(out);
   this->store = &store;
@@ -99,19 +92,6 @@ void ExportOFF::init(class Store& store)
 
   char colorName[6];
   for (auto * line = store.getFirstDebugLine(); line != nullptr; line = line->next) {
-
-    for (unsigned k = 0; k < 6; k++) {
-      auto v = (line->color >> (4 * k)) & 0xf;
-      if (v < 10) colorName[k] = '0' + v;
-      else colorName[k] = 'a' + v - 10;
-    }
-    auto * name = store.strings.intern(&colorName[0], &colorName[6]);
-    if (!definedColors.get(uint64_t(name))) {
-      definedColors.insert(uint64_t(name), 1);
-      auto r = (1.f / 255.f)*((line->color >> 16) & 0xFF);
-      auto g = (1.f / 255.f)*((line->color >> 8) & 0xFF);
-      auto b = (1.f / 255.f)*((line->color) & 0xFF);
-    }
 
     verts.push_back(line->a[0]);
     verts.push_back(line->a[1]);
@@ -123,79 +103,26 @@ void ExportOFF::init(class Store& store)
   }
 }
 
-void ExportOFF::beginFile(Group* group)
+void ExportSCAD::beginFile(Group* group)
 {
   //fprintf(out, "OFF\n");
 }
 
-void ExportOFF::endFile() {
+void ExportSCAD::endFile() {
       FILE* m_out;
-  CorkTriMesh r_mesh;
-  printf("geometries:%d\n",c_mesh.size());
-  r_mesh=c_mesh[0];
-  if(c_mesh.size()==2){
-    if(same_mesh(c_mesh[0],c_mesh[1]))
-      r_mesh=c_mesh[0];
-    else{
-      CorkTriMesh o_mesh;
-      computeUnion(r_mesh,c_mesh[1],&o_mesh);
-      r_mesh=o_mesh;
-    }
-  }
-  if(c_mesh.size()>2){
-    for(int i=1;i<c_mesh.size();i++){
-      CorkTriMesh o_mesh;
-  char buffer[1024];
-  printf("result verts:%d, tris:%d\n",r_mesh.n_vertices,r_mesh.n_triangles);
-  printf("primitive[%d] verts:%d, tris:%d\n",i,c_mesh[i].n_vertices,c_mesh[i].n_triangles);
-  // fprintCTM(stdout,r_mesh);
-  // fprintCTM(stdout,c_mesh[i]);
-      computeUnion(r_mesh,c_mesh[i],&o_mesh);
-      
-      free(r_mesh.vertices);
-      free(r_mesh.triangles);
-      
-      r_mesh.n_vertices=o_mesh.n_vertices;
-      r_mesh.vertices=(float*)malloc(sizeof(float)*o_mesh.n_vertices*3);
-      // for(int i=0;i<r_mesh.n_vertices;i++)
-        // r_mesh.vertices[i]=o_mesh.vertices[i];
-      std::memcpy(r_mesh.vertices,o_mesh.vertices,sizeof(float)*o_mesh.n_vertices*3);
-      
-      r_mesh.n_triangles=o_mesh.n_triangles;
-      r_mesh.triangles=(uint32_t*)malloc(sizeof(uint32_t)*o_mesh.n_triangles*3);
-      // for(int i=0;i<r_mesh.n_triangles;i++)
-        // r_mesh.triangles[i]=o_mesh.triangles[i];
-      std::memcpy(r_mesh.triangles,o_mesh.triangles,sizeof(uint32_t)*o_mesh.n_triangles*3);
-
-      o_mesh.n_vertices=0;
-      o_mesh.n_triangles=0;
-      free(o_mesh.vertices);
-      free(o_mesh.triangles);
-      
-      sprintf(buffer,"+%d.off",i);
-      if((m_out=fopen(buffer,"w"))!=nullptr) {
-        fprintCTM(m_out,r_mesh);
-        fclose(m_out);
-      }
-      
-    }
-  }
-  
-  fprintf(out,"OFF\n%d %d 0\n",verts.size() / 3,faces.size() / 3);
-  for(unsigned i=0;i<verts.size();i+=3)
-    fprintf(out,"%f %f %f\n",verts[i],verts[i+1],verts[i+2]);
-  for(unsigned i=0;i<faces.size();i+=3)
-    fprintf(out,"3 %d %d %d\n",faces[i],faces[i+1],faces[i+2]);
 }
 
-void ExportOFF::beginModel(Group* group)
+void ExportSCAD::beginModel(Group* group)
 {
   //printf( "# Model project=%s, name=%s\n", group->model.project, group->model.name);
+  fprintf(out,"union(){\n");
 }
 
-void ExportOFF::endModel() { }
+void ExportSCAD::endModel() {
+  fprintf(out,"}\n");
+}
 
-void ExportOFF::beginGroup(Group* group)
+void ExportSCAD::beginGroup(Group* group)
 {
   //printf("%s\n",group->group.name);
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
@@ -205,30 +132,75 @@ void ExportOFF::beginGroup(Group* group)
   if (groupBoundingBoxes && !isEmpty(group->group.bboxWorld)) {
     wireBoundingBox(verts, off_v, group->group.bboxWorld);
   }
+  //fprintf(out,"translate([%f,%f,%f]){\n",group->group.translation[0],group->group.translation[1],group->group.translation[2]);
+  
 }
 
-void ExportOFF::EndGroup() {
+void ExportSCAD::EndGroup() {
   assert(stack_p);
   stack_p--;
+  //fprintf(out,"}\n");
 }
 
-void ExportOFF::geometry(struct Geometry* geometry)
+void ExportSCAD::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
   // printf("%d\n",geometry->kind);
-  CorkTriMesh mesh;
   std::vector<float> c_verts;
   std::vector<uint32_t> c_tris;
+  
+  switch(geometry->kind){
+    case Geometry::Kind::Pyramid:
+      break;
+    case Geometry::Kind::Box:{
+      fprintf(out,"multmatrix(%s){cube([%f,%f,%f],center=true);}\n",mat2string(geometry->M_3x4),
+      geometry->box.lengths[0],geometry->box.lengths[1],geometry->box.lengths[2]);
+      break;
+    }
+    case Geometry::Kind::RectangularTorus:
+      break;
+    case Geometry::Kind::CircularTorus:
+      break;
+    case Geometry::Kind::EllipticalDish:
+      break;
+    case Geometry::Kind::SphericalDish:
+      break;
+    case Geometry::Kind::Snout:{
+      fprintf(out,"multmatrix(%s){cylinder(h=%f,r1=%f,r2=%f,center=true,$fn=50);}\n",mat2string(geometry->M_3x4),
+      geometry->snout.height,geometry->snout.radius_b,geometry->snout.radius_t);
+      break;
+    }
+    case Geometry::Kind::Cylinder:{
+      fprintf(out,"multmatrix(%s){cylinder(h=%f,r=%f,center=true,$fn=50);}\n",mat2string(geometry->M_3x4),
+      geometry->cylinder.height,geometry->cylinder.radius);
+      break;
+    }
+    case Geometry::Kind::Sphere:
+      break;
+    case Geometry::Kind::Line:
+      break;
+    case Geometry::Kind::FacetGroup:{
+      Triangulation tri=*geometry->triangulation;
+      printf("tris:%d,verts:%d\n",tri.triangles_n,tri.vertices_n);
+      fprintf(out,"multmatrix(%s){\npolyhedron(points=[",mat2string(geometry->M_3x4));
+      
+      for(int i=0;i<3*tri.vertices_n-3;i+=3){
+        fprintf(out,"[%f,%f,%f],\n",tri.vertices[i+0],tri.vertices[i+1],tri.vertices[i+2]);
+      }
+      fprintf(out,"[%f,%f,%f]],\nfaces=[",tri.vertices[3*tri.vertices_n-3],tri.vertices[3*tri.vertices_n-2],tri.vertices[3*tri.vertices_n-1]);
+      
+      for(int i=0;i<3*tri.triangles_n-3;i+=3){
+        fprintf(out,"[%d,%d,%d],\n",tri.indices[i+0],tri.indices[i+1],tri.indices[i+2]);
+      }
+      fprintf(out,"[%d,%d,%d]],convexity=10);}\n",tri.indices[3*tri.triangles_n-3],tri.indices[3*tri.triangles_n-2],tri.indices[3*tri.triangles_n-1]);
+      break;
+    }
+    default:
+      break;
+  }
+  
   if (geometry->colorName == nullptr) {
     geometry->colorName = store->strings.intern("default");
-  }
-
-  if (!definedColors.get(uint64_t(geometry->colorName))) {
-    definedColors.insert(uint64_t(geometry->colorName), 1);
-
-    auto r = (1.f / 255.f)*((geometry->color >> 16) & 0xFF);
-    auto g = (1.f / 255.f)*((geometry->color >> 8) & 0xFF);
-    auto b = (1.f / 255.f)*((geometry->color) & 0xFF);
   }
 
   auto scale = 1.f;
@@ -251,7 +223,7 @@ void ExportOFF::geometry(struct Geometry* geometry)
     if (tri->indices != 0) {
       //sprintf(buffer, "g\n");
       if (geometry->triangulation->error != 0.f) {
-        fprintf(out, "# error=%f\n", geometry->triangulation->error);
+        printf("# error=%f\n", geometry->triangulation->error);
       }
       for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
 
@@ -279,9 +251,9 @@ void ExportOFF::geometry(struct Geometry* geometry)
           auto a = tri->indices[i + 0];
           auto b = tri->indices[i + 1];
           auto c = tri->indices[i + 2];
-          faces.push_back(a + off_v - 1);
-          faces.push_back(b + off_v - 1);
-          faces.push_back(c + off_v - 1);
+          tris.push_back(a + off_v - 1);
+          tris.push_back(b + off_v - 1);
+          tris.push_back(c + off_v - 1);
           c_tris.push_back(a);
           c_tris.push_back(b);
           c_tris.push_back(c);
@@ -291,22 +263,6 @@ void ExportOFF::geometry(struct Geometry* geometry)
       off_v += tri->vertices_n;
       off_n += tri->vertices_n;
       off_t += tri->vertices_n;
-      mesh.n_vertices=c_verts.size()/3;
-      mesh.n_triangles=c_tris.size()/3;
-      mesh.vertices=(float*)malloc(sizeof(float)*mesh.n_vertices*3);
-      for(int i=0;i<c_verts.size();i++){
-        mesh.vertices[i]=c_verts[i];
-      }
-      mesh.triangles=(uint32_t*)malloc(sizeof(uint32_t)*mesh.n_triangles*3);
-      for(int i=0;i<c_tris.size();i++)
-        mesh.triangles[i]=c_tris[i];
-      c_mesh.push_back(mesh);
-      char buffer[1024];
-      sprintf(buffer,"%d.off",c_mesh.size());
-      if((oneout=fopen(buffer,"w"))!=nullptr) {
-        fprintCTM(oneout,mesh);
-        fclose(oneout);
-      }
     }
   }
 

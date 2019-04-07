@@ -13,9 +13,11 @@ include_directories(
   "${CMAKE_SOURCE_DIR}/libs/libtess2/Include" 
   "${CMAKE_SOURCE_DIR}/libs/libtess2/Source" 
   "${CMAKE_SOURCE_DIR}/libs/rapidjson/include" 
+  "${CMAKE_SOURCE_DIR}/libs/cork" 
 )
 link_directories(
   ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+  "${CMAKE_SOURCE_DIR}/libs/cork" 
 )
 
 file(GLOB SOURCES
@@ -30,4 +32,4 @@ list(REMOVE_ITEM SOURCES
 
 add_library (${PROJECT_NAME} STATIC ${SOURCES})
 add_executable(${PROJECT_NAME}test "${CMAKE_SOURCE_DIR}/src/main.cpp")
-target_link_libraries(${PROJECT_NAME}test  -l${PROJECT_NAME} -static -static-libgcc -static-libstdc++ -lpthread)
+target_link_libraries(${PROJECT_NAME}test  -l${PROJECT_NAME} -static -static-libgcc -static-libstdc++ -lpthread -lcork -lmpir)
