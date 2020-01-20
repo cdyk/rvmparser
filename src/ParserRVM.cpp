@@ -22,6 +22,12 @@ namespace {
     std::vector<Group*> group_stack;
   };
 
+  const char* read_uint8(uint8_t& rv, const char* p, const char* e)
+  {
+    auto* q = reinterpret_cast<const uint8_t*>(p);
+    rv = q[0];
+    return p + 1;
+  }
 
   const char* read_uint32_be(uint32_t& rv, const char* p, const char* e)
   {
@@ -324,6 +330,21 @@ namespace {
     return p;
   }
 
+  const char* parse_colr(Context* ctx, const char* p, const char* e) {
+    assert(!ctx->group_stack.empty());
+    if (ctx->group_stack.back()->kind != Group::Kind::Model) {
+      ctx->store->setErrorString("Model chunk unfinished.");
+      return nullptr;
+    }
+    auto* g = ctx->store->newColor(ctx->group_stack.back());
+    p = read_uint32_be(g->colorKind, p, e);
+    p = read_uint32_be(g->colorIndex, p, e);
+    for (unsigned i = 0; i < 4; i++) {
+      p = read_uint8(g->rgba[i], p, e);
+    }
+    return p + 1;
+  }
+
 }
 
 bool parseRVM(class Store* store, const void * ptr, size_t size)
@@ -373,14 +394,19 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
       p = parse_prim(&ctx, p, e);
       if (p == nullptr) return false;
       break;
+    case id("COLR"):
+      p = parse_colr(&ctx, p, e);
+      break;
     default:
       snprintf(ctx.buf, ctx.buf_size, "Unrecognized chunk %s", chunk_id);
       store->setErrorString(buf);
       return false;
     }
     l = p;
-    p = parse_chunk_header(chunk_id, len, dunno, p, e);
-    id_chunk_id = id(chunk_id);
+    if (p < e) {
+      p = parse_chunk_header(chunk_id, len, dunno, p, e);
+      id_chunk_id = id(chunk_id);
+    }
   }
 
   assert(ctx.group_stack.size() == 2);

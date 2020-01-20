@@ -30,6 +30,16 @@ Store::Store()
   setErrorString("");
 }
 
+Color* Store::newColor(Group* parent)
+{
+  assert(parent != nullptr);
+  assert(parent->kind == Group::Kind::Model);
+  auto* color = arena.alloc<Color>();
+  color->next = nullptr;
+  insert(parent->model.colors, color);
+  return color;
+}
+
 void Store::setErrorString(const char* str)
 {
   auto l = strlen(str);
