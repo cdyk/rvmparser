@@ -35,7 +35,7 @@ struct Color
   Color* next = nullptr;
   uint32_t colorKind;
   uint32_t colorIndex;
-  uint8_t rgba[4];
+  uint8_t rgb[3];
 };
 
 struct Connection

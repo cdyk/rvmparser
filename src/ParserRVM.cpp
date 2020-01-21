@@ -339,10 +339,10 @@ namespace {
     auto* g = ctx->store->newColor(ctx->group_stack.back());
     p = read_uint32_be(g->colorKind, p, e);
     p = read_uint32_be(g->colorIndex, p, e);
-    for (unsigned i = 0; i < 4; i++) {
-      p = read_uint8(g->rgba[i], p, e);
+    for (unsigned i = 0; i < 3; i++) {
+      p = read_uint8(g->rgb[i], p, e);
     }
-    return p;
+    return p + 1;
   }
 
 }
