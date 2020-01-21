@@ -30,6 +30,14 @@ struct Triangulation {
   float error = 0.f;
 };
 
+struct Color
+{
+  Color* next = nullptr;
+  uint32_t colorKind;
+  uint32_t colorIndex;
+  uint8_t rgb[3];
+};
+
 struct Connection
 {
   enum struct Flags : uint8_t {
@@ -206,6 +214,7 @@ struct Group
       const char* encoding;
     } file;
     struct {
+      ListHeader<Color> colors;
       const char* project;
       const char* name;
     } model;
@@ -238,6 +247,8 @@ class Store
 {
 public:
   Store();
+
+  Color* newColor(Group* parent);
 
   Geometry* newGeometry(Group* parent);
 
