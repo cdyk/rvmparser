@@ -342,7 +342,7 @@ namespace {
     for (unsigned i = 0; i < 4; i++) {
       p = read_uint8(g->rgba[i], p, e);
     }
-    return p + 1;
+    return p;
   }
 
 }
