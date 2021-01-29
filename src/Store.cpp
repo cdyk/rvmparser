@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include "Store.h"
 #include "StoreVisitor.h"
 
