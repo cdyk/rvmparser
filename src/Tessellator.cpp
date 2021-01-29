@@ -148,7 +148,8 @@ void Tessellator::geometry(Geometry* geo)
     float r_circ = geo->sphericalDish.baseRadius;
     auto h = geo->sphericalDish.height;
     float r_sphere = (r_circ*r_circ + h * h) / (2.f*h);
-    float arc = asin(r_circ / r_sphere);
+    float sinval = std::min(1.f, std::max(-1.f, r_circ / r_sphere));
+    float arc = asin(sinval);
     if (r_circ < h) { arc = pi - arc; }
     tri = factory->sphereBasedShape(&store->arenaTriangulation, geo, r_sphere, arc, h - r_sphere, 1.f, scale);
     break;
