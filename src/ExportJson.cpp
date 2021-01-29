@@ -1,5 +1,3 @@
-#pragma once
-
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
@@ -95,6 +93,7 @@ bool exportJson(Store* store, Logger logger, const char* path)
   }
 
 
+#ifdef _WIN32
   FILE* out = nullptr;
   auto err = fopen_s(&out, path, "w");
   if (err != 0) {
@@ -105,6 +104,13 @@ bool exportJson(Store* store, Logger logger, const char* path)
     logger(2, "Failed to open %s for writing: %s", path, buf);
     return false;
   }
+#else
+  FILE* out = fopen(path, "w");
+  if(out == nullptr) {
+    logger(2, "Failed to open %s for writing.", path);
+    return false;
+  }
+#endif
 
   char writeBuffer[0x10000];
   rj::FileWriteStream os(out, writeBuffer, sizeof(writeBuffer));

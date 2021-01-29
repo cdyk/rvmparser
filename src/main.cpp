@@ -1,8 +1,22 @@
+#ifdef _WIN32
+
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
+
+#else
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
+#endif
+
 #include <cstdio>
 #include <cassert>
+#include <cstring>
 #include <string>
 #include <cctype>
 #include <chrono>
@@ -40,6 +54,8 @@ bool
 processFile(const std::string& path, F f)
 {
   bool rv = false;
+#ifdef _WIN32
+
   HANDLE h = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (h == INVALID_HANDLE_VALUE) {
     logger(2, "CreateFileA returned INVALID_HANDLE_VALUE");
@@ -69,8 +85,38 @@ processFile(const std::string& path, F f)
     }
     CloseHandle(h);
   }
-  return rv;
 
+#else
+
+  int fd = open(path.c_str(), O_RDONLY);
+  if(fd == -1) {
+    logger(2, "%s: open failed: %s", path.c_str(), strerror(errno));
+  }
+  else {
+    struct stat stat{};
+    if(fstat(fd, &stat) != 0) {
+      logger(2, "%s: fstat failed: %s", path.c_str(), strerror(errno));
+    }
+    else {
+      void * ptr = mmap(nullptr, stat.st_size, PROT_READ, MAP_PRIVATE|MAP_POPULATE, fd, 0);
+      if(ptr == MAP_FAILED) {
+        logger(2, "%s: mmap failed: %s", path.c_str(), strerror(errno));
+      }
+      else {
+        if(madvise(ptr, stat.st_size, MADV_SEQUENTIAL) != 0) {
+          logger(1, "%s: madvise(MADV_SEQUENTIAL) failed: %s", path.c_str(), strerror(errno));
+        }
+        rv = f(ptr, stat.st_size);
+        if(munmap(ptr, stat.st_size) != 0) {
+          logger(2, "%s: munmap failed: %s", path.c_str(), strerror(errno));
+          rv = false;
+        }
+      }
+    }
+  }
+
+#endif
+  return rv;
 }
 
 
@@ -258,8 +304,13 @@ int main(int argc, char** argv)
     auto time1 = std::chrono::high_resolution_clock::now();
     auto e0 = std::chrono::duration_cast<std::chrono::milliseconds>((time1 - time0)).count();
     logger(0, "Tessellated %u items of %u into %llu vertices and %llu triangles (tol=%f, %lluk, %lldms)",
-           tessellator.tessellated, tessellator.processed, tessellator.vertices, tessellator.triangles,
-           tolerance, (4*3*tessellator.vertices, 4*3*tessellator.triangles)/1024,  e0);
+           tessellator.tessellated,
+           tessellator.processed,
+           tessellator.vertices,
+           tessellator.triangles,
+           tolerance,
+           (4*3*tessellator.vertices + 4*3*tessellator.triangles)/1024,
+           e0);
   }
 
   bool do_flatten = false;
@@ -303,12 +354,23 @@ int main(int argc, char** argv)
   }
 
   if (rv == 0 && !output_txt.empty()) {
-    FILE* out;
+
+#ifdef _WIN32
+    FILE* out = nullptr;
     if (fopen_s(&out, output_txt.c_str(), "w") == 0) {
+#else
+    FILE* out = fopen(output_txt.c_str(), "w");
+    if(out != nullptr) {
+#endif
+
       DumpNames dumpNames;
       dumpNames.setOutput(out);
       store->apply(&dumpNames);
       fclose(out);
+    }
+    else {
+      logger(2, "Failed to open %s for writing", output_txt.c_str());
+      rv = -1;
     }
   }
 

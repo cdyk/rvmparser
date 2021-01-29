@@ -43,13 +43,25 @@ Clone the git repo, and update submodules
 ```
 git submodule update --init --recursive
 ```
-and open the solution file in msvc15. The project is just a few source-files, so it should be trivial to use other build systems.
-
-Currently, the example command-line utility (`main.cpp`) only builds on windows, as it uses the windows memmap API, but the parser itself is just passed pointers and size of an in-memory buffer, so the rest of the code should be fully cross-platform.
-
-Dependencies:
+The submodule dependencies are:
 - [libtess2](https://github.com/memononen/libtess2) is used to triangulate polygon more complex than quads.
 - [rapidjson](https://github.com/Tencent/rapidjson/) is used to output attributes as JSON.
+
+The project is just a few source-files, so it should be trivial to use with any build systems.
+
+### Visual Studio / Windows
+
+Open the solution file located in `msvc15` and build the project.
+
+### POSIX
+
+Enter the `make` directory. Type
+```
+export CXX=clang++
+export CC=clang
+make
+```
+Rvmparser doesn't currently build with GCC as the source currently contains use of anonymous aggregates of members with constructors. Use clang instead for now.
 
 ## See also
 - [Plant Mock-Up Converter](https://github.com/benvautrin/pmuc).

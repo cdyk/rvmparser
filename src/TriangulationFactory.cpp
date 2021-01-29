@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cassert>
+#include <cstring>
 #include "tesselator.h"
 
 #include "Store.h"

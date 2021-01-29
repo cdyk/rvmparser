@@ -10,6 +10,7 @@ namespace {
 
   bool open_w(FILE** f, const char* path)
   {
+#ifdef _WIN32
     auto err = fopen_s(f, path, "w");
     if (err == 0) return true;
 
@@ -18,6 +19,12 @@ namespace {
       buf[0] = '\0';
     }
     fprintf(stderr, "Failed to open %s for writing: %s", path, buf);
+#else
+    *f = fopen(path, "w");
+    if(*f != nullptr) return true;
+
+    fprintf(stderr, "Failed to open %s for writing.", path);
+#endif
     return false;
   }
 
