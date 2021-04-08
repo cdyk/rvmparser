@@ -224,7 +224,7 @@ namespace {
       break;
 
     case 9:
-      g->kind = Geometry::Kind::Cylinder;
+      g->kind = Geometry::Kind::Sphere;
       p = read_float32_be(g->sphere.diameter, p, e);
       break;
 
