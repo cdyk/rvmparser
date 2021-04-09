@@ -313,6 +313,11 @@ namespace {
 
     curr_ptr = read_uint32_be(g->group.material, curr_ptr, end_ptr);
 
+    if (2 < version) {
+      uint32_t dunno; // TODO: Try to figure out what this is.
+      curr_ptr = read_uint32_be(dunno, curr_ptr, end_ptr);
+    }
+
     if (!verifyOffset(ctx, "CNTB", base_ptr, curr_ptr, expected_next_chunk_offset)) return nullptr;
 
     // process children
