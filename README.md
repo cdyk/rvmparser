@@ -10,6 +10,7 @@ Includes a sample application that:
 - Triangulate primitive shapes with a prescribed error tolerance.
 - Optionally merges groups using a prescribed list of groups.
 - Exports geometry as Wavefront OBJ files
+- Exports geometry as GLTF files
 - Exports attributes as json.
 
 ## Usage
@@ -29,6 +30,7 @@ Options:
     --output-txt=filename.txt    Dump all group names to a text file.                  
     --output-obj=filenamestem    Write geometry to an obj file, .obj and .mtl          
                                  are added to filenamestem.                            
+    --output-gltf=filename.glb   Write geometry into a GLTF file.
     --group-bounding-boxes       Include wireframe of boundingboxes of groups in output
     --color-attribute=key        Specify which attributes that contain color, empty    
                                  imply that material id of group is used.              
