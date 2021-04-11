@@ -4,6 +4,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/filewritestream.h>
 
 
 #include "Store.h"
@@ -41,7 +43,7 @@ namespace {
     DataItem* item = ctx->arena.alloc<DataItem>();
     ctx->dataItems.insert(item);
     item->ptr = ptr;
-    item->size = size;
+    item->size = static_cast<uint32_t>(size);
 
     uint32_t offset = ctx->dataBytes;
     ctx->dataBytes += item->size;
@@ -132,6 +134,18 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
       fclose(out);
       return false;
     }
+  }
+
+  // Dump pretty-printed JSON to stdout for debugging
+  if (true) {
+    char writeBuffer[0x10000];
+    rj::FileWriteStream os(stdout, writeBuffer, sizeof(writeBuffer));
+    rj::PrettyWriter<rj::FileWriteStream> writer(os);
+    writer.SetIndent(' ', 2);
+    writer.SetMaxDecimalPlaces(4);
+    ctx.doc.Accept(writer);
+    putc('\n', stdout);
+    fflush(stdout);
   }
 
   // write BIN chunk
