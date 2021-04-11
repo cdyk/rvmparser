@@ -137,6 +137,7 @@ void printHelp(const char* argv0)
   fprintf(stderr, "    --output-txt=filename.txt      Dump all group names to a text file.\n");
   fprintf(stderr, "    --output-obj=filenamestem      Write geometry to an obj file, .obj and .mtl\n");
   fprintf(stderr, "                                   are added to filenamestem.\n");
+  fprintf(stderr, "    --output-gltf=filename.glb     Write geometry into a GLTF file.\n");
   fprintf(stderr, "    --group-bounding-boxes         Include wireframe of boundingboxes of groups in output.\n");
   fprintf(stderr, "    --color-attribute=key          Specify which attributes that contain color, empty\n");
   fprintf(stderr, "                                   imply that material id of group is used.\n");
@@ -161,6 +162,7 @@ int main(int argc, char** argv)
   std::string keep_groups;
   std::string output_json;
   std::string output_txt;
+  std::string output_gltf;
   std::string output_obj_stem;
   std::string color_attribute;
   
@@ -207,6 +209,11 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-obj") {
           output_obj_stem = val;
+          should_tessellate = true;
+          continue;
+        }
+        else if (key == "--output-gltf") {
+          output_gltf = val;
           should_tessellate = true;
           continue;
         }
@@ -389,6 +396,19 @@ int main(int argc, char** argv)
     }
     else {
       logger(2, "Failed to export obj file.\n");
+      rv = -1;
+    }
+  }
+
+  if (rv == 0 && !output_gltf.empty()) {
+    assert(should_tessellate);
+    auto time0 = std::chrono::high_resolution_clock::now();
+    if (exportGLTF(store, logger, output_gltf.c_str())) {
+      long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
+      logger(0, "Exported gltf into %s (%lldms)", output_gltf.c_str(), e);
+    }
+    else {
+      logger(2, "Failed to export gltf into %s", output_gltf.c_str());
       rv = -1;
     }
   }
