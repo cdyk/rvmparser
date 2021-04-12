@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cassert>
+#include <vector>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -24,10 +25,14 @@ namespace {
   struct Context {
     rj::Document doc;
 
+    rj::Value rjNodes = rj::Value(rj::kArrayType);
+
     uint32_t dataBytes = 0;
     ListHeader<DataItem> dataItems{};
-
     Arena arena;
+
+    bool includeAttributes = true;
+
   };
 
   uint32_t addDataItem(Context* ctx, const void* ptr, size_t size, bool copy = false)
@@ -50,6 +55,58 @@ namespace {
 
     return offset;
   }
+
+  uint32_t processGroup(Context* ctx, Group* group)
+  {
+    assert(group->kind == Group::Kind::Group);
+    auto& alloc = ctx->doc.GetAllocator();
+
+    rj::Value node(rj::kObjectType);
+    if (group->group.name) {
+      node.AddMember("name", rj::Value(group->group.name, alloc), alloc);
+    }
+
+    if (ctx->includeAttributes && group->attributes.first) {
+      rj::Value extras(rj::kObjectType);
+      
+      for (Attribute* att = group->attributes.first; att; att = att->next) {
+        extras.AddMember(rj::Value(att->key, alloc), rj::Value(att->val, alloc), alloc);
+      }
+      node.AddMember("extras", extras, alloc);
+    }
+
+    if (group->groups.first) {
+      rj::Value children(rj::kArrayType);
+      for (Group* child = group->groups.first; child; child = child->next) {
+        children.PushBack(processGroup(ctx, child), alloc);
+      }
+      node.AddMember("children", children, alloc);
+    }
+
+    uint32_t index = ctx->rjNodes.Size();
+    ctx->rjNodes.PushBack(node, alloc);
+
+    return index;
+  }
+
+  void processModel(Context* ctx, std::vector<uint32_t>& siblings, Group* model)
+  {
+    assert(model->kind == Group::Kind::Model);
+    for (Group* group = model->groups.first; group; group = group->next) {
+      // Ignore recording file level, just recurse into nodes
+      siblings.push_back(processGroup(ctx, group));
+    }
+  }
+
+  void processFile(Context* ctx, std::vector<uint32_t>& siblings, Group* file)
+  {
+    assert(file->kind == Group::Kind::File);
+    for (Group* model = file->groups.first; model; model = model->next) {
+      // Ignore recording file level, just recurse into nodes
+      processModel(ctx, siblings, model);
+    }
+  }
+
 
 }
 
@@ -78,25 +135,45 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
 #endif
 
   Context ctx;
+  ctx.doc.SetObject();
+  auto& alloc = ctx.doc.GetAllocator();
 
 
   rj::Value rjAsset( rj::kObjectType);
-  rj::Value rjScenes(rj::kArrayType);
-  rj::Value rjNodes(rj::kArrayType);
   rj::Value rjMeshes(rj::kArrayType);
   rj::Value rjAccessors(rj::kArrayType);
   rj::Value rjbufferViews(rj::kArrayType);
   rj::Value rjbuffers(rj::kArrayType);
 
-  ctx.doc.SetObject();
+  std::vector<uint32_t> rootNodes;
+  for (Group* file = store->getFirstRoot(); file; file = file->next) {
+    assert(file->kind == Group::Kind::File);
+    processFile(&ctx, rootNodes, file);
+  }
+
+  rj::Value rjScenes(rj::kArrayType);
+  {
+    rj::Value rjSceneInstanceNodes(rj::kArrayType);
+    for (uint32_t& index : rootNodes) {
+      rjSceneInstanceNodes.PushBack(index, alloc);
+    }
+
+    rj::Value rjSceneInstance(rj::kObjectType);
+    rjSceneInstance.AddMember("nodes", rjSceneInstanceNodes, alloc);
+    rjScenes.PushBack(rjSceneInstance, alloc);
+  }
+
+
   ctx.doc.AddMember("asset", rjAsset, ctx.doc.GetAllocator());
   ctx.doc.AddMember("scene", 0, ctx.doc.GetAllocator());
   ctx.doc.AddMember("scenes", rjScenes, ctx.doc.GetAllocator());
-  ctx.doc.AddMember("nodes", rjNodes, ctx.doc.GetAllocator());
+  ctx.doc.AddMember("nodes",  ctx.rjNodes, ctx.doc.GetAllocator());
   ctx.doc.AddMember("meshes", rjMeshes, ctx.doc.GetAllocator());
   ctx.doc.AddMember("accessors", rjAccessors, ctx.doc.GetAllocator());
   ctx.doc.AddMember("bufferViews", rjbufferViews, ctx.doc.GetAllocator());
   ctx.doc.AddMember("buffers", rjbuffers, ctx.doc.GetAllocator());
+
+
 
 
   addDataItem(&ctx, "test0", 5, false);
