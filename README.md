@@ -11,6 +11,7 @@ Includes a sample application that:
 - Optionally merges groups using a prescribed list of groups.
 - Exports geometry as Wavefront OBJ files
 - Exports attributes as json.
+- Exports database as .rev text files
 
 ## Usage
 
@@ -27,6 +28,7 @@ Options:
                                  with the first parent that should be kept.            
     --output-json=filename.json  Write hierarchy with attributes to a json file.       
     --output-txt=filename.txt    Dump all group names to a text file.                  
+    --output-rev=filename.rev    Write database as a text .rev file.
     --output-obj=filenamestem    Write geometry to an obj file, .obj and .mtl          
                                  are added to filenamestem.                            
     --group-bounding-boxes       Include wireframe of boundingboxes of groups in output
