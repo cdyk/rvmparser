@@ -135,6 +135,7 @@ void printHelp(const char* argv0)
   fprintf(stderr, "                                   discarded along with its children.\n");
   fprintf(stderr, "    --output-json=filename.json    Write hierarchy with attributes to a json file.\n");
   fprintf(stderr, "    --output-txt=filename.txt      Dump all group names to a text file.\n");
+  fprintf(stderr, "    --output-rev=filename.rev      Write database as a text review file.\n");
   fprintf(stderr, "    --output-obj=filenamestem      Write geometry to an obj file, .obj and .mtl\n");
   fprintf(stderr, "                                   are added to filenamestem.\n");
   fprintf(stderr, "    --group-bounding-boxes         Include wireframe of boundingboxes of groups in output.\n");
@@ -161,6 +162,7 @@ int main(int argc, char** argv)
   std::string keep_groups;
   std::string output_json;
   std::string output_txt;
+  std::string output_rev;
   std::string output_obj_stem;
   std::string color_attribute;
   
@@ -203,6 +205,10 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-txt") {
           output_txt = val;
+          continue;
+        }
+        else if (key == "--output-rev") {
+          output_rev = val;
           continue;
         }
         else if (key == "--output-obj") {
@@ -370,6 +376,18 @@ int main(int argc, char** argv)
     }
     else {
       logger(2, "Failed to open %s for writing", output_txt.c_str());
+      rv = -1;
+    }
+  }
+
+  if (rv == 0 && !output_rev.empty()) {
+    auto time0 = std::chrono::high_resolution_clock::now();
+    if (exportRev(store, logger, output_rev.c_str())) {
+      long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
+      logger(0, "Exported rev file %s (%lldms)", output_rev.c_str(), e);
+    }
+    else {
+      logger(2, "Failed to export rev file %s", output_rev.c_str());
       rv = -1;
     }
   }

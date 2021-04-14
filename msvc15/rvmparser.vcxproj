@@ -169,6 +169,7 @@
     <ClCompile Include="..\src\DumpNames.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
+    <ClCompile Include="..\src\ExportRev.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
     <ClCompile Include="..\src\LinAlgOps.cpp" />
     <ClCompile Include="..\src\main.cpp" />
