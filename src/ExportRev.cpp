@@ -39,10 +39,15 @@ namespace {
     writeVec3f(ctx, ptr[0], ptr[1], ptr[2]);
   }
 
-  void writeVec4f(Context* ctx, float x, float y, float z, float w)
+  void writeVec4f(Context* ctx, float x, float y, float z, float w, int precision = 5)
   {
-    fprintf(ctx->out, "%14.5f%14.5f%14.5f%14.5f\n", x, y, z, w);
+    fprintf(ctx->out, "%14.*f%14.*f%14.*f%14.*f\n",
+            precision, x,
+            precision, y,
+            precision, z,
+            precision, w);
   }
+
 
   void writeVec4f(Context* ctx, const float* ptr)
   {
@@ -101,6 +106,7 @@ namespace {
     writeChunkHeader(ctx, "PRIM");
 
     uint32_t kind = 0;
+    int transform_precision = 5;
     switch (geometry->kind) {
     case Geometry::Kind::Pyramid:           kind = 1; break;
     case Geometry::Kind::Box:               kind = 2; break;
@@ -109,7 +115,7 @@ namespace {
     case Geometry::Kind::EllipticalDish:    kind = 5; break;
     case Geometry::Kind::SphericalDish:     kind = 6; break;
     case Geometry::Kind::Snout:             kind = 7; break;
-    case Geometry::Kind::Cylinder:          kind = 8; break;
+    case Geometry::Kind::Cylinder:          kind = 8; transform_precision = 7; break;
     case Geometry::Kind::Sphere:            kind = 9; break;
     case Geometry::Kind::Line:              kind = 10; break;
     case Geometry::Kind::FacetGroup:        kind = 11; break;
@@ -117,12 +123,14 @@ namespace {
       assert(false);
     }
     fprintf(ctx->out, "%6u\n", kind);
+
     for (size_t k = 0; k < 3; k++) {
       writeVec4f(ctx,
                  geometry->M_3x4.data[k + 0],
                  geometry->M_3x4.data[k + 3],
                  geometry->M_3x4.data[k + 6],
-                 geometry->M_3x4.data[k + 9]);
+                 geometry->M_3x4.data[k + 9],
+                 transform_precision);
     }
     for (size_t k = 0; k < 2; k++) {
       writeVec3f(ctx, &geometry->bboxLocal.data[3*k]);
