@@ -61,8 +61,43 @@ namespace {
     writeUint2(ctx, unknown0, unknown1);
   }
 
+  void reportUnsupportedPrimitive(Context* ctx, uint32_t type)
+  {
+    ctx->logger(2, "SKIPPING unsupported primitive type %d, if you know the formatting of this primitive type, please tell the program author.", type);
+  }
+
   void writeGeometry(Context* ctx, Geometry* geometry)
   {
+    // Skip primitives with unknown formatting
+    switch (geometry->kind) {
+    case Geometry::Kind::Pyramid:
+      reportUnsupportedPrimitive(ctx,  1);
+      return; break;
+    case Geometry::Kind::RectangularTorus:
+      reportUnsupportedPrimitive(ctx,  3);
+      return; break;
+    case Geometry::Kind::EllipticalDish:
+      reportUnsupportedPrimitive(ctx,  5);
+      return; break;
+    case Geometry::Kind::Sphere:
+      reportUnsupportedPrimitive(ctx,  9);
+      return; break;
+    case Geometry::Kind::Line:
+      reportUnsupportedPrimitive(ctx, 10);
+      return; break;
+    case Geometry::Kind::Box:
+    case Geometry::Kind::CircularTorus:
+    case Geometry::Kind::SphericalDish:
+    case Geometry::Kind::Snout:
+    case Geometry::Kind::Cylinder:
+    case Geometry::Kind::FacetGroup:
+      // supported
+      break;
+    default:
+      assert(false);
+    }
+
+    // write
     writeChunkHeader(ctx, "PRIM");
 
     uint32_t kind = 0;
@@ -138,7 +173,8 @@ namespace {
                  geometry->cylinder.radius,
                  geometry->cylinder.height);
       break;
-    case Geometry::Kind::Sphere: fflush(ctx->out);
+    case Geometry::Kind::Sphere:
+      fflush(ctx->out);
       assert(false && "Unhandled primitive type 9");
       break;
     case Geometry::Kind::Line:
@@ -165,7 +201,6 @@ namespace {
     default:
       assert(false);
     }
-    fflush(ctx->out);
   }
 
 
