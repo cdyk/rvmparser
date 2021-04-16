@@ -151,6 +151,7 @@ int main(int argc, char** argv)
 {
   int rv = 0;
   bool should_tessellate = false;
+  bool should_colorize = false;
 
   float tolerance = 0.1f;
   float cullScale = -10000.1f;
@@ -210,11 +211,13 @@ int main(int argc, char** argv)
         else if (key == "--output-obj") {
           output_obj_stem = val;
           should_tessellate = true;
+          should_colorize = true;
           continue;
         }
         else if (key == "--output-gltf") {
           output_gltf = val;
           should_tessellate = true;
+          should_colorize = true;
           continue;
         }
         else if (key == "--color-attribute") {
@@ -274,10 +277,10 @@ int main(int argc, char** argv)
     }
   }
 
-  //if (rv == 0) {
-  //  Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
-  //  store->apply(&colorizer);
-  //}
+  if ((rv == 0) && should_colorize) {
+    Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
+    store->apply(&colorizer);
+  }
 
   if (rv == 0 && !discard_groups.empty()) {
     if (processFile(discard_groups, [store](const void * ptr, size_t size) { return discardGroups(store, logger, ptr, size); })) {
