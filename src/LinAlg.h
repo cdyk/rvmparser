@@ -14,8 +14,8 @@ struct Vec2f
     };
     float data[2];
   };
-  float& operator[](unsigned i) { return data[i]; }
-  const float& operator[](unsigned i) const { return data[i]; }
+  float& operator[](size_t i) { return data[i]; }
+  const float& operator[](size_t i) const { return data[i]; }
 };
 
 
@@ -36,8 +36,8 @@ struct Vec3f
     };
     float data[3];
   };
-  float& operator[](unsigned i) { return data[i]; }
-  const float& operator[](unsigned i) const { return data[i]; }
+  float& operator[](size_t i) { return data[i]; }
+  const float& operator[](size_t i) const { return data[i]; }
 };
 
 
