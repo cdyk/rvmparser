@@ -524,7 +524,7 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
   rj::Writer<rj::StringBuffer> writer(buffer);
   ctx->rjDoc.Accept(writer);
   uint32_t jsonByteSize = static_cast<uint32_t>(buffer.GetSize());
-  uint32_t jsonPaddingSize = (4 - (jsonByteSize % 4));
+  uint32_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
   
   // ------- pretty-printed JSON to stdout for debugging ---------------------
   if (ctx->dumpDebugJson) {
