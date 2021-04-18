@@ -42,8 +42,11 @@ namespace {
 
     Map definedMaterials;
 
+    Vec3f origin = Vec3f(0.f);
+
     std::vector<Vec3f> tmp3f;
 
+    bool centerModel = true;
     bool dumpDebugJson = false;
     bool includeAttributes = false;
 
@@ -307,12 +310,17 @@ namespace {
     node.AddMember("mesh", mesh_ix, alloc);
 
     rj::Value matrix(rj::kArrayType);
-    for (size_t c = 0; c < 4; c++) {
+    for (size_t c = 0; c < 3; c++) {
       for (size_t r = 0; r < 3; r++) {
         matrix.PushBack(geo->M_3x4.cols[c][r], alloc);
       }
-      matrix.PushBack(c==3 ? 1.f : 0.f, alloc);
+      matrix.PushBack(0.f, alloc);
     }
+    for (size_t r = 0; r < 3; r++) {
+      matrix.PushBack(geo->M_3x4.cols[3][r] - ctx->origin[r], alloc);
+    }
+    matrix.PushBack(1.f, alloc);
+
     node.AddMember("matrix", matrix, alloc);
 
     // Add this node to document
@@ -370,6 +378,42 @@ namespace {
     return node_ix;
   }
 
+
+  void extendBounds(Context* ctx, BBox3f& worldBounds, Group* group)
+  {
+    assert(group->kind == Group::Kind::Group);
+
+    for (Group* child = group->groups.first; child; child = child->next) {
+      extendBounds(ctx, worldBounds, child);
+    }
+    for (Geometry* geo = group->group.geometries.first; geo; geo = geo->next) {
+      engulf(worldBounds, geo->bboxWorld);
+    }
+  }
+
+  void calculateOrigin(Context* ctx)
+  {
+
+    BBox3f worldBounds = createEmptyBBox3f();
+
+    for (Group* file = ctx->store->getFirstRoot(); file; file = file->next) {
+      assert(file->kind == Group::Kind::File);
+      for (Group* model = file->groups.first; model; model = model->next) {
+        assert(model->kind == Group::Kind::Model);
+        for (Group* group = model->groups.first; group; group = group->next) {
+          extendBounds(ctx, worldBounds, group);
+        }
+      }
+    }
+
+    ctx->origin = 0.5f * (worldBounds.min + worldBounds.max);
+    ctx->logger(0, "exportGLTF: world bounds = [%.2f, %.2f, %.2f]x[%.2f, %.2f, %.2f]",
+                worldBounds.min.x, worldBounds.min.y, worldBounds.min.z,
+                worldBounds.max.x, worldBounds.max.y, worldBounds.max.z);
+    ctx->logger(0, "exportGLTF: setting origin = [%.2f, %.2f, %.2f]",
+                ctx->origin.x, ctx->origin.y, ctx->origin.z);
+  }
+
 }
 
 
@@ -401,6 +445,11 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
   ctx->store = store;
   ctx->logger = logger;
 
+  if (ctx->centerModel) {
+    calculateOrigin(ctx);
+  }
+
+
   ctx->rjDoc.SetObject();
 
   // ------- asset -----------------------------------------------------------
@@ -408,6 +457,17 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
   rj::Value rjAsset(rj::kObjectType);
   rjAsset.AddMember("version", "2.0", alloc);
   rjAsset.AddMember("generator", "rvmparser", alloc);
+  if (ctx->centerModel) {
+    rj::Value rjOrigin(rj::kArrayType);
+    rjOrigin.PushBack(ctx->origin.x, alloc);
+    rjOrigin.PushBack(ctx->origin.y, alloc);
+    rjOrigin.PushBack(ctx->origin.z, alloc);
+
+    rj::Value rjExtras(rj::kObjectType);
+    rjExtras.AddMember("rvmparser-origin", rjOrigin, alloc);
+
+    rjAsset.AddMember("extras", rjExtras, alloc);
+  }
   ctx->rjDoc.AddMember("asset", rjAsset, ctx->rjDoc.GetAllocator());
 
   // ------- scene -----------------------------------------------------------
