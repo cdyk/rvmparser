@@ -1,3 +1,6 @@
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include <cstdio>
 #include <cstring>
 #include <cassert>
@@ -47,6 +50,7 @@ namespace {
     std::vector<Vec3f> tmp3f;
 
     bool centerModel = true;
+    bool rotateZToY = true;
     bool dumpDebugJson = false;
     bool includeAttributes = false;
 
@@ -414,6 +418,22 @@ namespace {
                 ctx->origin.x, ctx->origin.y, ctx->origin.z);
   }
 
+  void buildRootNodes(Context* ctx, rj::Value& rootNodes)
+  {
+    auto& alloc = ctx->rjDoc.GetAllocator();
+    for (Group* file = ctx->store->getFirstRoot(); file; file = file->next) {
+      assert(file->kind == Group::Kind::File);
+      for (Group* model = file->groups.first; model; model = model->next) {
+        assert(model->kind == Group::Kind::Model);
+        for (Group* group = model->groups.first; group; group = group->next) {
+          rootNodes.PushBack(processGroup(ctx, group), alloc);
+        }
+      }
+    }
+
+  }
+
+
 }
 
 
@@ -476,17 +496,39 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
   // ------- scenes ----------------------------------------------------------
   rj::Value rjSceneInstanceNodes(rj::kArrayType);
 
-  std::vector<uint32_t> rootNodes;
-  for (Group* file = store->getFirstRoot(); file; file = file->next) {
-    assert(file->kind == Group::Kind::File);
-    for (Group* model = file->groups.first; model; model = model->next) {
-      assert(model->kind == Group::Kind::Model);
-      for (Group* group = model->groups.first; group; group = group->next) {
-        rjSceneInstanceNodes.PushBack(processGroup(ctx, group),
-                                      alloc);
-      }
-    }
+  if (ctx->rotateZToY) {
+    //
+    // Rotation +Z to +Y by rotation -90 degrees about the X axis
+    // 
+    // quaternion is x,y,z = sin(angle/2) * [1,0,0], w=cos(angle/2)
+    //
+    rj::Value rotation(rj::kArrayType);
+    rotation.PushBack(std::sin(-M_PI_4), alloc);
+    rotation.PushBack(0.f, alloc);
+    rotation.PushBack(0.f, alloc);
+    rotation.PushBack(std::cos(-M_PI_4), alloc);
+
+    // Add file hierarchy below rotation node
+    rj::Value children(rj::kArrayType);
+    buildRootNodes(ctx, children);
+
+    // Add node to document
+    rj::Value node(rj::kObjectType);
+    node.AddMember("name", "rvmparser-rotate-z-to-y", alloc);
+    node.AddMember("rotation", rotation, alloc);
+    node.AddMember("children", children, alloc);
+
+    uint32_t node_ix = ctx->rjNodes.Size();
+    ctx->rjNodes.PushBack(node, alloc);
+
+    // Set root
+    rjSceneInstanceNodes.PushBack(node_ix, alloc);
   }
+  else {
+    buildRootNodes(ctx, rjSceneInstanceNodes);
+  }
+
+
 
   rj::Value rjSceneInstance(rj::kObjectType);
   rjSceneInstance.AddMember("nodes", rjSceneInstanceNodes, alloc);
