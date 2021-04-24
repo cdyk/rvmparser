@@ -92,9 +92,6 @@ namespace {
     rjBufferView.AddMember("byteOffset", byteOffset, alloc);
     rjBufferView.AddMember("byteLength", byteLength, alloc);
 
-    //
-    //rjBufferView.AddMember("byteStride", byte_stride, alloc);
-
     rjBufferView.AddMember("target", target, alloc);
 
     uint32_t view_ix = ctx->rjBufferViews.Size();
@@ -430,7 +427,6 @@ namespace {
         }
       }
     }
-
   }
 
 
