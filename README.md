@@ -68,6 +68,11 @@ The project is just a few source-files, so it should be trivial to use with any 
 
 Open the solution file located in `msvc15` and build the project.
 
+It is currently kept as a Visual Studio 2017 solution for compatibility, but this can easily be
+updated by opening the solution in a newer visual studio, right-clicking on the solution in the
+Solution Explorer, choose "Retarget Projects", and there choose the latest Windows SDK Version and
+Platform Toolset that you have installed.
+
 ### POSIX
 
 Enter the `make` directory. Type
