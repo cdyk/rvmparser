@@ -437,7 +437,7 @@ namespace {
 }
 
 
-bool exportGLTF(Store* store, Logger logger, const char* path)
+bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, bool centerModel, bool includeAttributes)
 {
 
 #ifdef _WIN32
@@ -464,6 +464,14 @@ bool exportGLTF(Store* store, Logger logger, const char* path)
   Context* ctx = ctxOwner.get();
   ctx->store = store;
   ctx->logger = logger;
+
+  ctx->rotateZToY = rotateZToY;
+  ctx->centerModel = centerModel;
+  ctx->includeAttributes = includeAttributes;
+  ctx->logger(0, "exportGLTF: rotate-z-to-y=%u center=%u attributes=%u",
+              ctx->rotateZToY ? 1 : 0,
+              ctx->centerModel ? 1 : 0,
+              ctx->includeAttributes ? 1 : 0);
 
   if (ctx->centerModel) {
     calculateOrigin(ctx);

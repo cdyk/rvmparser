@@ -144,6 +144,26 @@ void printHelp(const char* argv0)
   fprintf(stderr, "    --tolerance=value              Tessellation tolerance, given in world frame.\n");
   fprintf(stderr, "    --cull-scale=value             Cull objects that are smaller than cull-scale times\n");
   fprintf(stderr, "                                   tolerance. Set to a negative value to disable culling.\n");
+namespace {
+
+  bool parseBool(Logger logger, const std::string& arg, const std::string& value)
+  {
+    std::string lower;
+    for (const char c : value) {
+      lower.push_back(std::tolower(c));
+    }
+    if (lower == "true" || lower == "1" || lower == "yes") {
+      return true;
+    }
+    else if (lower == "false" || lower == "0" || lower == "no") {
+      return false;
+    }
+    else {
+      logger(2, "Failed to parse bool option '%s'", arg.c_str());
+      exit(EXIT_FAILURE);
+    }
+  }
+
 }
 
 
@@ -164,6 +184,10 @@ int main(int argc, char** argv)
   std::string output_json;
   std::string output_txt;
   std::string output_gltf;
+  bool output_gltf_rotate_z_to_y = true;
+  bool output_gltf_center = false;
+  bool output_gltf_attributes = true;
+
   std::string output_obj_stem;
   std::string color_attribute;
   
@@ -218,6 +242,18 @@ int main(int argc, char** argv)
           output_gltf = val;
           should_tessellate = true;
           should_colorize = true;
+          continue;
+        }
+        else if (key == "--output-gltf-rotate-z-to-y") {
+          output_gltf_rotate_z_to_y = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-center") {
+          output_gltf_center = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-attributes") {
+          output_gltf_attributes = parseBool(logger, arg, val);
           continue;
         }
         else if (key == "--color-attribute") {
@@ -406,7 +442,12 @@ int main(int argc, char** argv)
   if (rv == 0 && !output_gltf.empty()) {
     assert(should_tessellate);
     auto time0 = std::chrono::high_resolution_clock::now();
-    if (exportGLTF(store, logger, output_gltf.c_str())) {
+    if (exportGLTF(store, logger,
+                   output_gltf.c_str(),
+                   output_gltf_rotate_z_to_y,
+                   output_gltf_center,
+                   output_gltf_attributes))
+    {
       long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
       logger(0, "Exported gltf into %s (%lldms)", output_gltf.c_str(), e);
     }
