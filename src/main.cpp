@@ -119,32 +119,50 @@ processFile(const std::string& path, F f)
   return rv;
 }
 
-
-void printHelp(const char* argv0)
-{
-  fprintf(stderr, "\nUsage: %s [options] files\n\n", argv0);
-  fprintf(stderr, "Files with .rvm-suffix will be interpreted as a geometry files, and files with .txt\n");
-  fprintf(stderr, "suffix will be interpreted as attribute files.\n");
-  fprintf(stderr, "You typically want to pass one of each.\n\n");
-  fprintf(stderr, "Options:\n");
-  fprintf(stderr, "    --keep-groups=filename.txt     Provide a list of group names to keep. Groups not\n");
-  fprintf(stderr, "                                   itself or with a child in this list will be merged\n");
-  fprintf(stderr, "                                   with the first parent that should be kept.\n");
-  fprintf(stderr, "    --discard-groups=filename.txt  Provide a list of group names to discard, one name per\n");
-  fprintf(stderr, "                                   line. Groups with its name in this list will be\n");
-  fprintf(stderr, "                                   discarded along with its children.\n");
-  fprintf(stderr, "    --output-json=filename.json    Write hierarchy with attributes to a json file.\n");
-  fprintf(stderr, "    --output-txt=filename.txt      Dump all group names to a text file.\n");
-  fprintf(stderr, "    --output-obj=filenamestem      Write geometry to an obj file, .obj and .mtl\n");
-  fprintf(stderr, "                                   are added to filenamestem.\n");
-  fprintf(stderr, "    --output-gltf=filename.glb     Write geometry into a GLTF file.\n");
-  fprintf(stderr, "    --group-bounding-boxes         Include wireframe of boundingboxes of groups in output.\n");
-  fprintf(stderr, "    --color-attribute=key          Specify which attributes that contain color, empty\n");
-  fprintf(stderr, "                                   imply that material id of group is used.\n");
-  fprintf(stderr, "    --tolerance=value              Tessellation tolerance, given in world frame.\n");
-  fprintf(stderr, "    --cull-scale=value             Cull objects that are smaller than cull-scale times\n");
-  fprintf(stderr, "                                   tolerance. Set to a negative value to disable culling.\n");
 namespace {
+
+  void printHelp(const char* argv0)
+  {
+    fprintf(stderr, R"help(
+Usage: %s [options] files
+
+Files with .rvm-suffix will be interpreted as a geometry files, and files with .txt or .att suffix
+will be interpreted as attribute files. A rvm file typically has a matching attribute file.
+
+Options:
+  --keep-groups=filename.txt          Provide a list of group names to keep. Groups not itself or
+                                      with a child in this list will be merged with the first
+                                      parent that should be kept.
+  --discard-groups=filename.txt       Provide a list of group names to discard, one name per line.
+                                      Groups with its name in this list will be discarded along
+                                      with its children. Default is no groups are discarded.
+  --output-json=<filename.json>       Write hierarchy with attributes to a json file.
+  --output-txt=<filename.txt>         Dump all group names to a text file.
+  --output-obj=<filenamestem>         Write geometry to an obj file. The suffices .obj and .mtl are
+                                      added to the filenamestem.
+  --output-gltf=<filename.glb>        Write geometry into a GLTF file.
+  --output-gltf-attributes=<bool>     Include rvm attributes in the extra member of nodes. Default
+                                      value is true.
+  --output-gltf-center=<bool>         Position the model at the bounding box center and store the
+                                      position of this origin in the asset's extra field. This is
+                                      useful if the model is so far away from the origin that float
+                                      precision becomes an issue. Defaults value is false.
+  --output-gltf-rotate-z-to-y=<bool>  Add an extra node below the root that adds a clockwise
+                                      rotation of 90 degrees about the X axis such that the +Z axis
+                                      will map to the +Y axis, which is the up-direction of GLTF-
+                                      files. Default value is true.
+  --group-bounding-boxes              Include wireframe of boundingboxes of groups in output.
+  --color-attribute=key               Specify which attributes that contain color, empty key
+                                      implies that material id of group is used.
+  --tolerance=value                   Tessellation tolerance, given in world frame. Default value
+                                      is 0.1.
+  --cull-scale=value                  Cull objects smaller than cull-scale times tolerance. Set to
+                                      a negative value to disable culling. Disabled by default.
+
+Post bug reports or questions at https://github.com/cdyk/rvmparser
+)help", argv0);
+  }
+
 
   bool parseBool(Logger logger, const std::string& arg, const std::string& value)
   {
