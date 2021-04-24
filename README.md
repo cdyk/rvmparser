@@ -80,3 +80,7 @@ Rvmparser doesn't currently build with GCC as the source currently contains use 
 
 ## See also
 - [Plant Mock-Up Converter](https://github.com/benvautrin/pmuc).
+
+## License
+
+This application is available to anybody free of charge, under the terms of the MIT License (see LICENSE).
