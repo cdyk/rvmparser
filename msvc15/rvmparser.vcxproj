@@ -167,6 +167,7 @@
     <ClCompile Include="..\src\Connect.cpp" />
     <ClCompile Include="..\src\DiscardGroups.cpp" />
     <ClCompile Include="..\src\DumpNames.cpp" />
+    <ClCompile Include="..\src\ExportGLTF.cpp" />
     <ClCompile Include="..\src\ExportJson.cpp" />
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
