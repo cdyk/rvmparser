@@ -265,7 +265,7 @@ namespace {
         std::vector<Vec3f>& tmpNormals = ctx->tmp3f;
         tmpNormals.resize(tri->vertices_n * 3);
         for (size_t i = 0; i < tri->vertices_n; i++) {
-          const Vec3f n = (Vec3f(tri->normals + 3 * i));
+          const Vec3f n = Vec3f(tri->normals + 3 * i);
 
           float rcp = 1.f / length(n);
           if (!std::isfinite(rcp)) {
