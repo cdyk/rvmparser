@@ -270,8 +270,12 @@ void ExportObj::geometry(struct Geometry* geometry)
       for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
 
         auto p = scale * mul(geometry->M_3x4, Vec3f(tri->vertices + i));
-        auto n = normalize(mul(Mat3f(geometry->M_3x4.data), Vec3f(tri->normals + i)));
-
+        Vec3f n = mul(Mat3f(geometry->M_3x4.data), Vec3f(tri->normals + i));
+        float rcp = 1.f / length(n);
+        if (!std::isfinite(rcp)) {
+          rcp = 0.f;
+        }
+        n = rcp * n;
         fprintf(out, "v %f %f %f\n", p.x, p.y, p.z);
         fprintf(out, "vn %f %f %f\n", n.x, n.y, n.z);
       }
