@@ -265,13 +265,11 @@ namespace {
         std::vector<Vec3f>& tmpNormals = ctx->tmp3f;
         tmpNormals.resize(tri->vertices_n * 3);
         for (size_t i = 0; i < tri->vertices_n; i++) {
-          const Vec3f n = Vec3f(tri->normals + 3 * i);
-
-          float rcp = 1.f / length(n);
-          if (!std::isfinite(rcp)) {
-            rcp = 0.f;
+          Vec3f n = normalize(Vec3f(tri->normals + 3 * i));
+          if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
+            n = Vec3f(1.f, 0.f, 0.f);
           }
-          tmpNormals[i] = rcp * n;
+          tmpNormals[i] = n;
         }
 
         // And make a copy when setting up the accessor
