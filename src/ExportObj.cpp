@@ -94,26 +94,20 @@ void ExportObj::init(class Store& store)
 
   stack.accommodate(store.groupCountAllocated());
 
-  char colorName[6];
   for (auto * line = store.getFirstDebugLine(); line != nullptr; line = line->next) {
 
-    for (unsigned k = 0; k < 6; k++) {
-      auto v = (line->color >> (4 * k)) & 0xf;
-      if (v < 10) colorName[k] = '0' + v;
-      else colorName[k] = 'a' + v - 10;
-    }
-    auto * name = store.strings.intern(&colorName[0], &colorName[6]);
-    if (!definedColors.get(uint64_t(name))) {
-      definedColors.insert(uint64_t(name), 1);
+    uint32_t colorId = (line->color << 8);
+    if (!definedColors.get((uint64_t(colorId) << 1) | 1)) {
+      definedColors.insert(((uint64_t(colorId) << 1) | 1), 1);
       auto r = (1.f / 255.f)*((line->color >> 16) & 0xFF);
       auto g = (1.f / 255.f)*((line->color >> 8) & 0xFF);
       auto b = (1.f / 255.f)*((line->color) & 0xFF);
-      fprintf(mtl, "newmtl %s\n", name);
-      fprintf(mtl, "Ka %f %f %f\n", (2.f / 3.f)*r, (2.f / 3.f)*g, (2.f / 3.f)*b);
+      fprintf(mtl, "newmtl %#x\n", colorId);
+      fprintf(mtl, "Ka %f %f %f\n", (2.0 / 3.0)*r, (2.0 / 3.0)*g, (2.0 / 3.0)*b);
       fprintf(mtl, "Kd %f %f %f\n", r, g, b);
       fprintf(mtl, "Ks 0.5 0.5 0.5\n");
     }
-    fprintf(out, "usemtl %s\n", name);
+    fprintf(out, "usemtl %#x\n", colorId);
 
     fprintf(out, "v %f %f %f\n", line->a[0], line->a[1], line->a[2]);
     fprintf(out, "v %f %f %f\n", line->b[0], line->b[1], line->b[2]);
@@ -130,23 +124,8 @@ void ExportObj::beginFile(Group* group)
   fprintf(out, "# %s\n", group->file.user);
 }
 
-void ExportObj::endFile() {
-
-  //fprintf(out, "usemtl red_line\n");
-
-  //auto l = 0.05f;
-  //if (anchors && conn) {
-  //  for (unsigned i = 0; i < conn->anchor_n; i++) {
-  //    auto * p = conn->p + 3 * i;
-  //    auto * n = conn->anchors[i].n;
-
-  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-  //    fprintf(out, "v %f %f %f\n", p[0] + l * n[0], p[1] + l * n[1], p[2] + l * n[2]);
-  //    fprintf(out, "l %d %d\n", (int)off_v, (int)off_v + 1);
-  //    off_v += 2;
-  //  }
-  //}
-
+void ExportObj::endFile()
+{
   fprintf(out, "# End of file\n");
 }
 
@@ -212,44 +191,24 @@ void ExportObj::geometry(struct Geometry* geometry)
 {
   const auto & M = geometry->M_3x4;
 
-  if (geometry->colorName == nullptr) {
-    geometry->colorName = store->strings.intern("default");
-  }
+  uint32_t colorId = (geometry->color << 8) | geometry->transparency;
+  if (!definedColors.get((uint64_t(colorId) << 1) | 1)) {
+    definedColors.insert(((uint64_t(colorId) << 1) | 1), 1);
 
-  //if (geometry->kind == Geometry::Kind::Box) {
-  //  geometry->colorName = store->strings.intern("blah-red");
-  //  geometry->color = 0x880088;
-  //}
-  //if (geometry->kind == Geometry::Kind::Pyramid) {
-  //  geometry->colorName = store->strings.intern("blah-green");
-  //  geometry->color = 0x008800;
-  //}
-  //if (geometry->kind == Geometry::Kind::RectangularTorus) {
-  //  geometry->colorName = store->strings.intern("blah-blue");
-  //  geometry->color = 0x000088;
-  //}
-  //if (geometry->kind == Geometry::Kind::FacetGroup) {
-  //  geometry->colorName = store->strings.intern("blah-redgg");
-  //  geometry->color = 0x888800;
-  //}
-
-  if (!definedColors.get(uint64_t(geometry->colorName))) {
-    definedColors.insert(uint64_t(geometry->colorName), 1);
-
-    auto r = (1.f / 255.f)*((geometry->color >> 16) & 0xFF);
-    auto g = (1.f / 255.f)*((geometry->color >> 8) & 0xFF);
-    auto b = (1.f / 255.f)*((geometry->color) & 0xFF);
-
-    fprintf(mtl, "newmtl %s\n", geometry->colorName);
-    fprintf(mtl, "Ka %f %f %f\n", (2.f / 3.f)*r, (2.f / 3.f)*g, (2.f / 3.f)*b);
+    double r = (1.0 / 255.0)*((geometry->color >> 16) & 0xFF);
+    double g = (1.0 / 255.0)*((geometry->color >> 8) & 0xFF);
+    double b = (1.0 / 255.0)*((geometry->color) & 0xFF);
+    fprintf(mtl, "newmtl %#x\n", colorId);
+    fprintf(mtl, "Ka %f %f %f\n", (2.0 / 3.0)*r, (2.0 / 3.0)*g, (2.0 / 3.0)*b);
     fprintf(mtl, "Kd %f %f %f\n", r,g, b);
     fprintf(mtl, "Ks 0.5 0.5 0.5\n");
+    if (geometry->transparency) {
+      fprintf(mtl, "d %f\n", std::max(0.0, std::min(1.0, 1.0 - (1.0 / 100.0) * geometry->transparency)));
+    }
   }
+  fprintf(out, "usemtl %#x\n", colorId);
 
-  fprintf(out, "usemtl %s\n", geometry->colorName);
-
-  auto scale = 1.f;
-  
+  float scale = 1.f;
   if (geometry->kind == Geometry::Kind::Line) {
     auto a = scale * mul(geometry->M_3x4, Vec3f(geometry->line.a, 0, 0));
     auto b = scale * mul(geometry->M_3x4, Vec3f(geometry->line.b, 0, 0));
@@ -305,46 +264,5 @@ void ExportObj::geometry(struct Geometry* geometry)
       off_t += tri->vertices_n;
     }
   }
-
-  //if (primitiveBoundingBoxes) {
-  //  fprintf(out, "usemtl magenta\n");
-
-  //  for (unsigned i = 0; i < 8; i++) {
-  //    float px = (i & 1) ? geometry->bbox[0] : geometry->bbox[3];
-  //    float py = (i & 2) ? geometry->bbox[1] : geometry->bbox[4];
-  //    float pz = (i & 4) ? geometry->bbox[2] : geometry->bbox[5];
-
-  //    float Px = M[0] * px + M[3] * py + M[6] * pz + M[9];
-  //    float Py = M[1] * px + M[4] * py + M[7] * pz + M[10];
-  //    float Pz = M[2] * px + M[5] * py + M[8] * pz + M[11];
-
-  //    fprintf(out, "v %f %f %f\n", Px, Py, Pz);
-  //  }
-  //  fprintf(out, "l %d %d %d %d %d\n",
-  //          off_v + 0, off_v + 1, off_v + 3, off_v + 2, off_v + 0);
-  //  fprintf(out, "l %d %d %d %d %d\n",
-  //          off_v + 4, off_v + 5, off_v + 7, off_v + 6, off_v + 4);
-  //  fprintf(out, "l %d %d\n", off_v + 0, off_v + 4);
-  //  fprintf(out, "l %d %d\n", off_v + 1, off_v + 5);
-  //  fprintf(out, "l %d %d\n", off_v + 2, off_v + 6);
-  //  fprintf(out, "l %d %d\n", off_v + 3, off_v + 7);
-  //  off_v += 8;
-  //}
-
-
-  //for (unsigned k = 0; k < 6; k++) {
-  //  auto other = geometry->conn_geo[k];
-  //  if (geometry < other) {
-  //    fprintf(out, "usemtl blue_line\n");
-  //    float p[3];
-  //    getMidpoint(p, geometry);
-  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-  //    getMidpoint(p, other);
-  //    fprintf(out, "v %f %f %f\n", p[0], p[1], p[2]);
-  //    fprintf(out, "l %d %d\n", off_v, off_v + 1);
-
-  //    off_v += 2;
-  //  }
-  //}
 
 }
