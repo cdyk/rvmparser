@@ -153,7 +153,7 @@ namespace {
     return curr_ptr;
   }
 
-  const char* parse_prim(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
+  const char* parse_prim(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t chunk_id, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
     if (ctx->group_stack.back()->kind != Group::Kind::Group) {
@@ -320,7 +320,7 @@ namespace {
     auto l = curr_ptr;
     uint32_t dunno;
     curr_ptr = parse_chunk_header(chunk_id, expected_next_chunk_offset, dunno, curr_ptr, end_ptr);
-    auto id_chunk_id = id(chunk_id);
+    uint32_t id_chunk_id = id(chunk_id);
     while (curr_ptr < end_ptr && id_chunk_id != id("CNTE")) {
       switch (id_chunk_id) {
       case id("CNTB"):
@@ -328,7 +328,7 @@ namespace {
         if (curr_ptr == nullptr) return curr_ptr;
         break;
       case id("PRIM"):
-        curr_ptr = parse_prim(ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
+        curr_ptr = parse_prim(ctx, base_ptr, curr_ptr, end_ptr, id_chunk_id, expected_next_chunk_offset);
         if (curr_ptr == nullptr) return curr_ptr;
         break;
       default:
@@ -413,7 +413,7 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
       if (curr_ptr == nullptr) return false;
       break;
     case id("PRIM"):
-      curr_ptr = parse_prim(&ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
+      curr_ptr = parse_prim(&ctx, base_ptr, curr_ptr, end_ptr, id_chunk_id, expected_next_chunk_offset);
       if (curr_ptr == nullptr) return false;
       break;
     case id("COLR"):
