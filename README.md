@@ -12,6 +12,7 @@ Includes a sample application that:
 - Exports geometry as Wavefront OBJ files
 - Exports geometry as GLTF files
 - Exports attributes as json.
+- Exports database as .rev text files
 
 ## Usage
 
@@ -30,6 +31,7 @@ Options:
                                       with its children. Default is no groups are discarded.
   --output-json=<filename.json>       Write hierarchy with attributes to a json file.
   --output-txt=<filename.txt>         Dump all group names to a text file.
+  --output-rev=filename.rev    Write database as a text .rev file.
   --output-obj=<filenamestem>         Write geometry to an obj file. The suffices .obj and .mtl are
                                       added to the filenamestem.
   --output-gltf=<filename.glb>        Write geometry into a GLTF file.
