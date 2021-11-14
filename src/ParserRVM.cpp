@@ -329,8 +329,6 @@ namespace {
     curr_ptr = read_uint32_be(version, curr_ptr, end_ptr);
     curr_ptr = read_string(&g->group.name, ctx->store, curr_ptr, end_ptr);
 
-    //fprintf(stderr, "group '%s' %p\n", g->group.name, g->group.name);
-
     // Translation seems to be a reference point that can be used as a local frame for objects in the group.
     // The transform is not relative to this reference point.
     for (unsigned i = 0; i < 3; i++) {
