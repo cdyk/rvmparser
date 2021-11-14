@@ -175,24 +175,33 @@ namespace {
     }
     g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
 
+    bool hasTranslucency = false;
     switch (chunk_id) {
     case id("PRIM"):
+      g->type = Geometry::Type::Primitive;
       break;
-    case id("OBST"): [[fallthrough]];
+    case id("OBST"):
+      g->type = Geometry::Type::Obstruction;
+      hasTranslucency = true;
+      break;
     case id("INSU"): {
-      assert(curr_ptr + 4 <= end_ptr);
-      unsigned char translucency = curr_ptr[0];
-      assert((translucency <= 100) && "Translucency expected to be a number in [0,100]");
-      for (size_t i = 1; i < 4; i++) {
-        assert((curr_ptr[1] == 0) && "Padding bytes expected to be null");
-      }
-      curr_ptr += 4;
+      g->type = Geometry::Type::Insulation;
+      hasTranslucency = true;
       break;
     }
     default:
       assert(false && "Illegal chunk id");
     }
 
+    if (hasTranslucency) {
+      assert(curr_ptr + 4 <= end_ptr);
+      g->translucency = curr_ptr[0];
+      assert((g->translucency <= 100) && "Translucency expected to be a number in [0,100]");
+      for (size_t i = 1; i < 4; i++) {
+        assert((curr_ptr[1] == 0) && "Padding bytes expected to be null");
+      }
+      curr_ptr += 4;
+    }
     switch (kind) {
     case 1:
       g->kind = Geometry::Kind::Pyramid;

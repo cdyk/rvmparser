@@ -76,6 +76,12 @@ struct Geometry
     Line,
     FacetGroup
   };
+  enum struct Type
+  {
+    Primitive,
+    Obstruction,
+    Insulation
+  };
   Geometry* next = nullptr;                 // Next geometry in the list of geometries in group.
   Triangulation* triangulation = nullptr;
   Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
@@ -86,6 +92,9 @@ struct Geometry
   uint32_t color = 0x202020u;
 
   Kind kind;
+  Type type = Geometry::Type::Primitive;
+  uint8_t translucency = 0;                 ///< Translucency of primitive, a percentage in [0,100].
+
   unsigned id;
 
   Mat3x4f M_3x4;
