@@ -175,6 +175,24 @@ namespace {
     }
     g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
 
+    switch (chunk_id) {
+    case id("PRIM"):
+      break;
+    case id("OBST"): [[fallthrough]];
+    case id("INSU"): {
+      assert(curr_ptr + 4 <= end_ptr);
+      unsigned char translucency = curr_ptr[0];
+      assert((translucency <= 100) && "Translucency expected to be a number in [0,100]");
+      for (size_t i = 1; i < 4; i++) {
+        assert((curr_ptr[1] == 0) && "Padding bytes expected to be null");
+      }
+      curr_ptr += 4;
+      break;
+    }
+    default:
+      assert(false && "Illegal chunk id");
+    }
+
     switch (kind) {
     case 1:
       g->kind = Geometry::Kind::Pyramid;
@@ -327,7 +345,9 @@ namespace {
         curr_ptr = parse_cntb(ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
         if (curr_ptr == nullptr) return curr_ptr;
         break;
-      case id("PRIM"):
+      case id("PRIM"): [[fallthrough]];
+      case id("OBST"): [[fallthrough]];
+      case id("INSU"):
         curr_ptr = parse_prim(ctx, base_ptr, curr_ptr, end_ptr, id_chunk_id, expected_next_chunk_offset);
         if (curr_ptr == nullptr) return curr_ptr;
         break;
