@@ -119,31 +119,70 @@ processFile(const std::string& path, F f)
   return rv;
 }
 
+namespace {
 
-void printHelp(const char* argv0)
-{
-  fprintf(stderr, "\nUsage: %s [options] files\n\n", argv0);
-  fprintf(stderr, "Files with .rvm-suffix will be interpreted as a geometry files, and files with .txt\n");
-  fprintf(stderr, "suffix will be interpreted as attribute files.\n");
-  fprintf(stderr, "You typically want to pass one of each.\n\n");
-  fprintf(stderr, "Options:\n");
-  fprintf(stderr, "    --keep-groups=filename.txt     Provide a list of group names to keep. Groups not\n");
-  fprintf(stderr, "                                   itself or with a child in this list will be merged\n");
-  fprintf(stderr, "                                   with the first parent that should be kept.\n");
-  fprintf(stderr, "    --discard-groups=filename.txt  Provide a list of group names to discard, one name per\n");
-  fprintf(stderr, "                                   line. Groups with its name in this list will be\n");
-  fprintf(stderr, "                                   discarded along with its children.\n");
-  fprintf(stderr, "    --output-json=filename.json    Write hierarchy with attributes to a json file.\n");
-  fprintf(stderr, "    --output-txt=filename.txt      Dump all group names to a text file.\n");
-  fprintf(stderr, "    --output-rev=filename.rev      Write database as a text review file.\n");
-  fprintf(stderr, "    --output-obj=filenamestem      Write geometry to an obj file, .obj and .mtl\n");
-  fprintf(stderr, "                                   are added to filenamestem.\n");
-  fprintf(stderr, "    --group-bounding-boxes         Include wireframe of boundingboxes of groups in output.\n");
-  fprintf(stderr, "    --color-attribute=key          Specify which attributes that contain color, empty\n");
-  fprintf(stderr, "                                   imply that material id of group is used.\n");
-  fprintf(stderr, "    --tolerance=value              Tessellation tolerance, given in world frame.\n");
-  fprintf(stderr, "    --cull-scale=value             Cull objects that are smaller than cull-scale times\n");
-  fprintf(stderr, "                                   tolerance. Set to a negative value to disable culling.\n");
+  void printHelp(const char* argv0)
+  {
+    fprintf(stderr, R"help(
+Usage: %s [options] files
+
+Files with .rvm-suffix will be interpreted as a geometry files, and files with .txt or .att suffix
+will be interpreted as attribute files. A rvm file typically has a matching attribute file.
+
+Options:
+  --keep-groups=filename.txt          Provide a list of group names to keep. Groups not itself or
+                                      with a child in this list will be merged with the first
+                                      parent that should be kept.
+  --discard-groups=filename.txt       Provide a list of group names to discard, one name per line.
+                                      Groups with its name in this list will be discarded along
+                                      with its children. Default is no groups are discarded.
+  --output-json=<filename.json>       Write hierarchy with attributes to a json file.
+  --output-txt=<filename.txt>         Dump all group names to a text file.
+  --output-rev=filename.rev           Write database as a text review file.
+  --output-obj=<filenamestem>         Write geometry to an obj file. The suffices .obj and .mtl are
+                                      added to the filenamestem.
+  --output-gltf=<filename.glb>        Write geometry into a GLTF file.
+  --output-gltf-attributes=<bool>     Include rvm attributes in the extra member of nodes. Default
+                                      value is true.
+  --output-gltf-center=<bool>         Position the model at the bounding box center and store the
+                                      position of this origin in the asset's extra field. This is
+                                      useful if the model is so far away from the origin that float
+                                      precision becomes an issue. Defaults value is false.
+  --output-gltf-rotate-z-to-y=<bool>  Add an extra node below the root that adds a clockwise
+                                      rotation of 90 degrees about the X axis such that the +Z axis
+                                      will map to the +Y axis, which is the up-direction of GLTF-
+                                      files. Default value is true.
+  --group-bounding-boxes              Include wireframe of boundingboxes of groups in output.
+  --color-attribute=key               Specify which attributes that contain color, empty key
+                                      implies that material id of group is used.
+  --tolerance=value                   Tessellation tolerance, given in world frame. Default value
+                                      is 0.1.
+  --cull-scale=value                  Cull objects smaller than cull-scale times tolerance. Set to
+                                      a negative value to disable culling. Disabled by default.
+
+Post bug reports or questions at https://github.com/cdyk/rvmparser
+)help", argv0);
+  }
+
+
+  bool parseBool(Logger logger, const std::string& arg, const std::string& value)
+  {
+    std::string lower;
+    for (const char c : value) {
+      lower.push_back(std::tolower(c));
+    }
+    if (lower == "true" || lower == "1" || lower == "yes") {
+      return true;
+    }
+    else if (lower == "false" || lower == "0" || lower == "no") {
+      return false;
+    }
+    else {
+      logger(2, "Failed to parse bool option '%s'", arg.c_str());
+      exit(EXIT_FAILURE);
+    }
+  }
+
 }
 
 
@@ -151,6 +190,7 @@ int main(int argc, char** argv)
 {
   int rv = 0;
   bool should_tessellate = false;
+  bool should_colorize = false;
 
   float tolerance = 0.1f;
   float cullScale = -10000.1f;
@@ -162,6 +202,11 @@ int main(int argc, char** argv)
   std::string keep_groups;
   std::string output_json;
   std::string output_txt;
+  std::string output_gltf;
+  bool output_gltf_rotate_z_to_y = true;
+  bool output_gltf_center = false;
+  bool output_gltf_attributes = true;
+
   std::string output_rev;
   std::string output_obj_stem;
   std::string color_attribute;
@@ -214,6 +259,25 @@ int main(int argc, char** argv)
         else if (key == "--output-obj") {
           output_obj_stem = val;
           should_tessellate = true;
+          should_colorize = true;
+          continue;
+        }
+        else if (key == "--output-gltf") {
+          output_gltf = val;
+          should_tessellate = true;
+          should_colorize = true;
+          continue;
+        }
+        else if (key == "--output-gltf-rotate-z-to-y") {
+          output_gltf_rotate_z_to_y = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-center") {
+          output_gltf_center = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-attributes") {
+          output_gltf_attributes = parseBool(logger, arg, val);
           continue;
         }
         else if (key == "--color-attribute") {
@@ -273,10 +337,10 @@ int main(int argc, char** argv)
     }
   }
 
-  //if (rv == 0) {
-  //  Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
-  //  store->apply(&colorizer);
-  //}
+  if ((rv == 0) && should_colorize) {
+    Colorizer colorizer(logger, color_attribute.empty() ? nullptr : color_attribute.c_str());
+    store->apply(&colorizer);
+  }
 
   if (rv == 0 && !discard_groups.empty()) {
     if (processFile(discard_groups, [store](const void * ptr, size_t size) { return discardGroups(store, logger, ptr, size); })) {
@@ -407,6 +471,24 @@ int main(int argc, char** argv)
     }
     else {
       logger(2, "Failed to export obj file.\n");
+      rv = -1;
+    }
+  }
+
+  if (rv == 0 && !output_gltf.empty()) {
+    assert(should_tessellate);
+    auto time0 = std::chrono::high_resolution_clock::now();
+    if (exportGLTF(store, logger,
+                   output_gltf.c_str(),
+                   output_gltf_rotate_z_to_y,
+                   output_gltf_center,
+                   output_gltf_attributes))
+    {
+      long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
+      logger(0, "Exported gltf into %s (%lldms)", output_gltf.c_str(), e);
+    }
+    else {
+      logger(2, "Failed to export gltf into %s", output_gltf.c_str());
       rv = -1;
     }
   }

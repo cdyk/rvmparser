@@ -110,3 +110,4 @@ void align(Store* store, Logger logger);
 bool exportJson(Store* store, Logger logger, const char* path);
 bool discardGroups(Store* store, Logger logger, const void* ptr, size_t size);
 bool exportRev(Store* store, Logger logger, const char* path);
+bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, bool centerModel, bool includeAttributes);
