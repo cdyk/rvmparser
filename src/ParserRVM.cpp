@@ -340,6 +340,14 @@ namespace {
 
     curr_ptr = read_uint32_be(g->group.material, curr_ptr, end_ptr);
 
+    if (2 < version) {
+      // If version is greater than 2, read one more word and interpret it as translucency in [0x0, 0xFFFF].
+      uint32_t translucency = 0;
+      curr_ptr = read_uint32_be(translucency, curr_ptr, end_ptr);
+      g->group.translucency = (1.f / 65535.f) * translucency;
+    }
+
+    assert(curr_ptr[0] == 0);
     if (!verifyOffset(ctx, "CNTB", base_ptr, curr_ptr, expected_next_chunk_offset)) return nullptr;
 
     // process children

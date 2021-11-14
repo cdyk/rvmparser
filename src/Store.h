@@ -232,6 +232,7 @@ struct Group
       const char* name;
       BBox3f bboxWorld;
       uint32_t material;
+      float translucency;
       int32_t id = 0;
       float translation[3];
       uint32_t clientTag;     // For use by passes to stuff temporary info
