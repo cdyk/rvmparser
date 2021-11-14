@@ -180,10 +180,10 @@ namespace {
   }
 
 
-  uint32_t createOrGetColor(Context* ctx, const char* colorName, uint32_t color, uint8_t alpha)
+  uint32_t createOrGetColor(Context* ctx, const char* colorName, uint32_t color, uint8_t transparency)
   {
     // make sure key is never zero
-    uint64_t key = (color << 9) | (alpha << 1) | 1;
+    uint64_t key = (color << 9) | (transparency << 1) | 1;
 
     uint64_t val;
     if (ctx->definedMaterials.get(val, key)) {
@@ -196,7 +196,7 @@ namespace {
     rjColor.PushBack((1.f / 255.f) * ((color >> 16) & 0xff), alloc);
     rjColor.PushBack((1.f / 255.f) * ((color >>  8) & 0xff), alloc);
     rjColor.PushBack((1.f / 255.f) * ((color      ) & 0xff), alloc);
-    rjColor.PushBack(std::min(1.f, std::max(0.f, 1.f - (1.f / 100.f) * alpha)), alloc);
+    rjColor.PushBack(std::min(1.f, std::max(0.f, 1.f - (1.f / 100.f) * transparency)), alloc);
 
     rj::Value rjPbrMetallicRoughness(rj::kObjectType);
     rjPbrMetallicRoughness.AddMember("baseColorFactor", rjColor, alloc);
@@ -208,7 +208,7 @@ namespace {
       material.AddMember("name", rj::Value(colorName, alloc), alloc);
       material.AddMember("pbrMetallicRoughness", rjPbrMetallicRoughness, alloc);
     }
-    if (alpha != 0) {
+    if (transparency != 0) {
       material.AddMember("alphaMode", "BLEND", alloc);
     }
 
@@ -238,7 +238,7 @@ namespace {
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, geo->translucency);
+      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, geo->transparency);
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -290,7 +290,7 @@ namespace {
       rjPrimitive.AddMember("material", createOrGetColor(ctx,
                                                          geo->colorName,
                                                          geo->color,
-                                                         geo->translucency),
+                                                         geo->transparency),
                             alloc);
 
       rjPrimitivesNode.PushBack(rjPrimitive, alloc);

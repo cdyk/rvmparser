@@ -175,28 +175,28 @@ namespace {
     }
     g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
 
-    bool hasTranslucency = false;
+    bool hasTransparency = false;
     switch (chunk_id) {
     case id("PRIM"):
       g->type = Geometry::Type::Primitive;
       break;
     case id("OBST"):
       g->type = Geometry::Type::Obstruction;
-      hasTranslucency = true;
+      hasTransparency = true;
       break;
     case id("INSU"): {
       g->type = Geometry::Type::Insulation;
-      hasTranslucency = true;
+      hasTransparency = true;
       break;
     }
     default:
       assert(false && "Illegal chunk id");
     }
 
-    if (hasTranslucency) {
+    if (hasTransparency) {
       assert(curr_ptr + 4 <= end_ptr);
-      g->translucency = curr_ptr[0];
-      assert((g->translucency <= 100) && "Translucency expected to be a number in [0,100]");
+      g->transparency = curr_ptr[0];
+      assert((g->transparency <= 100) && "Transparency expected to be a number in [0,100]");
       for (size_t i = 1; i < 4; i++) {
         assert((curr_ptr[1] == 0) && "Padding bytes expected to be null");
       }
@@ -340,9 +340,9 @@ namespace {
 
     if (2 < version) {
       // If version is greater than 2, read one more word and interpret it as translucency in [0x0, 0xFFFF].
-      uint32_t translucency = 0;
-      curr_ptr = read_uint32_be(translucency, curr_ptr, end_ptr);
-      g->group.translucency = (1.f / 65535.f) * translucency;
+      uint32_t transparency = 0;
+      curr_ptr = read_uint32_be(transparency, curr_ptr, end_ptr);
+      g->group.transparency = (1.f / 65535.f) * transparency;
     }
 
     assert(curr_ptr[0] == 0);
