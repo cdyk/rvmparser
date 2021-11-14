@@ -279,5 +279,8 @@
     <ClCompile Include="..\src\ExportGLTF.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\ExportRev.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
