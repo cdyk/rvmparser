@@ -156,7 +156,8 @@ namespace {
   const char* parse_prim(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t chunk_id, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
-    if (ctx->group_stack.back()->kind != Group::Kind::Group) {
+    Group* parent = ctx->group_stack.back();
+    if (parent->kind != Group::Kind::Group) {
       ctx->store->setErrorString("In PRIM, parent chunk is not CNTB");
       return nullptr;
     }
@@ -202,6 +203,11 @@ namespace {
       }
       curr_ptr += 4;
     }
+    else {
+      // Otherwise, inherit transparency from parent
+      g->transparency = parent->group.transparency;
+    }
+
     switch (kind) {
     case 1:
       g->kind = Geometry::Kind::Pyramid;
@@ -322,7 +328,15 @@ namespace {
   const char* parse_cntb(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
-    auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Group);
+    Group* parent = ctx->group_stack.back();
+
+    Group* g = ctx->store->newGroup(parent, Group::Kind::Group);
+
+    // Inherit properties from parent
+    if (ctx->group_stack.back()->kind == Group::Kind::Group) {
+      g->group.transparency = parent->group.transparency;
+    }
+
     ctx->group_stack.push_back(g);
 
     uint32_t version;
