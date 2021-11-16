@@ -339,13 +339,20 @@ namespace {
     curr_ptr = read_uint32_be(g->group.material, curr_ptr, end_ptr);
 
     if (2 < version) {
-      // If version is greater than 2, read one more word and interpret it as translucency in [0x0, 0xFFFF].
-      uint32_t transparency = 0;
-      curr_ptr = read_uint32_be(transparency, curr_ptr, end_ptr);
-      g->group.transparency = (1.f / 65535.f) * transparency;
+      assert(curr_ptr + 4 <= end_ptr);
+      // If version is greater than 2, we have 4 bytes of extra data.
+      // 
+      // First byte is assumed to be transparency in the range [0,100]
+      // 
+      // Second byte may be nonzero (observed values: 0x02). An hypothesis
+      // is that this encodes obstruction/insulation for all children
+      //
+      g->group.transparency = ((const uint8_t*)curr_ptr)[0];
+      assert(curr_ptr[2] == '\0' && "Assumed to be zero");
+      assert(curr_ptr[3] == '\0' && "Assumed to be zero");
+      curr_ptr += 4;
     }
 
-    assert(curr_ptr[0] == 0);
     if (!verifyOffset(ctx, "CNTB", base_ptr, curr_ptr, expected_next_chunk_offset)) return nullptr;
 
     // process children

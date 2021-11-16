@@ -93,7 +93,7 @@ struct Geometry
 
   Kind kind;
   Type type = Geometry::Type::Primitive;
-  uint8_t transparency = 0;                 ///< Transparency of primitive, a percentage in [0,100].
+  uint32_t transparency = 0;                 ///< Transparency of primitive, a percentage in [0,100].
 
   unsigned id;
 
@@ -232,7 +232,7 @@ struct Group
       const char* name;
       BBox3f bboxWorld;
       uint32_t material;
-      float transparency;
+      uint32_t transparency;
       int32_t id = 0;
       float translation[3];
       uint32_t clientTag;     // For use by passes to stuff temporary info
