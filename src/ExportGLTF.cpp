@@ -180,10 +180,10 @@ namespace {
   }
 
 
-  uint32_t createOrGetColor(Context* ctx, const char* colorName, uint32_t color)
+  uint32_t createOrGetColor(Context* ctx, const char* colorName, uint32_t color, uint8_t transparency)
   {
     // make sure key is never zero
-    uint64_t key = (color << 1) | 1 ;
+    uint64_t key = (color << 9) | (transparency << 1) | 1;
 
     uint64_t val;
     if (ctx->definedMaterials.get(val, key)) {
@@ -196,7 +196,7 @@ namespace {
     rjColor.PushBack((1.f / 255.f) * ((color >> 16) & 0xff), alloc);
     rjColor.PushBack((1.f / 255.f) * ((color >>  8) & 0xff), alloc);
     rjColor.PushBack((1.f / 255.f) * ((color      ) & 0xff), alloc);
-    rjColor.PushBack(1.f, alloc);
+    rjColor.PushBack(std::min(1.f, std::max(0.f, 1.f - (1.f / 100.f) * transparency)), alloc);
 
     rj::Value rjPbrMetallicRoughness(rj::kObjectType);
     rjPbrMetallicRoughness.AddMember("baseColorFactor", rjColor, alloc);
@@ -207,6 +207,9 @@ namespace {
     if (colorName) {
       material.AddMember("name", rj::Value(colorName, alloc), alloc);
       material.AddMember("pbrMetallicRoughness", rjPbrMetallicRoughness, alloc);
+    }
+    if (transparency != 0) {
+      material.AddMember("alphaMode", "BLEND", alloc);
     }
 
     uint32_t color_ix = ctx->rjMaterials.Size();
@@ -235,7 +238,7 @@ namespace {
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color);
+      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, geo->transparency);
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -286,7 +289,8 @@ namespace {
 
       rjPrimitive.AddMember("material", createOrGetColor(ctx,
                                                          geo->colorName,
-                                                         geo->color),
+                                                         geo->color,
+                                                         geo->transparency),
                             alloc);
 
       rjPrimitivesNode.PushBack(rjPrimitive, alloc);

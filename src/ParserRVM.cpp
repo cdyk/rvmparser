@@ -153,10 +153,11 @@ namespace {
     return curr_ptr;
   }
 
-  const char* parse_prim(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
+  const char* parse_prim(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t chunk_id, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
-    if (ctx->group_stack.back()->kind != Group::Kind::Group) {
+    Group* parent = ctx->group_stack.back();
+    if (parent->kind != Group::Kind::Group) {
       ctx->store->setErrorString("In PRIM, parent chunk is not CNTB");
       return nullptr;
     }
@@ -174,6 +175,38 @@ namespace {
       curr_ptr = read_float32_be(g->bboxLocal.data[i], curr_ptr, end_ptr);
     }
     g->bboxWorld = transform(g->M_3x4, g->bboxLocal);
+
+    bool hasTransparency = false;
+    switch (chunk_id) {
+    case id("PRIM"):
+      g->type = Geometry::Type::Primitive;
+      break;
+    case id("OBST"):
+      g->type = Geometry::Type::Obstruction;
+      hasTransparency = true;
+      break;
+    case id("INSU"): {
+      g->type = Geometry::Type::Insulation;
+      hasTransparency = true;
+      break;
+    }
+    default:
+      assert(false && "Illegal chunk id");
+    }
+
+    if (hasTransparency) {
+      assert(curr_ptr + 4 <= end_ptr);
+      g->transparency = curr_ptr[0];
+      assert((g->transparency <= 100) && "Transparency expected to be a number in [0,100]");
+      for (size_t i = 1; i < 4; i++) {
+        assert((curr_ptr[1] == 0) && "Padding bytes expected to be null");
+      }
+      curr_ptr += 4;
+    }
+    else {
+      // Otherwise, inherit transparency from parent
+      g->transparency = parent->group.transparency;
+    }
 
     switch (kind) {
     case 1:
@@ -295,14 +328,20 @@ namespace {
   const char* parse_cntb(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
-    auto * g = ctx->store->newGroup(ctx->group_stack.back(), Group::Kind::Group);
+    Group* parent = ctx->group_stack.back();
+
+    Group* g = ctx->store->newGroup(parent, Group::Kind::Group);
+
+    // Inherit properties from parent
+    if (ctx->group_stack.back()->kind == Group::Kind::Group) {
+      g->group.transparency = parent->group.transparency;
+    }
+
     ctx->group_stack.push_back(g);
 
     uint32_t version;
     curr_ptr = read_uint32_be(version, curr_ptr, end_ptr);
     curr_ptr = read_string(&g->group.name, ctx->store, curr_ptr, end_ptr);
-
-    //fprintf(stderr, "group '%s' %p\n", g->group.name, g->group.name);
 
     // Translation seems to be a reference point that can be used as a local frame for objects in the group.
     // The transform is not relative to this reference point.
@@ -313,6 +352,21 @@ namespace {
 
     curr_ptr = read_uint32_be(g->group.material, curr_ptr, end_ptr);
 
+    if (2 < version) {
+      assert(curr_ptr + 4 <= end_ptr);
+      // If version is greater than 2, we have 4 bytes of extra data.
+      // 
+      // First byte is assumed to be transparency in the range [0,100]
+      // 
+      // Second byte may be nonzero (observed values: 0x02). An hypothesis
+      // is that this encodes obstruction/insulation for all children
+      //
+      g->group.transparency = ((const uint8_t*)curr_ptr)[0];
+      assert(curr_ptr[2] == '\0' && "Assumed to be zero");
+      assert(curr_ptr[3] == '\0' && "Assumed to be zero");
+      curr_ptr += 4;
+    }
+
     if (!verifyOffset(ctx, "CNTB", base_ptr, curr_ptr, expected_next_chunk_offset)) return nullptr;
 
     // process children
@@ -320,15 +374,17 @@ namespace {
     auto l = curr_ptr;
     uint32_t dunno;
     curr_ptr = parse_chunk_header(chunk_id, expected_next_chunk_offset, dunno, curr_ptr, end_ptr);
-    auto id_chunk_id = id(chunk_id);
+    uint32_t id_chunk_id = id(chunk_id);
     while (curr_ptr < end_ptr && id_chunk_id != id("CNTE")) {
       switch (id_chunk_id) {
       case id("CNTB"):
         curr_ptr = parse_cntb(ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
         if (curr_ptr == nullptr) return curr_ptr;
         break;
-      case id("PRIM"):
-        curr_ptr = parse_prim(ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
+      case id("PRIM"): [[fallthrough]];
+      case id("OBST"): [[fallthrough]];
+      case id("INSU"):
+        curr_ptr = parse_prim(ctx, base_ptr, curr_ptr, end_ptr, id_chunk_id, expected_next_chunk_offset);
         if (curr_ptr == nullptr) return curr_ptr;
         break;
       default:
@@ -413,7 +469,7 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
       if (curr_ptr == nullptr) return false;
       break;
     case id("PRIM"):
-      curr_ptr = parse_prim(&ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
+      curr_ptr = parse_prim(&ctx, base_ptr, curr_ptr, end_ptr, id_chunk_id, expected_next_chunk_offset);
       if (curr_ptr == nullptr) return false;
       break;
     case id("COLR"):

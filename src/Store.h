@@ -76,6 +76,12 @@ struct Geometry
     Line,
     FacetGroup
   };
+  enum struct Type
+  {
+    Primitive,
+    Obstruction,
+    Insulation
+  };
   Geometry* next = nullptr;                 // Next geometry in the list of geometries in group.
   Triangulation* triangulation = nullptr;
   Geometry* next_comp = nullptr;            // Next geometry in list of geometries of this composite
@@ -86,6 +92,9 @@ struct Geometry
   uint32_t color = 0x202020u;
 
   Kind kind;
+  Type type = Geometry::Type::Primitive;
+  uint32_t transparency = 0;                 ///< Transparency of primitive, a percentage in [0,100].
+
   unsigned id;
 
   Mat3x4f M_3x4;
@@ -223,6 +232,7 @@ struct Group
       const char* name;
       BBox3f bboxWorld;
       uint32_t material;
+      uint32_t transparency;
       int32_t id = 0;
       float translation[3];
       uint32_t clientTag;     // For use by passes to stuff temporary info
