@@ -98,7 +98,12 @@ processFile(const std::string& path, F f)
       logger(2, "%s: fstat failed: %s", path.c_str(), strerror(errno));
     }
     else {
+
+#ifdef __linux__
       void * ptr = mmap(nullptr, stat.st_size, PROT_READ, MAP_PRIVATE|MAP_POPULATE, fd, 0);
+#else
+      void * ptr = mmap(nullptr, stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+#endif
       if(ptr == MAP_FAILED) {
         logger(2, "%s: mmap failed: %s", path.c_str(), strerror(errno));
       }
