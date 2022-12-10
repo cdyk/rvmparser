@@ -1,7 +1,7 @@
 RVMPARSER_SRC_DIR = ../src
 LIBTESS2_SRC_DIR = ../libs/libtess2/Source
-CCFLAGS  = -Wall -O2 -I../libs/rapidjson/include -I../libs/libtess2/Include/ $(CCFLAGS)
-CXXFLAGS = -Wall -O2 -I../libs/rapidjson/include -I../libs/libtess2/Include/ -std=c++17 $(CXXFLAGS)
+CCFLAGS  += -Wall -O2 -I../libs/rapidjson/include -I../libs/libtess2/Include/
+CXXFLAGS += -Wall -O2 -I../libs/rapidjson/include -I../libs/libtess2/Include/ -std=c++17
 OBJDIR = obj
 
 RVMPARSER_SRC = $(wildcard $(RVMPARSER_SRC_DIR)/*.cpp)
