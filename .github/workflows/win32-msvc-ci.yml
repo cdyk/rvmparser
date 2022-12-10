@@ -1,4 +1,4 @@
-name: MSBuild
+name: Win32-msvc CI
 
 on:
   push:
