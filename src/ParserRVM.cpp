@@ -88,8 +88,8 @@ namespace {
       curr_ptr = read_uint32_be(dunno, curr_ptr, end_ptr);
     }
     else {
-      next_chunk_offset = ~0;
-      dunno = ~0;
+      next_chunk_offset = ~0u;
+      dunno = ~0u;
       fprintf(stderr, "Chunk '%s' EOF after %zd bytes\n", id, end_ptr - curr_ptr);
       curr_ptr = end_ptr;
     }
@@ -398,8 +398,8 @@ namespace {
     }
 
     if (id_chunk_id == id("CNTE")) {
-      uint32_t version;
-      curr_ptr = read_uint32_be(version, curr_ptr, end_ptr);
+      uint32_t version_;
+      curr_ptr = read_uint32_be(version_, curr_ptr, end_ptr);
     }
 
     ctx->group_stack.pop_back();
