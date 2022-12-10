@@ -7,6 +7,8 @@ struct Vec2f
   Vec2f(float x) : x(x), y(x) {}
   Vec2f(float* ptr) : x(ptr[0]), y(ptr[1]) {}
   Vec2f(float x, float y) : x(x), y(y) {}
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
     struct {
       float x;
@@ -14,6 +16,7 @@ struct Vec2f
     };
     float data[2];
   };
+#pragma warning(pop)
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
@@ -28,6 +31,8 @@ struct Vec3f
   Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
   Vec3f(const Vec2f& a, float z) : x(a.x), y(a.y), z(z) {}
 
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
     struct {
       float x;
@@ -36,6 +41,7 @@ struct Vec3f
     };
     float data[3];
   };
+#pragma warning(pop)
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
@@ -48,6 +54,8 @@ struct BBox3f
   BBox3f(const Vec3f& min, const Vec3f& max) : min(min), max(max) {}
   BBox3f(const BBox3f& bbox, float margin);
 
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
     struct {
       Vec3f min;
@@ -55,6 +63,7 @@ struct BBox3f
     };
     float data[6];
   };
+#pragma warning(pop)
 };
 
 struct Mat3f
@@ -70,7 +79,8 @@ struct Mat3f
     m02(m02), m12(m12), m22(m22)
   {}
 
-
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
     struct {
       float m00;
@@ -86,6 +96,7 @@ struct Mat3f
     Vec3f cols[3];
     float data[3 * 3];
   };
+#pragma warning(pop)
 };
 
 
@@ -95,6 +106,8 @@ struct Mat3x4f
   Mat3x4f(const Mat3x4f&) = default;
   Mat3x4f(const float* ptr) { for (unsigned i = 0; i < 4 * 3; i++) data[i] = ptr[i]; }
 
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
     struct {
       float m00;
@@ -116,4 +129,5 @@ struct Mat3x4f
     Vec3f cols[4];
     float data[4 * 3];
   };
+#pragma warning(pop)
 };
