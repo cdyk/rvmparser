@@ -55,16 +55,16 @@ namespace {
       Vec3f quad[2][4] =
       {
         {
-          Vec3f(-bx - ox, -by - oy, -h2),
-          Vec3f(bx - ox, -by - oy, -h2),
-          Vec3f(bx - ox,  by - oy, -h2),
-          Vec3f(-bx - ox,  by - oy, -h2)
+          makeVec3f(-bx - ox, -by - oy, -h2),
+          makeVec3f(bx - ox, -by - oy, -h2),
+          makeVec3f(bx - ox,  by - oy, -h2),
+          makeVec3f(-bx - ox,  by - oy, -h2)
         },
         {
-           Vec3f(-tx + ox, -ty + oy, h2),
-           Vec3f(tx + ox, -ty + oy, h2),
-           Vec3f(tx + ox,  ty + oy, h2),
-           Vec3f(-tx + ox,  ty + oy, h2)
+           makeVec3f(-tx + ox, -ty + oy, h2),
+           makeVec3f(tx + ox, -ty + oy, h2),
+           makeVec3f(tx + ox,  ty + oy, h2),
+           makeVec3f(-tx + ox,  ty + oy, h2)
         },
       };
 
@@ -77,7 +77,7 @@ namespace {
         interface.square.p[3] = mul(geo->M_3x4, quad[1][o]);
       }
       else {
-        for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, quad[o - 4][k].data);
+        for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, quad[o - 4][k]);
       }
       break;
     }
@@ -87,14 +87,14 @@ namespace {
       auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
       auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
       Vec3f V[6][4] = {
-        { Vec3f(xm, ym, zp), Vec3f(xm, yp, zp), Vec3f(xm, yp, zm), Vec3f(xm, ym, zm) },
-        { Vec3f(xp, ym, zm), Vec3f(xp, yp, zm), Vec3f(xp, yp, zp), Vec3f(xp, ym, zp) },
-        { Vec3f(xp, ym, zm), Vec3f(xp, ym, zp), Vec3f(xm, ym, zp), Vec3f(xm, ym, zm) },
-        { Vec3f(xm, yp, zm), Vec3f(xm, yp, zp), Vec3f(xp, yp, zp), Vec3f(xp, yp, zm) },
-        { Vec3f(xm, yp, zm), Vec3f(xp, yp, zm), Vec3f(xp, ym, zm), Vec3f(xm, ym, zm) },
-        { Vec3f(xm, ym, zp), Vec3f(xp, ym, zp), Vec3f(xp, yp, zp), Vec3f(xm, yp, zp) }
+        { makeVec3f(xm, ym, zp), makeVec3f(xm, yp, zp), makeVec3f(xm, yp, zm), makeVec3f(xm, ym, zm) },
+        { makeVec3f(xp, ym, zm), makeVec3f(xp, yp, zm), makeVec3f(xp, yp, zp), makeVec3f(xp, ym, zp) },
+        { makeVec3f(xp, ym, zm), makeVec3f(xp, ym, zp), makeVec3f(xm, ym, zp), makeVec3f(xm, ym, zm) },
+        { makeVec3f(xm, yp, zm), makeVec3f(xm, yp, zp), makeVec3f(xp, yp, zp), makeVec3f(xp, yp, zm) },
+        { makeVec3f(xm, yp, zm), makeVec3f(xp, yp, zm), makeVec3f(xp, ym, zm), makeVec3f(xm, ym, zm) },
+        { makeVec3f(xm, ym, zp), makeVec3f(xp, ym, zp), makeVec3f(xp, yp, zp), makeVec3f(xm, yp, zp) }
       };
-      for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, V[o][k].data);
+      for (unsigned k = 0; k < 4; k++) interface.square.p[k] = mul(geo->M_3x4, V[o][k]);
       break;
     }
     case Geometry::Kind::RectangularTorus: {
@@ -108,14 +108,14 @@ namespace {
       };
       if (o == 0) {
         for (unsigned k = 0; k < 4; k++) {
-          interface.square.p[k] = mul(geo->M_3x4, Vec3f(square[k][0], 0.f, square[k][1]));
+          interface.square.p[k] = mul(geo->M_3x4, makeVec3f(square[k][0], 0.f, square[k][1]));
         }
       }
       else {
         for (unsigned k = 0; k < 4; k++) {
-          interface.square.p[k] = mul(geo->M_3x4, Vec3f(square[k][0] * cos(tor.angle),
-                                                        square[k][0] * sin(tor.angle),
-                                                        square[k][1]));
+          interface.square.p[k] = mul(geo->M_3x4, makeVec3f(square[k][0] * cos(tor.angle),
+                                                            square[k][0] * sin(tor.angle),
+                                                            square[k][1]));
         }
       }
       break;
@@ -317,26 +317,26 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
   Vec3f quad[2][4] =
   {
     {
-      Vec3f( -bx - ox, -by - oy, -h2 ),
-      Vec3f(  bx - ox, -by - oy, -h2 ),
-      Vec3f(  bx - ox,  by - oy, -h2 ),
-      Vec3f(-bx - ox,  by - oy, -h2 )
+      makeVec3f( -bx - ox, -by - oy, -h2 ),
+      makeVec3f(  bx - ox, -by - oy, -h2 ),
+      makeVec3f(  bx - ox,  by - oy, -h2 ),
+      makeVec3f(-bx - ox,  by - oy, -h2 )
     },
     {
-       Vec3f(-tx + ox, -ty + oy, h2),
-       Vec3f(tx + ox, -ty + oy, h2),
-       Vec3f(tx + ox,  ty + oy, h2),
-       Vec3f(-tx + ox,  ty + oy, h2)
+       makeVec3f(-tx + ox, -ty + oy, h2),
+       makeVec3f(tx + ox, -ty + oy, h2),
+       makeVec3f(tx + ox,  ty + oy, h2),
+       makeVec3f(-tx + ox,  ty + oy, h2)
     },
   };
 
   Vec3f n[6] = {
-    Vec3f( 0.f, -h2,  (quad[1][0][1] - quad[0][0][1]) ),
-    Vec3f(  h2, 0.f, -(quad[1][1][0] - quad[0][1][0]) ),
-    Vec3f( 0.f,  h2, -(quad[1][2][1] - quad[0][2][1]) ),
-    Vec3f( -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) ),
-    Vec3f(0, 0, -1 ),
-    Vec3f(0, 0, 1),
+    makeVec3f( 0.f, -h2,  (quad[1][0][1] - quad[0][0][1]) ),
+    makeVec3f(  h2, 0.f, -(quad[1][1][0] - quad[0][1][0]) ),
+    makeVec3f( 0.f,  h2, -(quad[1][2][1] - quad[0][2][1]) ),
+    makeVec3f( -h2, 0.f,  (quad[1][3][0] - quad[0][3][0]) ),
+    makeVec3f(0, 0, -1 ),
+    makeVec3f(0, 0, 1),
   };
 
   bool cap[6] = {
@@ -424,21 +424,21 @@ Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, floa
   auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
 
   Vec3f V[6][4] = {
-    { Vec3f(xm, ym, zp ), Vec3f(xm, yp, zp ), Vec3f(xm, yp, zm ), Vec3f(xm, ym, zm ) },
-    { Vec3f(xp, ym, zm ), Vec3f(xp, yp, zm ), Vec3f(xp, yp, zp ), Vec3f(xp, ym, zp ) },
-    { Vec3f(xp, ym, zm ), Vec3f(xp, ym, zp ), Vec3f(xm, ym, zp ), Vec3f(xm, ym, zm ) },
-    { Vec3f(xm, yp, zm ), Vec3f(xm, yp, zp ), Vec3f(xp, yp, zp ), Vec3f(xp, yp, zm ) },
-    { Vec3f(xm, yp, zm ), Vec3f(xp, yp, zm ), Vec3f(xp, ym, zm ), Vec3f(xm, ym, zm ) },
-    { Vec3f(xm, ym, zp ), Vec3f(xp, ym, zp ), Vec3f(xp, yp, zp ), Vec3f(xm, yp, zp ) }
+    { makeVec3f(xm, ym, zp ), makeVec3f(xm, yp, zp ), makeVec3f(xm, yp, zm ), makeVec3f(xm, ym, zm ) },
+    { makeVec3f(xp, ym, zm ), makeVec3f(xp, yp, zm ), makeVec3f(xp, yp, zp ), makeVec3f(xp, ym, zp ) },
+    { makeVec3f(xp, ym, zm ), makeVec3f(xp, ym, zp ), makeVec3f(xm, ym, zp ), makeVec3f(xm, ym, zm ) },
+    { makeVec3f(xm, yp, zm ), makeVec3f(xm, yp, zp ), makeVec3f(xp, yp, zp ), makeVec3f(xp, yp, zm ) },
+    { makeVec3f(xm, yp, zm ), makeVec3f(xp, yp, zm ), makeVec3f(xp, ym, zm ), makeVec3f(xm, ym, zm ) },
+    { makeVec3f(xm, ym, zp ), makeVec3f(xp, ym, zp ), makeVec3f(xp, yp, zp ), makeVec3f(xm, yp, zp ) }
   };
 
   Vec3f N[6] = {
-    Vec3f(-1,  0,  0),
-    Vec3f(1,  0,  0 ),
-    Vec3f(0, -1,  0 ),
-    Vec3f(0,  1,  0 ),
-    Vec3f(0,  0, -1 ),
-    Vec3f(0,  0,  1 )
+    makeVec3f(-1,  0,  0),
+    makeVec3f(1,  0,  0 ),
+    makeVec3f(0, -1,  0 ),
+    makeVec3f(0,  1,  0 ),
+    makeVec3f(0,  0, -1 ),
+    makeVec3f(0,  0,  1 )
   };
 
   bool faces[6] = {
@@ -1195,7 +1195,7 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
       BBox3f bbox = createEmptyBBox3f();
       for (unsigned c = 0; c < poly.contours_n; c++) {
         for (unsigned i = 0; i < poly.contours[c].vertices_n; i++) {
-          const Vec3f pos = Vec3f(poly.contours[c].vertices + 3 * i);
+          const Vec3f pos = makeVec3f(poly.contours[c].vertices + 3 * i);
           engulf(bbox, pos);
         }
       }
@@ -1210,7 +1210,7 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
         }
         vec3.resize(cont.vertices_n);
         for (unsigned i = 0; i < cont.vertices_n; i++) {
-          vec3[i] = Vec3f(cont.vertices + 3 * i) - m;
+          vec3[i] = makeVec3f(cont.vertices + 3 * i) - m;
         }
         tessAddContour(tess, 3, vec3.data(), 3 * sizeof(float), cont.vertices_n);
         //tessAddContour(tess, 3, cont.vertices, 3 * sizeof(float), cont.vertices_n);
@@ -1229,7 +1229,7 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
 
           auto * src = tessGetVertices(tess);
           for (unsigned i = 0; i < vn; i++) {
-            const Vec3f pos = Vec3f((float*)(src + 3 * i)) + m;
+            const Vec3f pos = makeVec3f((float*)(src + 3 * i)) + m;
             write(vertices.data() + 3 * (vo + i), pos);
           }
 

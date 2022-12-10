@@ -111,7 +111,7 @@ namespace {
     Anchor a;
     a.geo = geo;
     a.p = mul(Mat3x4f(geo->M_3x4), p);
-    a.d = normalize(mul(Mat3f(geo->M_3x4.data), d));
+    a.d = normalize(mul(makeMat3f(geo->M_3x4.data), d));
     a.o = o;
     a.flags = flags;
 
@@ -133,31 +133,31 @@ namespace {
       switch (geo->kind) {
 
       case Geometry::Kind::Pyramid: {
-        auto b = 0.5f * Vec2f(geo->pyramid.bottom);
-        auto t = 0.5f * Vec2f(geo->pyramid.top);
+        auto b = 0.5f * makeVec2f(geo->pyramid.bottom);
+        auto t = 0.5f * makeVec2f(geo->pyramid.top);
         auto m = 0.5f * (b + t);
-        auto o = 0.5f * Vec2f(geo->pyramid.offset);
+        auto o = 0.5f * makeVec2f(geo->pyramid.offset);
 
         auto h = 0.5f * geo->pyramid.height;
 
         auto & M = geo->M_3x4;
-        auto N = Mat3f(M.data);
+        auto N = makeMat3f(M.data);
 
         Vec3f n[6] = {
-           Vec3f(0.f, -h,  (-t.y + o.y) - (-b.y - o.y)),
-           Vec3f(h, 0.f, -((t.x + o.x) - (b.x - o.x))),
-           Vec3f(0.f,  h, -((t.y + o.y) - (b.y - o.y))),
-           Vec3f(-h, 0.f,  (-t.x + o.x) - (-b.x - o.x)),
-           Vec3f(0.f, 0.f, -1.f),
-           Vec3f(0.f, 0.f, 1.f)
+           makeVec3f(0.f, -h,  (-t.y + o.y) - (-b.y - o.y)),
+           makeVec3f(h, 0.f, -((t.x + o.x) - (b.x - o.x))),
+           makeVec3f(0.f,  h, -((t.y + o.y) - (b.y - o.y))),
+           makeVec3f(-h, 0.f,  (-t.x + o.x) - (-b.x - o.x)),
+           makeVec3f(0.f, 0.f, -1.f),
+           makeVec3f(0.f, 0.f, 1.f)
         };
         Vec3f p[6] = {
-          Vec3f(0.f, -m.y, 0.f),
-          Vec3f(m.x, 0.f, 0.f),
-          Vec3f(0.f, m.y, 0.f),
-          Vec3f(-m.x, 0.f, 0.f),
-          Vec3f(-o.x, -o.y, -h),
-          Vec3f(o.x, o.y, h)
+          makeVec3f(0.f, -m.y, 0.f),
+          makeVec3f(m.x, 0.f, 0.f),
+          makeVec3f(0.f, m.y, 0.f),
+          makeVec3f(-m.x, 0.f, 0.f),
+          makeVec3f(-o.x, -o.y, -h),
+          makeVec3f(o.x, o.y, h)
         };
         for (unsigned i = 0; i < 6; i++) {
           addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
@@ -168,17 +168,17 @@ namespace {
       case Geometry::Kind::Box: {
         auto & box = geo->box;
         Vec3f n[6] = {
-            Vec3f(-1,  0,  0), Vec3f(1,  0,  0),
-            Vec3f(0, -1,  0), Vec3f(0,  1,  0),
-            Vec3f(0,  0, -1), Vec3f(0,  0,  1)
+            makeVec3f(-1,  0,  0), makeVec3f(1,  0,  0),
+            makeVec3f(0, -1,  0), makeVec3f(0,  1,  0),
+            makeVec3f(0,  0, -1), makeVec3f(0,  0,  1)
         };
         auto xp = 0.5f * box.lengths[0]; auto xm = -xp;
         auto yp = 0.5f * box.lengths[1]; auto ym = -yp;
         auto zp = 0.5f * box.lengths[2]; auto zm = -zp;
         Vec3f p[6] = {
-          Vec3f(xm, 0.f, 0.f ), Vec3f(xp, 0.f, 0.f ),
-          Vec3f(0.f, ym, 0.f ), Vec3f(0.f, yp, 0.f ),
-          Vec3f(0.f, 0.f, zm ), Vec3f(0.f, 0.f, zp )
+          makeVec3f(xm, 0.f, 0.f ), makeVec3f(xp, 0.f, 0.f ),
+          makeVec3f(0.f, ym, 0.f ), makeVec3f(0.f, yp, 0.f ),
+          makeVec3f(0.f, 0.f, zm ), makeVec3f(0.f, 0.f, zp )
         };
         for (unsigned i = 0; i < 6; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
         break;
@@ -189,8 +189,8 @@ namespace {
         auto c = cos(rt.angle);
         auto s = sin(rt.angle);
         auto m = 0.5f*(rt.inner_radius + rt.outer_radius);
-        Vec3f n[2] = { Vec3f( 0, -1, 0.f ), Vec3f( -s, c, 0.f ) };
-        Vec3f p[2] = { Vec3f( geo->circularTorus.offset, 0, 0.f ), Vec3f( m * c, m * s, 0.f ) };
+        Vec3f n[2] = { makeVec3f( 0, -1, 0.f ), makeVec3f( -s, c, 0.f ) };
+        Vec3f p[2] = { makeVec3f( geo->circularTorus.offset, 0, 0.f ), makeVec3f( m * c, m * s, 0.f ) };
         for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasRectangularSide);
         break;
       }
@@ -199,35 +199,35 @@ namespace {
         auto & ct = geo->circularTorus;
         auto c = cos(ct.angle);
         auto s = sin(ct.angle);
-        Vec3f n[2] = { Vec3f(0, -1, 0.f ), Vec3f(-s, c, 0.f ) };
-        Vec3f p[2] = { Vec3f(ct.offset, 0, 0.f ), Vec3f(ct.offset * c, ct.offset * s, 0.f ) };
+        Vec3f n[2] = { makeVec3f(0, -1, 0.f ), makeVec3f(-s, c, 0.f ) };
+        Vec3f p[2] = { makeVec3f(ct.offset, 0, 0.f ), makeVec3f(ct.offset * c, ct.offset * s, 0.f ) };
         for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasCircularSide);
         break;
       }
 
       case Geometry::Kind::EllipticalDish:
       case Geometry::Kind::SphericalDish: {
-        addAnchor(context, geo, Vec3f(0,0,0), Vec3f(0, 0, -1), 0, Connection::Flags::HasCircularSide);
+        addAnchor(context, geo, makeVec3f(0,0,0), makeVec3f(0, 0, -1), 0, Connection::Flags::HasCircularSide);
         break;
       }
 
       case Geometry::Kind::Snout: {
         auto & sn = geo->snout;
         Vec3f n[2] = {
-          Vec3f(sin(sn.bshear[0])*cos(sn.bshear[1]), sin(sn.bshear[1]), -cos(sn.bshear[0])*cos(sn.bshear[1]) ),
-          Vec3f(-sin(sn.tshear[0])*cos(sn.tshear[1]), -sin(sn.tshear[1]), cos(sn.tshear[0])*cos(sn.tshear[1]))
+          makeVec3f(sin(sn.bshear[0])*cos(sn.bshear[1]), sin(sn.bshear[1]), -cos(sn.bshear[0])*cos(sn.bshear[1]) ),
+          makeVec3f(-sin(sn.tshear[0])*cos(sn.tshear[1]), -sin(sn.tshear[1]), cos(sn.tshear[0])*cos(sn.tshear[1]))
         };
         Vec3f p[2] = {
-          Vec3f(-0.5f*sn.offset[0], -0.5f*sn.offset[1], -0.5f*sn.height ),
-          Vec3f(0.5f*sn.offset[0], 0.5f*sn.offset[1], 0.5f*sn.height )
+          makeVec3f(-0.5f*sn.offset[0], -0.5f*sn.offset[1], -0.5f*sn.height ),
+          makeVec3f(0.5f*sn.offset[0], 0.5f*sn.offset[1], 0.5f*sn.height )
         };
         for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], n[i], i, Connection::Flags::HasCircularSide);
         break;
       }
 
       case Geometry::Kind::Cylinder: {
-        Vec3f d[2] = { Vec3f(0, 0, -1.f), Vec3f(0, 0, 1.f) };
-        Vec3f p[2] = { Vec3f(0, 0, -0.5f * geo->cylinder.height), Vec3f(0, 0, 0.5f * geo->cylinder.height) };
+        Vec3f d[2] = { makeVec3f(0, 0, -1.f), makeVec3f(0, 0, 1.f) };
+        Vec3f p[2] = { makeVec3f(0, 0, -0.5f * geo->cylinder.height), makeVec3f(0, 0, 0.5f * geo->cylinder.height) };
         for (unsigned i = 0; i < 2; i++) addAnchor(context, geo, p[i], d[i], i, Connection::Flags::HasCircularSide);
         break;
       }

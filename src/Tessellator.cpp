@@ -183,7 +183,7 @@ void Tessellator::geometry(Geometry* geo)
 
   BBox3f box = createEmptyBBox3f();
   for (unsigned i = 0; i < geo->triangulation->vertices_n; i++) {
-    engulf(box, Vec3f(geo->triangulation->vertices + 3 * i));
+    engulf(box, makeVec3f(geo->triangulation->vertices + 3 * i));
   }
   //assert(geo->bbox_l.min[0] < box.min[0] + 0.1f*box.maxSideLength());
   //assert(geo->bbox_l.min[1] < box.min[1] + 0.1f*box.maxSideLength());

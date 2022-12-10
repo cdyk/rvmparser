@@ -16,6 +16,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cstdarg>
 #include <cstring>
 #include <string>
 #include <cctype>
@@ -216,13 +217,8 @@ int main(int argc, char** argv)
   std::string output_obj_stem;
   std::string color_attribute;
   
-
-  std::vector<std::string> attributeSuffices = { ".txt",  ".att" };
-
   Store* store = new Store();
 
-
-  std::string stem;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
 
@@ -313,8 +309,7 @@ int main(int argc, char** argv)
     for (auto & c : arg_lc) c = std::tolower(c);
 
     // parse rvm file
-    auto l = arg_lc.rfind(".rvm");
-    if (l != std::string::npos) {
+    if (arg_lc.rfind(".rvm") != std::string::npos) {
       if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }))
       {
         fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
@@ -328,8 +323,7 @@ int main(int argc, char** argv)
     }
 
     // parse attributes file
-    l = arg_lc.rfind(".txt");
-    if (l != std::string::npos) {
+    if (arg_lc.rfind(".txt") != std::string::npos || arg_lc.rfind(".att")) {
       if (processFile(arg, [store](const void* ptr, size_t size) { return parseAtt(store, logger, ptr, size); })) {
         fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
       }
