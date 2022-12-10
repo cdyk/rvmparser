@@ -1,3 +1,6 @@
+[![Win32-MSVC Status](https://github.com/cdyk/rvmparser/actions/workflows/win32-msvc-ci.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
+[![Linux-clang Status](https://github.com/cdyk/rvmparser/actions/workflows/linux-clang-ci.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
+
 # rvmparser
 
 Code to work with AVEVA PDMS RVM files. Written completely from scratch, intended to be very fast, small, and with _little dependencies_, so it is trivial to include in existing projects.
