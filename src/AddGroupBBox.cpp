@@ -5,18 +5,16 @@
 #include "AddGroupBBox.h"
 #include "LinAlgOps.h"
 
-void AddGroupBBox::init(class Store& store)
+void AddGroupBBox::init(class Store& store_)
 {
-  this->store = &store;
-  stack = (Group**)arena.alloc(sizeof(Group*)*store.groupCountAllocated());
+  store = &store_;
+  stack = (Group**)arena.alloc(sizeof(Group*)*store->groupCountAllocated());
   stack_p = 0;
 }
 
 void AddGroupBBox::geometry(struct Geometry* geometry)
 {
   assert(stack_p);
-  const auto & M = geometry->M_3x4;
-
   engulf(stack[stack_p - 1]->group.bboxWorld, geometry->bboxWorld);
 }
 

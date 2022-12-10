@@ -577,8 +577,8 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
   rj::StringBuffer buffer;
   rj::Writer<rj::StringBuffer> writer(buffer);
   ctx->rjDoc.Accept(writer);
-  uint32_t jsonByteSize = static_cast<uint32_t>(buffer.GetSize());
-  uint32_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
+  size_t jsonByteSize = buffer.GetSize();
+  size_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
   
   // ------- pretty-printed JSON to stdout for debugging ---------------------
   if (ctx->dumpDebugJson) {
@@ -594,15 +594,19 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
 
   // ------- write glb header ------------------------------------------------
 
-  uint32_t total_size =
+  size_t total_size =
     12 +                                  // Initial header
     8 + jsonByteSize + jsonPaddingSize +  // JSON header, payload and padding
     8 + ctx->dataBytes;                   // BVIN header and payload
 
+  if (std::numeric_limits<uint32_t>::max() < total_size) {
+    logger(2, "%s: File would be %zu bytes, a number too large to store in 32 bits in the GLB header.");
+    return false;
+  }
   uint32_t header[3] = {
-    0x46546C67,         // magic
-    2,                  // version
-    total_size          // total size
+    0x46546C67,                       // magic
+    2,                                // version
+    static_cast<uint32_t>(total_size) // total size
   };
   if (fwrite(header, sizeof(header), 1, out) != 1) {
     logger(2, "%s: Error writing header", path);
@@ -612,8 +616,8 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
 
   // ------- write JSON chunk ------------------------------------------------
   uint32_t jsonhunkHeader[2] = {
-    jsonByteSize + jsonPaddingSize,       // length of chunk data
-    0x4E4F534A          // chunk type (JSON)
+    static_cast<uint32_t>(jsonByteSize + jsonPaddingSize),  // length of chunk data
+    0x4E4F534A                                              // chunk type (JSON)
   };
   if (fwrite(jsonhunkHeader, sizeof(jsonhunkHeader), 1, out) != 1) {
     logger(2, "%s: Error writing JSON chunk header", path);

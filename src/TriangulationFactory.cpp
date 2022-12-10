@@ -302,7 +302,7 @@ float TriangulationFactory::sagittaBasedError(float arc, float radius, float sca
 
 
 
-Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto bx = 0.5f * geo->pyramid.bottom[0];
   auto by = 0.5f * geo->pyramid.bottom[1];
@@ -415,7 +415,7 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
 }
 
 
-Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto & box = geo->box;
 
@@ -1120,7 +1120,7 @@ Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geomet
 }
 
 
-Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto & fg = geo->facetGroup;
 
@@ -1195,8 +1195,8 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
       BBox3f bbox = createEmptyBBox3f();
       for (unsigned c = 0; c < poly.contours_n; c++) {
         for (unsigned i = 0; i < poly.contours[c].vertices_n; i++) {
-          const auto p = Vec3f(poly.contours[c].vertices + 3 * i);
-          engulf(bbox, p);
+          const Vec3f pos = Vec3f(poly.contours[c].vertices + 3 * i);
+          engulf(bbox, pos);
         }
       }
       auto m = 0.5f*(Vec3f(bbox.min) + Vec3f(bbox.max));
@@ -1229,8 +1229,8 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
 
           auto * src = tessGetVertices(tess);
           for (unsigned i = 0; i < vn; i++) {
-            auto p = Vec3f((float*)(src + 3 * i)) + m;
-            write(vertices.data() + 3 * (vo + i), p);
+            const Vec3f pos = Vec3f((float*)(src + 3 * i)) + m;
+            write(vertices.data() + 3 * (vo + i), pos);
           }
 
           //std::memcpy(vertices.data() + 3 * vo, tessGetVertices(tess), 3 * vn * sizeof(float));
@@ -1253,7 +1253,6 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
             }
           }
 
-          auto io = uint32_t(indices.size());
           auto * elements = tessGetElements(tess);
           auto elements_n = unsigned(tessGetElementCount(tess));
           for (unsigned e = 0; e < elements_n; e++) {

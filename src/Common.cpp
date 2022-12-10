@@ -227,8 +227,9 @@ const char* StringInterning::intern(const char* str)
 
 const char* StringInterning::intern(const char* a, const char* b)
 {
-  auto length = b - a;
-  auto hash = fnv_1a(a, length);
+  assert(a <= b);
+  const size_t length = b - a;
+  uint64_t hash = fnv_1a(a, length);
   hash = hash ? hash : 1;
 
   auto * intern = (StringHeader*)map.get(hash);
