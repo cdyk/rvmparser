@@ -1,5 +1,4 @@
-[![Win32-MSVC Status](https://github.com/cdyk/rvmparser/actions/workflows/win32-msvc-ci.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
-[![Linux-clang Status](https://github.com/cdyk/rvmparser/actions/workflows/linux-clang-ci.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
+[![Build Status](https://github.com/cdyk/rvmparser/actions/workflows/build.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
 
 # rvmparser
 
