@@ -81,13 +81,15 @@ inline Vec3f mul(const Mat3x4f& A, const Vec3f& x)
 
 inline BBox3f createEmptyBBox3f()
 {
-  return BBox3f(makeVec3f(FLT_MAX, FLT_MAX, FLT_MAX), makeVec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+  return makeBBox3f(makeVec3f(FLT_MAX, FLT_MAX, FLT_MAX), makeVec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
 }
 
-inline BBox3f::BBox3f(const BBox3f& bbox, float margin) :
-  min(bbox.min - makeVec3f(margin)),
-  max(bbox.max + makeVec3f(margin))
-{}
+inline BBox3f makeBBox3f(const BBox3f& bbox, float margin)
+{
+  return makeBBox3f(bbox.min - makeVec3f(margin),
+                    bbox.max + makeVec3f(margin));
+}
+
 
 inline void engulf(BBox3f& target, const Vec3f& p)
 {

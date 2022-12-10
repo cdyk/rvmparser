@@ -63,6 +63,6 @@ BBox3f transform(const Mat3x4f& M, const BBox3f& bbox)
     mul(M, makeVec3f(bbox.max.x, bbox.max.y, bbox.min.z)),
     mul(M, makeVec3f(bbox.max.x, bbox.max.y, bbox.max.z))
   };
-  return BBox3f(min(min(min(p[0], p[1]), min(p[2], p[3])), min(min(p[4], p[5]), min(p[6], p[7]))),
-                max(max(max(p[0], p[1]), max(p[2], p[3])), max(max(p[4], p[5]), max(p[6], p[7]))));
+  return makeBBox3f(min(min(min(p[0], p[1]), min(p[2], p[3])), min(min(p[4], p[5]), min(p[6], p[7]))),
+                    max(max(max(p[0], p[1]), max(p[2], p[3])), max(max(p[4], p[5]), max(p[6], p[7]))));
 }

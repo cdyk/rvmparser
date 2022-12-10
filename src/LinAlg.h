@@ -47,11 +47,6 @@ inline Vec3f makeVec3f(const Vec2f& a, float z) { Vec3f r; r.x = a.x; r.y = a.y;
 
 struct BBox3f
 {
-  BBox3f() = default;
-  BBox3f(const BBox3f&) = default;
-  BBox3f(const Vec3f& min, const Vec3f& max) : min(min), max(max) {}
-  BBox3f(const BBox3f& bbox, float margin);
-
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
@@ -63,6 +58,10 @@ struct BBox3f
   };
 #pragma warning(pop)
 };
+
+inline BBox3f makeBBox3f(const BBox3f& a) { BBox3f r; r.min = a.min; r.max = a.max; return r; }
+inline BBox3f makeBBox3f(const Vec3f& min, const Vec3f& max) { BBox3f r; r.min = min; r.max = max; return r; }
+
 
 struct Mat3f
 {
