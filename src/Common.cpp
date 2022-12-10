@@ -1,5 +1,6 @@
 #include "Common.h"
 #include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 #include <cassert>
 #include <cstring>
