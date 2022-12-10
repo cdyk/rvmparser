@@ -16,5 +16,4 @@ jobs:
       with:
         submodules: recursive
     - name: make
-      run: make
-        working-directory: make
+      run: cd make && make
