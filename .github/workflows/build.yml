@@ -43,4 +43,17 @@ jobs:
       with:
         submodules: recursive
     - name: make
-      run: cd make && make
+      working-directory: ${{env.GITHUB_WORKSPACE}}/make
+      run: make
+
+
+  macos-clang:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: make
+      working-directory: ${{env.GITHUB_WORKSPACE}}/make
+      run: make
