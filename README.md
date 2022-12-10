@@ -68,31 +68,16 @@ The submodule dependencies are:
 
 The project is just a few source-files, so it should be trivial to use with any build systems.
 
-### Visual Studio / Windows
 
-Open the solution file located in `msvc15` and build the project.
+### Windows (Visual Studio)
 
-It is currently kept as a Visual Studio 2017 solution for compatibility, but this can easily be
-updated by opening the solution in a newer visual studio, right-clicking on the solution in the
-Solution Explorer, choose "Retarget Projects", and there choose the latest Windows SDK Version and
-Platform Toolset that you have installed.
+Open `msvc15\rvmparser.sln` in visual studio and build the solution.
 
-### POSIX
 
-Enter the `make` directory. Type
-```
-export CXX=clang++
-export CC=clang
-make
-```
-Rvmparser doesn't currently build with GCC as the source currently contains use of anonymous aggregates of members with constructors. Use clang instead for now.
+### Linux and MacOS (gcc or clang)
 
-### MacOS
+Enter the `make` directory and type `make`.
 
-Enter the `make` directory. Type
-```
-make
-```
 
 ## See also
 - [Plant Mock-Up Converter](https://github.com/benvautrin/pmuc).
