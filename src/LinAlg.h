@@ -23,13 +23,6 @@ inline Vec2f makeVec2f(float x, float y) { Vec2f r; r.x = x; r.y = y; return r; 
 
 struct Vec3f
 {
-  Vec3f() = default;
-  Vec3f(const Vec3f&) = default;
-  Vec3f(float x) : x(x), y(x), z(x) {}
-  Vec3f(float* ptr) : x(ptr[0]), y(ptr[1]), z(ptr[2]) {}
-  Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
-  Vec3f(const Vec2f& a, float z) : x(a.x), y(a.y), z(z) {}
-
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
@@ -44,6 +37,12 @@ struct Vec3f
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
+
+inline Vec3f makeVec3f(const Vec3f& q) { Vec3f r; r.x = q.x; r.y = q.y; r.z = q.z; return r; }
+inline Vec3f makeVec3f(float x) { Vec3f r; r.x = x; r.y = x; r.z = x; return r; }
+inline Vec3f makeVec3f(float* ptr) { Vec3f r; r.x = ptr[0]; r.y = ptr[1]; r.z = ptr[2]; return r; }
+inline Vec3f makeVec3f(float x, float y, float z) { Vec3f r; r.x = x; r.y = y; r.z = z; return r; }
+inline Vec3f makeVec3f(const Vec2f& a, float z) { Vec3f r; r.x = a.x; r.y = a.y; r.z = z; return r; }
 
 
 struct BBox3f

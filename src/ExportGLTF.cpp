@@ -45,7 +45,7 @@ namespace {
 
     Map definedMaterials;
 
-    Vec3f origin = Vec3f(0.f);
+    Vec3f origin = makeVec3f(0.f);
 
     std::vector<Vec3f> tmp3f;
 
@@ -109,8 +109,8 @@ namespace {
                                         0x8892 /* GL_ARRAY_BUFFER */,
                                         copy);
 
-    Vec3f min_val(std::numeric_limits<float>::max());
-    Vec3f max_val(-std::numeric_limits<float>::max());
+    Vec3f min_val = makeVec3f(std::numeric_limits<float>::max());
+    Vec3f max_val = makeVec3f(-std::numeric_limits<float>::max());
 
     for (size_t i = 0; i < count; i++) {
       min_val = min(min_val, data[i]);
@@ -268,9 +268,9 @@ namespace {
         std::vector<Vec3f>& tmpNormals = ctx->tmp3f;
         tmpNormals.resize(tri->vertices_n * 3);
         for (size_t i = 0; i < tri->vertices_n; i++) {
-          Vec3f n = normalize(Vec3f(tri->normals + 3 * i));
+          Vec3f n = normalize(makeVec3f(tri->normals + 3 * i));
           if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
-            n = Vec3f(1.f, 0.f, 0.f);
+            n = makeVec3f(1.f, 0.f, 0.f);
           }
           tmpNormals[i] = n;
         }

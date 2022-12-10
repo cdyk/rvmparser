@@ -51,9 +51,9 @@ namespace {
 
     if (offset == 1) {
       // rotate back to xz
-      upLocal = Vec3f(c*upLocal.x + s*upLocal.y,
-                      -s*upLocal.x + c*upLocal.y,
-                      upLocal.z);
+      upLocal = makeVec3f(c*upLocal.x + s*upLocal.y,
+                          -s * upLocal.x + c * upLocal.y,
+                          upLocal.z);
     }
     geo->sampleStartAngle = std::atan2(upLocal.z, upLocal.x);
     if (!std::isfinite(geo->sampleStartAngle)) {
@@ -65,22 +65,22 @@ namespace {
     auto co = std::cos(ct.angle);
     auto so = std::sin(ct.angle);
 
-    Vec3f upNew(ci, 0.f, si);
+    Vec3f upNew = makeVec3f(ci, 0.f, si);
 
     Vec3f upNewWorld[2];
     upNewWorld[0] = mul(N, upNew);
-    upNewWorld[1] = mul(N, Vec3f(c * upNew.x - s * upNew.y,
-                                 s * upNew.x + c * upNew.y,
-                                 upNew.z));
+    upNewWorld[1] = mul(N, makeVec3f(c * upNew.x - s * upNew.y,
+                                     s * upNew.x + c * upNew.y,
+                                     upNew.z));
 
     if (true) {
-      Vec3f p0(ct.radius * ci + ct.offset,
-               0.f,
-               ct.radius * si);
+      Vec3f p0 = makeVec3f(ct.radius * ci + ct.offset,
+                           0.f,
+                           ct.radius * si);
 
-      Vec3f p1((ct.radius * ci + ct.offset) * co,
-               (ct.radius * ci + ct.offset) * so,
-               ct.radius * si);
+      Vec3f p1 = makeVec3f((ct.radius * ci + ct.offset) * co,
+                           (ct.radius * ci + ct.offset) * so,
+                           ct.radius * si);
 
 
       auto a0 = mul(geo->M_3x4, p0);
@@ -128,9 +128,9 @@ namespace {
       geo->sampleStartAngle = 0.f;
     }
 
-    Vec3f upNewWorld = mul(Mat3f(geo->M_3x4.data), Vec3f(std::cos(geo->sampleStartAngle),
-                                                         std::sin(geo->sampleStartAngle),
-                                                         0.f));
+    Vec3f upNewWorld = mul(Mat3f(geo->M_3x4.data), makeVec3f(std::cos(geo->sampleStartAngle),
+                                                             std::sin(geo->sampleStartAngle),
+                                                             0.f));
 
     for (unsigned k = 0; k < 2; k++) {
       auto * con = geo->connections[k];
@@ -203,10 +203,10 @@ void align(Store* store, Logger logger)
     const auto & d = connection->d;
     Vec3f b;
     if (std::abs(d.x) > std::abs(d.y) && std::abs(d.x) > std::abs(d.z)) {
-      b = Vec3f(0.f, 1.f, 0.f);
+      b = makeVec3f(0.f, 1.f, 0.f);
     }
     else {
-      b = Vec3f(1.f, 0.f, 0.f);
+      b = makeVec3f(1.f, 0.f, 0.f);
     }
 
     auto upWorld = normalize(cross(d, b));

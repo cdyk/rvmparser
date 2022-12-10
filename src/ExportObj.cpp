@@ -179,7 +179,7 @@ namespace {
       break;
     }
     default:
-      p = Vec3f(0.f);
+      p = makeVec3f(0.f);
       break;
     }
     p = mul(geo->M_3x4, p);
@@ -208,8 +208,8 @@ void ExportObj::geometry(struct Geometry* geometry)
 
   float scale = 1.f;
   if (geometry->kind == Geometry::Kind::Line) {
-    auto a = scale * mul(geometry->M_3x4, Vec3f(geometry->line.a, 0, 0));
-    auto b = scale * mul(geometry->M_3x4, Vec3f(geometry->line.b, 0, 0));
+    auto a = scale * mul(geometry->M_3x4, makeVec3f(geometry->line.a, 0, 0));
+    auto b = scale * mul(geometry->M_3x4, makeVec3f(geometry->line.b, 0, 0));
     fprintf(out, "v %f %f %f\n", a.x, a.y, a.z);
     fprintf(out, "v %f %f %f\n", b.x, b.y, b.z);
     fprintf(out, "l -1 -2\n");
@@ -226,10 +226,10 @@ void ExportObj::geometry(struct Geometry* geometry)
       }
       for (size_t i = 0; i < 3 * tri->vertices_n; i += 3) {
 
-        auto p = scale * mul(geometry->M_3x4, Vec3f(tri->vertices + i));
-        Vec3f n = normalize(mul(Mat3f(geometry->M_3x4.data), Vec3f(tri->normals + i)));
+        auto p = scale * mul(geometry->M_3x4, makeVec3f(tri->vertices + i));
+        Vec3f n = normalize(mul(Mat3f(geometry->M_3x4.data), makeVec3f(tri->normals + i)));
         if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
-          n = Vec3f(1.f, 0.f, 0.f);
+          n = makeVec3f(1.f, 0.f, 0.f);
         }
         fprintf(out, "v %f %f %f\n", p.x, p.y, p.z);
         fprintf(out, "vn %f %f %f\n", n.x, n.y, n.z);
@@ -242,7 +242,7 @@ void ExportObj::geometry(struct Geometry* geometry)
       }
       else {
         for (size_t i = 0; i < tri->vertices_n; i++) {
-          auto p = scale * mul(geometry->M_3x4, Vec3f(tri->vertices + 3*i));
+          auto p = scale * mul(geometry->M_3x4, makeVec3f(tri->vertices + 3*i));
           fprintf(out, "vt %f %f\n", 0*p.x, 0*p.y);
         }
 

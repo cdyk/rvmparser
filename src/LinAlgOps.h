@@ -11,20 +11,20 @@ inline Vec2f operator+(const Vec2f& a, const Vec2f& b) { return makeVec2f(a.x + 
 
 inline Vec3f cross(const Vec3f& a, const Vec3f& b)
 {
-  return Vec3f(a.y * b.z - a.z * b.y,
-               a.z * b.x - a.x * b.z,
-               a.x * b.y - a.y * b.x);
+  return makeVec3f(a.y * b.z - a.z * b.y,
+                   a.z * b.x - a.x * b.z,
+                   a.x * b.y - a.y * b.x);
 }
 
 inline float dot(const Vec3f& a, const Vec3f& b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-inline Vec3f operator+(const Vec3f& a, const Vec3f& b) { return Vec3f(a.x + b.x, a.y + b.y, a.z + b.z); }
+inline Vec3f operator+(const Vec3f& a, const Vec3f& b) { return makeVec3f(a.x + b.x, a.y + b.y, a.z + b.z); }
 
-inline Vec3f operator-(const Vec3f& a, const Vec3f& b) { return Vec3f(a.x - b.x, a.y - b.y, a.z - b.z); }
+inline Vec3f operator-(const Vec3f& a, const Vec3f& b) { return makeVec3f(a.x - b.x, a.y - b.y, a.z - b.z); }
 
-inline Vec3f operator*(const float a, const Vec3f& b) { return Vec3f(a*b.x, a*b.y, a*b.z); }
+inline Vec3f operator*(const float a, const Vec3f& b) { return makeVec3f(a*b.x, a*b.y, a*b.z); }
 
 inline float lengthSquared(const Vec3f& a) { return dot(a, a); }
 
@@ -40,16 +40,16 @@ inline void write(float* dst, const Vec3f& a) { *dst++ = a.data[0]; *dst++ = a.d
 
 inline Vec3f max(const Vec3f& a, const Vec3f& b)
 {
-  return Vec3f(a.x > b.x ? a.x : b.x,
-               a.y > b.y ? a.y : b.y,
-               a.z > b.z ? a.z : b.z);
+  return makeVec3f(a.x > b.x ? a.x : b.x,
+                   a.y > b.y ? a.y : b.y,
+                   a.z > b.z ? a.z : b.z);
 }
 
 inline Vec3f min(const Vec3f& a, const Vec3f& b)
 {
-  return Vec3f(a.x < b.x ? a.x : b.x,
-               a.y < b.y ? a.y : b.y,
-               a.z < b.z ? a.z : b.z);
+  return makeVec3f(a.x < b.x ? a.x : b.x,
+                   a.y < b.y ? a.y : b.y,
+                   a.z < b.z ? a.z : b.z);
 }
 
 Mat3f inverse(const Mat3f& M);
@@ -81,12 +81,12 @@ inline Vec3f mul(const Mat3x4f& A, const Vec3f& x)
 
 inline BBox3f createEmptyBBox3f()
 {
-  return BBox3f(Vec3f(FLT_MAX, FLT_MAX, FLT_MAX), Vec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+  return BBox3f(makeVec3f(FLT_MAX, FLT_MAX, FLT_MAX), makeVec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
 }
 
 inline BBox3f::BBox3f(const BBox3f& bbox, float margin) :
-  min(bbox.min - Vec3f(margin)),
-  max(bbox.max + Vec3f(margin))
+  min(bbox.min - makeVec3f(margin)),
+  max(bbox.max + makeVec3f(margin))
 {}
 
 inline void engulf(BBox3f& target, const Vec3f& p)
