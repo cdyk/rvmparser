@@ -16,6 +16,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cstdarg>
 #include <cstring>
 #include <string>
 #include <cctype>
