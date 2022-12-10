@@ -65,17 +65,6 @@ inline BBox3f makeBBox3f(const Vec3f& min, const Vec3f& max) { BBox3f r; r.min =
 
 struct Mat3f
 {
-  Mat3f() = default;
-  Mat3f(const Mat3f&) = default;
-  Mat3f(const float* ptr) { for (unsigned i = 0; i < 3 * 3; i++) data[i] = ptr[i]; }
-  Mat3f(float m00, float m01, float m02,
-        float m10, float m11, float m12,
-        float m20, float m21, float m22) :
-    m00(m00), m10(m10), m20(m20),
-    m01(m01), m11(m11), m21(m21),
-    m02(m02), m12(m12), m22(m22)
-  {}
-
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
@@ -95,6 +84,19 @@ struct Mat3f
   };
 #pragma warning(pop)
 };
+
+inline Mat3f makeMat3f(const Mat3f& a) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) r.data[i] = a.data[i]; return r; }
+inline Mat3f makeMat3f(const float* ptr) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) r.data[i] = ptr[i]; return r; }
+inline Mat3f makeMat3f(float m00, float m01, float m02,
+                       float m10, float m11, float m12,
+                       float m20, float m21, float m22)
+{
+  Mat3f r;
+  r.m00 = m00; r.m10 = m10; r.m20 = m20;
+  r.m01 = m01; r.m11 = m11; r.m21 = m21;
+  r.m02 = m02; r.m12 = m12; r.m22 = m22;
+  return r;
+}
 
 
 struct Mat3x4f

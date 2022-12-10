@@ -41,7 +41,7 @@ namespace {
   void handleCircularTorus(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
   {
     const auto & M = geo->M_3x4;
-    const auto N = Mat3f(M.data);
+    const auto N = makeMat3f(M.data);
     const auto N_inv = inverse(N);
     auto & ct = geo->circularTorus;
     auto c = std::cos(ct.angle);
@@ -116,7 +116,7 @@ namespace {
 
   void handleCylinderSnoutAndDish(Context& context, Geometry* geo, unsigned /*offset*/, const Vec3f& upWorld)
   {
-    auto M_inv = inverse(Mat3f(geo->M_3x4.data));
+    auto M_inv = inverse(makeMat3f(geo->M_3x4.data));
 
     auto upn = normalize(upWorld);
 
@@ -128,9 +128,9 @@ namespace {
       geo->sampleStartAngle = 0.f;
     }
 
-    Vec3f upNewWorld = mul(Mat3f(geo->M_3x4.data), makeVec3f(std::cos(geo->sampleStartAngle),
-                                                             std::sin(geo->sampleStartAngle),
-                                                             0.f));
+    Vec3f upNewWorld = mul(makeMat3f(geo->M_3x4.data), makeVec3f(std::cos(geo->sampleStartAngle),
+                                                                 std::sin(geo->sampleStartAngle),
+                                                                 0.f));
 
     for (unsigned k = 0; k < 2; k++) {
       auto * con = geo->connections[k];

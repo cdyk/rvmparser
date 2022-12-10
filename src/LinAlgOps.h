@@ -58,7 +58,7 @@ Mat3f mul(const Mat3f& A, const Mat3f& B);
 
 float getScale(const Mat3f& M);
 
-inline float getScale(const Mat3x4f& M) { return getScale(Mat3f(M.data)); }
+inline float getScale(const Mat3x4f& M) { return getScale(makeMat3f(M.data)); }
 
 inline Vec3f mul(const Mat3f& A, const Vec3f& x)
 {
