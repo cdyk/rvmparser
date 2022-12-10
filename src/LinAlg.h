@@ -101,10 +101,6 @@ inline Mat3f makeMat3f(float m00, float m01, float m02,
 
 struct Mat3x4f
 {
-  Mat3x4f() = default;
-  Mat3x4f(const Mat3x4f&) = default;
-  Mat3x4f(const float* ptr) { for (unsigned i = 0; i < 4 * 3; i++) data[i] = ptr[i]; }
-
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
@@ -130,3 +126,6 @@ struct Mat3x4f
   };
 #pragma warning(pop)
 };
+
+inline Mat3x4f makeMat3x4f(const Mat3x4f& a) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = a.data[i]; return r; }
+inline Mat3x4f makeMat3x4f(const float* ptr) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = ptr[i]; return r; }
