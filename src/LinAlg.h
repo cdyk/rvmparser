@@ -2,11 +2,6 @@
 
 struct Vec2f
 {
-  Vec2f() = default;
-  Vec2f(const Vec2f&) = default;
-  Vec2f(float x) : x(x), y(x) {}
-  Vec2f(float* ptr) : x(ptr[0]), y(ptr[1]) {}
-  Vec2f(float x, float y) : x(x), y(y) {}
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
   union {
@@ -20,6 +15,10 @@ struct Vec2f
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
+
+inline Vec2f makeVec2f(float x) { Vec2f r; r.x = x; r.y = x; return r; }
+inline Vec2f makeVec2f(float* ptr) { Vec2f r; r.x = ptr[0]; r.y = ptr[1]; return r; }
+inline Vec2f makeVec2f(float x, float y) { Vec2f r; r.x = x; r.y = y; return r; }
 
 
 struct Vec3f

@@ -236,7 +236,7 @@ void ExportObj::geometry(struct Geometry* geometry)
       }
       if (tri->texCoords) {
         for (size_t i = 0; i < tri->vertices_n; i++) {
-          const Vec2f vt(tri->texCoords + 2 * i);
+          const Vec2f vt = makeVec2f(tri->texCoords + 2 * i);
           fprintf(out, "vt %f %f\n", vt.x, vt.y);
         }
       }

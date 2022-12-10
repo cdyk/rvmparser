@@ -133,10 +133,10 @@ namespace {
       switch (geo->kind) {
 
       case Geometry::Kind::Pyramid: {
-        auto b = 0.5f * Vec2f(geo->pyramid.bottom);
-        auto t = 0.5f * Vec2f(geo->pyramid.top);
+        auto b = 0.5f * makeVec2f(geo->pyramid.bottom);
+        auto t = 0.5f * makeVec2f(geo->pyramid.top);
         auto m = 0.5f * (b + t);
-        auto o = 0.5f * Vec2f(geo->pyramid.offset);
+        auto o = 0.5f * makeVec2f(geo->pyramid.offset);
 
         auto h = 0.5f * geo->pyramid.height;
 
