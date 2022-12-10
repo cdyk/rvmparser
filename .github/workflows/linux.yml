@@ -15,7 +15,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    - name: cd make
-      run: cd make
     - name: make
       run: make
+        working-directory: make
