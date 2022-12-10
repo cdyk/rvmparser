@@ -87,6 +87,13 @@ make
 ```
 Rvmparser doesn't currently build with GCC as the source currently contains use of anonymous aggregates of members with constructors. Use clang instead for now.
 
+### MacOS
+
+Enter the `make` directory. Type
+```
+make
+```
+
 ## See also
 - [Plant Mock-Up Converter](https://github.com/benvautrin/pmuc).
 
