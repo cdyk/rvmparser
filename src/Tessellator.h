@@ -116,5 +116,5 @@ protected:
 
   Triangulation* getTriangulation(Geometry* geo);
 
-  virtual void process(Geometry* geometry) {}
+  virtual void process(Geometry* /*geometry*/) {}
 };

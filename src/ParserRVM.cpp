@@ -22,21 +22,21 @@ namespace {
     std::vector<Group*> group_stack;
   };
 
-  const char* read_uint8(uint8_t& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_uint8(uint8_t& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     auto* q = reinterpret_cast<const uint8_t*>(curr_ptr);
     rv = q[0];
     return curr_ptr + 1;
   }
 
-  const char* read_uint32_be(uint32_t& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_uint32_be(uint32_t& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     auto * q = reinterpret_cast<const uint8_t*>(curr_ptr);
     rv = q[0] << 24 | q[1] << 16 | q[2] << 8 | q[3];
     return curr_ptr + 4;
   }
 
-  const char* read_float32_be(float& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_float32_be(float& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     union {
       float f;
@@ -88,8 +88,8 @@ namespace {
       curr_ptr = read_uint32_be(dunno, curr_ptr, end_ptr);
     }
     else {
-      next_chunk_offset = ~0;
-      dunno = ~0;
+      next_chunk_offset = ~0u;
+      dunno = ~0u;
       fprintf(stderr, "Chunk '%s' EOF after %zd bytes\n", id, end_ptr - curr_ptr);
       curr_ptr = end_ptr;
     }
@@ -398,8 +398,8 @@ namespace {
     }
 
     if (id_chunk_id == id("CNTE")) {
-      uint32_t version;
-      curr_ptr = read_uint32_be(version, curr_ptr, end_ptr);
+      uint32_t version_;
+      curr_ptr = read_uint32_be(version_, curr_ptr, end_ptr);
     }
 
     ctx->group_stack.pop_back();

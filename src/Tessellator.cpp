@@ -57,18 +57,18 @@ Triangulation* Tessellator::getTriangulation(Geometry* geo)
 }
 
 
-void Tessellator::init(class Store& store)
+void Tessellator::init(class Store& store_)
 {
-  this->store = &store;
+  store = &store_;
 
-  factory = new TriangulationFactory(&store, logger, tolerance, 3, maxSamples),
+  factory = new TriangulationFactory(store, logger, tolerance, 3, maxSamples),
 
-  store.arenaTriangulation.clear();
+  store->arenaTriangulation.clear();
 
-  cache.items = (CacheItem*)arena.alloc(sizeof(CacheItem)*store.geometryCountAllocated());
+  cache.items = (CacheItem*)arena.alloc(sizeof(CacheItem)*store->geometryCountAllocated());
   cache.fill = 0;
 
-  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store.groupCountAllocated());
+  stack = (StackItem*)arena.alloc(sizeof(StackItem)*store->groupCountAllocated());
   stack_p = 0;
 }
 

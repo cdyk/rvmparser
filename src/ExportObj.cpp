@@ -84,17 +84,17 @@ bool ExportObj::open(const char* path_obj, const char* path_mtl)
 }
 
 
-void ExportObj::init(class Store& store)
+void ExportObj::init(class Store& store_)
 {
+  store = &store_;
   assert(out);
   assert(mtl);
 
-  this->store = &store;
-  conn = store.conn;
+  conn = store->conn;
 
-  stack.accommodate(store.groupCountAllocated());
+  stack.accommodate(store->groupCountAllocated());
 
-  for (auto * line = store.getFirstDebugLine(); line != nullptr; line = line->next) {
+  for (auto * line = store->getFirstDebugLine(); line != nullptr; line = line->next) {
 
     uint32_t colorId = (line->color << 8);
     if (!definedColors.get((uint64_t(colorId) << 1) | 1)) {
@@ -189,8 +189,6 @@ namespace {
 
 void ExportObj::geometry(struct Geometry* geometry)
 {
-  const auto & M = geometry->M_3x4;
-
   uint32_t colorId = (geometry->color << 8) | geometry->transparency;
   if (!definedColors.get((uint64_t(colorId) << 1) | 1)) {
     definedColors.insert(((uint64_t(colorId) << 1) | 1), 1);
