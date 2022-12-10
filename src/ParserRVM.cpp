@@ -22,21 +22,21 @@ namespace {
     std::vector<Group*> group_stack;
   };
 
-  const char* read_uint8(uint8_t& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_uint8(uint8_t& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     auto* q = reinterpret_cast<const uint8_t*>(curr_ptr);
     rv = q[0];
     return curr_ptr + 1;
   }
 
-  const char* read_uint32_be(uint32_t& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_uint32_be(uint32_t& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     auto * q = reinterpret_cast<const uint8_t*>(curr_ptr);
     rv = q[0] << 24 | q[1] << 16 | q[2] << 8 | q[3];
     return curr_ptr + 4;
   }
 
-  const char* read_float32_be(float& rv, const char* curr_ptr, const char* end_ptr)
+  const char* read_float32_be(float& rv, const char* curr_ptr, const char* /*end_ptr*/)
   {
     union {
       float f;

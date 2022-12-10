@@ -302,7 +302,7 @@ float TriangulationFactory::sagittaBasedError(float arc, float radius, float sca
 
 
 
-Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto bx = 0.5f * geo->pyramid.bottom[0];
   auto by = 0.5f * geo->pyramid.bottom[1];
@@ -415,7 +415,7 @@ Triangulation* TriangulationFactory::pyramid(Arena* arena, const Geometry* geo, 
 }
 
 
-Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::box(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto & box = geo->box;
 
@@ -1120,7 +1120,7 @@ Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geomet
 }
 
 
-Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* geo, float scale)
+Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* geo, float /*scale*/)
 {
   auto & fg = geo->facetGroup;
 

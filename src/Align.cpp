@@ -114,7 +114,7 @@ namespace {
   }
 
 
-  void handleCylinderSnoutAndDish(Context& context, Geometry* geo, unsigned offset, const Vec3f& upWorld)
+  void handleCylinderSnoutAndDish(Context& context, Geometry* geo, unsigned /*offset*/, const Vec3f& upWorld)
   {
     auto M_inv = inverse(Mat3f(geo->M_3x4.data));
 
