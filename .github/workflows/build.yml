@@ -11,7 +11,7 @@ permissions:
 
 jobs:
 
-  win32-msvc:
+  windows:
     runs-on: windows-latest
 
     env:
@@ -32,7 +32,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: win32-x64
+        name: windows
         path: msvc15/x64/Release/rvmparser.exe
 
   linux-gcc:
@@ -52,6 +52,11 @@ jobs:
         make
         find .
 
+    - uses: actions/upload-artifact@v3
+      with:
+        name: linux-gcc
+        path: make/rvmparser
+
 
   linux-clang:
     runs-on: ubuntu-latest
@@ -69,8 +74,13 @@ jobs:
         cd make
         make
 
+    - uses: actions/upload-artifact@v3
+      with:
+        name: linux-clang
+        path: make/rvmparser
 
-  macos-clang:
+
+  macos:
     runs-on: macos-latest
 
     steps:
@@ -82,3 +92,8 @@ jobs:
         cd make
         make
         find .
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: macos
+        path: make/rvmparser
