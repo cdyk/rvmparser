@@ -1,0 +1,69 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+
+  windows:
+    runs-on: windows-latest
+    env:
+      SOLUTION_FILE_PATH: msvc15/rvmparser.sln
+      BUILD_CONFIGURATION: Release
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: msvc15/x64/Release/rvmparser.exe
+        asset_name: rvmparser-windows
+        tag: ${{ github.ref }}
+
+  linux-gcc:
+    runs-on: ubuntu-latest
+    env:
+      CXXFLAGS: -fms-extensions
+      CFLAGS: -fms-extensions
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Build
+      run: |
+        cd make
+        make
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: make/rvmparser
+        asset_name: rvmparser-linux
+        tag: ${{ github.ref }}
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Build
+      run: |
+        cd make
+        make
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: make/rvmparser
+        asset_name: macos-linux
+        tag: ${{ github.ref }}
