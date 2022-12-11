@@ -1,6 +1,8 @@
-[![Build Status](https://github.com/cdyk/rvmparser/actions/workflows/build.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
-
 # rvmparser
+
+[![Build Status](https://github.com/cdyk/rvmparser/actions/workflows/build.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
+[![Publish](https://github.com/cdyk/rvmparser/actions/workflows/publish.yml/badge.svg)](https://github.com/cdyk/rvmparser/actions/)
+
 
 Code to work with AVEVA PDMS RVM files. Written completely from scratch, intended to be very fast, small, and with _little dependencies_, so it is trivial to include in existing projects.
 
@@ -56,7 +58,11 @@ Options:
                                       a negative value to disable culling. Disabled by default.
 ```
 
-## Building
+## Binary releases
+
+Download automatic release builds from [releases](https://github.com/cdyk/rvmparser/releases)
+
+## Building from source
 
 Clone the git repo, and update submodules
 ```
