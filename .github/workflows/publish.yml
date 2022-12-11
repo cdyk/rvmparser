@@ -28,7 +28,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: msvc15/x64/Release/rvmparser.exe
-        asset_name: rvmparser-windows
+        asset_name: rvmparser-windows-bin.exe
         tag: ${{ github.ref }}
 
   linux-gcc:
@@ -49,7 +49,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: make/rvmparser
-        asset_name: rvmparser-linux
+        asset_name: rvmparser-linux-bin
         tag: ${{ github.ref }}
 
   macos:
@@ -67,5 +67,5 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: make/rvmparser
-        asset_name: macos-linux
+        asset_name: rvmparser-macos-bin
         tag: ${{ github.ref }}
