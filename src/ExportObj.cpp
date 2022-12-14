@@ -116,7 +116,7 @@ void ExportObj::init(class Store& store_)
   }
 }
 
-void ExportObj::beginFile(Group* group)
+void ExportObj::beginFile(Node* group)
 {
   fprintf(out, "# %s\n", group->file.info);
   fprintf(out, "# %s\n", group->file.note);
@@ -129,14 +129,14 @@ void ExportObj::endFile()
   fprintf(out, "# End of file\n");
 }
 
-void ExportObj::beginModel(Group* group)
+void ExportObj::beginModel(Node* group)
 {
   fprintf(out, "# Model project=%s, name=%s\n", group->model.project, group->model.name);
 }
 
 void ExportObj::endModel() { }
 
-void ExportObj::beginGroup(Group* group)
+void ExportObj::beginGroup(Node* group)
 {
   for (unsigned i = 0; i < 3; i++) curr_translation[i] = group->group.translation[i];
 

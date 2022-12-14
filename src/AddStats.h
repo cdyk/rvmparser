@@ -31,7 +31,7 @@ public:
 
   void init(class Store& store) override;
 
-  void beginGroup(struct Group* group) override;
+  void beginGroup(struct Node* group) override;
 
   void geometry(struct Geometry* geometry) override;
 

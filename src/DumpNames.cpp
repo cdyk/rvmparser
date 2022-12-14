@@ -26,7 +26,7 @@ bool DumpNames::done()
 }
 
 
-void DumpNames::beginFile(struct Group* group)
+void DumpNames::beginFile(struct Node* group)
 {
   fprintf(out, "File:\n");
   fprintf(out, "    info:     \"%s\"\n", group->file.info);
@@ -40,7 +40,7 @@ void DumpNames::endFile()
 {
 }
 
-void DumpNames::beginModel(struct Group* group)
+void DumpNames::beginModel(struct Node* group)
 {
   fprintf(out, "Model:\n");
   fprintf(out, "    project:  \"%s\"\n", group->model.project);
@@ -74,7 +74,7 @@ void DumpNames::printGroupTail()
   }
 }
 
-void DumpNames::beginGroup(struct Group* group)
+void DumpNames::beginGroup(struct Node* group)
 {
   printGroupTail();
   printed = false;

@@ -241,7 +241,7 @@ void Colorizer::init(Store& store)
 
 }
 
-void Colorizer::beginGroup(Group* group)
+void Colorizer::beginGroup(Node* group)
 {
   StackItem item;
   if (stack_p == 0) {

@@ -11,7 +11,7 @@ namespace {
   struct StackItem
   {
     const char* id;
-    Group* group;
+    Node* group;
   };
 
   struct Context
@@ -41,14 +41,14 @@ namespace {
 
     auto * id = ctx->store->strings.intern(id_a, id_b);
 
-    Group * group = nullptr;
+    Node * group = nullptr;
     if (ctx->stack_p == 0) {
 
       if (id != ctx->headerInfo) {
         group = ctx->store->findRootGroup(id);
         if (ctx->create && group == nullptr) {
           auto * model = ctx->store->getDefaultModel();
-          group = ctx->store->newGroup(model, Group::Kind::Group);
+          group = ctx->store->newGroup(model, Node::Kind::Group);
           group->group.name = id;
           //ctx->logger(1, "@%d: Failed to find root group '%s' id=%p", ctx->line, id, id);
         }
@@ -66,7 +66,7 @@ namespace {
         }
       }
       if (ctx->create && group == nullptr) {
-        group = ctx->store->newGroup(parent, Group::Kind::Group);
+        group = ctx->store->newGroup(parent, Node::Kind::Group);
         group->group.name = id;
         //ctx->logger(1, "@%d: Failed to find child group '%s' id=%p", ctx->line, id, id);
       }

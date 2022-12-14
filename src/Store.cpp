@@ -31,10 +31,10 @@ Store::Store()
   setErrorString("");
 }
 
-Color* Store::newColor(Group* parent)
+Color* Store::newColor(Node* parent)
 {
   assert(parent != nullptr);
-  assert(parent->kind == Group::Kind::Model);
+  assert(parent->kind == Node::Kind::Model);
   auto* color = arena.alloc<Color>();
   color->next = nullptr;
   insert(parent->model.colors, color);
@@ -47,13 +47,13 @@ void Store::setErrorString(const char* str)
   error_str = strings.intern(str, str + l);
 }
 
-Group* Store::findRootGroup(const char* name)
+Node* Store::findRootGroup(const char* name)
 {
   for (auto * file = roots.first; file != nullptr; file = file->next) {
-    assert(file->kind == Group::Kind::File);
+    assert(file->kind == Node::Kind::File);
     for (auto * model = file->children.first; model != nullptr; model = model->next) {
       //fprintf(stderr, "model '%s'\n", model->model.name);
-      assert(model->kind == Group::Kind::Model);
+      assert(model->kind == Node::Kind::Model);
       for (auto * group = model->children.first; group != nullptr; group = group->next) {
         //fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
         if (group->group.name == name) return group;
@@ -83,10 +83,10 @@ Connection* Store::newConnection()
   return connection;
 }
 
-Geometry* Store::newGeometry(Group* parent)
+Geometry* Store::newGeometry(Node* parent)
 {
   assert(parent != nullptr);
-  assert(parent->kind == Group::Kind::Group);
+  assert(parent->kind == Node::Kind::Group);
 
   auto * geo =  arena.alloc<Geometry>();
   geo->next = nullptr;
@@ -96,7 +96,7 @@ Geometry* Store::newGeometry(Group* parent)
   return geo;
 }
 
-Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
+Geometry* Store::cloneGeometry(Node* parent, const Geometry* src)
 {
   auto * dst = newGeometry(parent);
   dst->kind = src->kind;
@@ -168,10 +168,10 @@ Geometry* Store::cloneGeometry(Group* parent, const Geometry* src)
 }
 
 
-Group* Store::newGroup(Group* parent, Group::Kind kind)
+Node* Store::newGroup(Node* parent, Node::Kind kind)
 {
-  auto grp = arena.alloc<Group>();
-  std::memset(grp, 0, sizeof(Group));
+  auto grp = arena.alloc<Node>();
+  std::memset(grp, 0, sizeof(Node));
 
   if (parent == nullptr) {
     insert(roots, grp);
@@ -185,7 +185,7 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
   return grp;
 }
 
-Attribute* Store::getAttribute(Group* group, const char* key)
+Attribute* Store::getAttribute(Node* group, const char* key)
 {
   for (auto * attribute = group->attributes.first; attribute != nullptr; attribute = attribute->next) {
     if (attribute->key == key) return attribute;
@@ -193,7 +193,7 @@ Attribute* Store::getAttribute(Group* group, const char* key)
   return nullptr;
 }
 
-Attribute* Store::newAttribute(Group* group, const char* key)
+Attribute* Store::newAttribute(Node* group, const char* key)
 {
   auto * attribute = arena.alloc<Attribute>();
   attribute->key = key;
@@ -202,11 +202,11 @@ Attribute* Store::newAttribute(Group* group, const char* key)
 }
 
 
-Group* Store::getDefaultModel()
+Node* Store::getDefaultModel()
 {
   auto * file = roots.first;
   if (file == nullptr) {
-    file = newGroup(nullptr, Group::Kind::File);
+    file = newGroup(nullptr, Node::Kind::File);
     file->file.info = strings.intern("");
     file->file.note = strings.intern("");
     file->file.date = strings.intern("");
@@ -215,7 +215,7 @@ Group* Store::getDefaultModel()
   }
   auto * model = file->children.first;
   if (model == nullptr) {
-    model = newGroup(file, Group::Kind::Model);
+    model = newGroup(file, Node::Kind::Model);
     model->model.project = strings.intern("");
     model->model.name = strings.intern("");
   }
@@ -223,22 +223,22 @@ Group* Store::getDefaultModel()
 }
 
 
-Group* Store::cloneGroup(Group* parent, const Group* src)
+Node* Store::cloneGroup(Node* parent, const Node* src)
 {
   auto * dst = newGroup(parent, src->kind);
   switch (src->kind) {
-  case Group::Kind::File:
+  case Node::Kind::File:
     dst->file.info = strings.intern(src->file.info);
     dst->file.note = strings.intern(src->file.note);
     dst->file.date = strings.intern(src->file.date);
     dst->file.user = strings.intern(src->file.user);
     dst->file.encoding = strings.intern(src->file.encoding);
     break;
-  case Group::Kind::Model:
+  case Node::Kind::Model:
     dst->model.project = strings.intern(src->model.project);
     dst->model.name = strings.intern(src->model.name);
     break;
-  case Group::Kind::Group:
+  case Node::Kind::Group:
     dst->group.name = strings.intern(src->group.name);
     dst->group.bboxWorld = src->group.bboxWorld;
     dst->group.material = src->group.material;
@@ -259,9 +259,9 @@ Group* Store::cloneGroup(Group* parent, const Group* src)
 }
 
 
-void Store::apply(StoreVisitor* visitor, Group* group)
+void Store::apply(StoreVisitor* visitor, Node* group)
 {
-  assert(group->kind == Group::Kind::Group);
+  assert(group->kind == Node::Kind::Group);
   visitor->beginGroup(group);
 
   if (group->attributes.first) {
@@ -272,7 +272,7 @@ void Store::apply(StoreVisitor* visitor, Group* group)
     visitor->endAttributes(group);
   }
 
-  if (group->kind == Group::Kind::Group && group->group.geometries.first != nullptr) {
+  if (group->kind == Node::Kind::Group && group->group.geometries.first != nullptr) {
     visitor->beginGeometries(group);
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
       visitor->geometry(geo);
@@ -298,11 +298,11 @@ void Store::apply(StoreVisitor* visitor)
   visitor->init(*this);
   do {
     for (auto * file = roots.first; file != nullptr; file = file->next) {
-      assert(file->kind == Group::Kind::File);
+      assert(file->kind == Node::Kind::File);
       visitor->beginFile(file);
 
       for (auto * model = file->children.first; model != nullptr; model = model->next) {
-        assert(model->kind == Group::Kind::Model);
+        assert(model->kind == Node::Kind::Model);
         visitor->beginModel(model);
 
         for (auto * group = model->children.first; group != nullptr; group = group->next) {
@@ -316,7 +316,7 @@ void Store::apply(StoreVisitor* visitor)
   } while (visitor->done() == false);
 }
 
-void Store::updateCountsRecurse(Group* group)
+void Store::updateCountsRecurse(Node* group)
 {
 
   for (auto * child = group->children.first; child != nullptr; child = child->next) {
@@ -328,7 +328,7 @@ void Store::updateCountsRecurse(Group* group)
     numLeaves++;
   }
 
-  if (group->kind == Group::Kind::Group) {
+  if (group->kind == Node::Kind::Group) {
     if (group->children.first == nullptr && group->group.geometries.first == nullptr) {
       numEmptyLeaves++;
     }
@@ -359,12 +359,12 @@ void Store::updateCounts()
 
 namespace {
 
-  void storeGroupIndexInGeometriesRecurse(Group* group)
+  void storeGroupIndexInGeometriesRecurse(Node* group)
   {
     for (auto * child = group->children.first; child != nullptr; child = child->next) {
       storeGroupIndexInGeometriesRecurse(child);
     }
-    if (group->kind == Group::Kind::Group) {
+    if (group->kind == Node::Kind::Group) {
       for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
         geo->id = group->group.id;
         if (geo->triangulation) {

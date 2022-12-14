@@ -8,7 +8,7 @@ void AddStats::init(class Store& store)
   stats = store.stats;
 }
 
-void AddStats::beginGroup(Group* /*group*/)
+void AddStats::beginGroup(Node* /*group*/)
 {
   stats->group_n++;
 }

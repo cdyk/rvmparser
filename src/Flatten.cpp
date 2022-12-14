@@ -44,14 +44,14 @@ void Flatten::keepTag(const char* tag)
   uint64_t val;
   if (srcTags.get(val, uint64_t(str))) {
     tags.insert(uint64_t(str), uint64_t(currentIndex));
-    ((Group*)val)->group.id = int32_t(currentIndex);
+    ((Node*)val)->group.id = int32_t(currentIndex);
     activeTags++;
   }
   currentIndex++;
 }
 
 
-void Flatten::populateSrcTagsRecurse(Group* srcGroup)
+void Flatten::populateSrcTagsRecurse(Node* srcGroup)
 {
   srcGroup->group.id = -1;
   srcTags.insert(uint64_t(srcGroup->group.name), uint64_t(srcGroup));
@@ -73,7 +73,7 @@ void Flatten::populateSrcTags()
   }
 }
 
-bool Flatten::anyChildrenSelectedAndTagRecurse(Group* srcGroup, int32_t id)
+bool Flatten::anyChildrenSelectedAndTagRecurse(Node* srcGroup, int32_t id)
 {
   uint64_t val;
   if (tags.get(val, uint64_t(srcGroup->group.name))) {
@@ -91,9 +91,9 @@ bool Flatten::anyChildrenSelectedAndTagRecurse(Group* srcGroup, int32_t id)
   return srcGroup->group.id != -1;
 }
 
-void Flatten::buildPrunedCopyRecurse(Group* dstParent, Group* srcGroup, unsigned level)
+void Flatten::buildPrunedCopyRecurse(Node* dstParent, Node* srcGroup, unsigned level)
 {
-  assert(srcGroup->kind == Group::Kind::Group);
+  assert(srcGroup->kind == Node::Kind::Group);
 
   // Only groups can contain geometry, so we must make sure that we have at least one group even when none is selected.
   // Also, some subsequent stages require that we do not have geometry in the first level of groups.
@@ -122,9 +122,9 @@ Store* Flatten::run()
   // populateSrcTags was run by the constructor, and setKeep and keepTags has changed some group.index from ~0u.
   // set group.index of parents of selected nodes to ~1u so we can retain them in the culling pass.
   for (auto * srcRoot = srcStore->getFirstRoot(); srcRoot != nullptr; srcRoot = srcRoot->next) {
-    assert(srcRoot->kind == Group::Kind::File);
+    assert(srcRoot->kind == Node::Kind::File);
     for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
-      assert(srcModel->kind == Group::Kind::Model);
+      assert(srcModel->kind == Node::Kind::Model);
       for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
         anyChildrenSelectedAndTagRecurse(srcGroup);
       }
@@ -134,12 +134,12 @@ Store* Flatten::run()
   // Create a fresh copy
   for (auto * srcRoot = srcStore->getFirstRoot(); srcRoot != nullptr; srcRoot = srcRoot->next) {
 
-    assert(srcRoot->kind == Group::Kind::File);
+    assert(srcRoot->kind == Node::Kind::File);
     auto * dstRoot = dstStore->cloneGroup(nullptr, srcRoot);
 
     for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
 
-      assert(srcModel->kind == Group::Kind::Model);
+      assert(srcModel->kind == Node::Kind::Model);
       auto * dstModel = dstStore->cloneGroup(dstRoot, srcModel);
 
       for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {

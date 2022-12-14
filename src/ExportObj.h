@@ -15,15 +15,15 @@ public:
 
   void init(class Store& store) override;
 
-  void beginFile(Group* group) override;
+  void beginFile(Node* group) override;
 
   void endFile() override;
 
-  void beginModel(Group* group) override;
+  void beginModel(Node* group) override;
 
   void endModel() override;
 
-  void beginGroup(struct Group* group) override;
+  void beginGroup(struct Node* group) override;
 
   void EndGroup() override;
 

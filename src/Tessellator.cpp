@@ -78,7 +78,7 @@ void Tessellator::endModel()
 }
 
 
-void Tessellator::beginGroup(struct Group* group)
+void Tessellator::beginGroup(struct Node* group)
 {
   StackItem item = { 0 };
   if (!isEmpty(group->group.bboxWorld)) {

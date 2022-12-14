@@ -338,9 +338,9 @@ namespace {
     rjChildren.PushBack(node_ix, alloc);
   }
 
-  uint32_t processGroup(Context& ctx, Group* group)
+  uint32_t processGroup(Context& ctx, Node* group)
   {
-    assert(group->kind == Group::Kind::Group);
+    assert(group->kind == Node::Kind::Group);
     auto& alloc = ctx.rjDoc.GetAllocator();
 
     rj::Value node(rj::kObjectType);
@@ -373,7 +373,7 @@ namespace {
     }
 
     // And recurse into children
-    for (Group* child = group->children.first; child; child = child->next) {
+    for (Node* child = group->children.first; child; child = child->next) {
       children.PushBack(processGroup(ctx, child), alloc);
     }
 
@@ -388,11 +388,11 @@ namespace {
   }
 
 
-  void extendBounds(Context& ctx, BBox3f& worldBounds, Group* group)
+  void extendBounds(Context& ctx, BBox3f& worldBounds, Node* group)
   {
-    assert(group->kind == Group::Kind::Group);
+    assert(group->kind == Node::Kind::Group);
 
-    for (Group* child = group->children.first; child; child = child->next) {
+    for (Node* child = group->children.first; child; child = child->next) {
       extendBounds(ctx, worldBounds, child);
     }
     for (Geometry* geo = group->group.geometries.first; geo; geo = geo->next) {
@@ -405,11 +405,11 @@ namespace {
 
     BBox3f worldBounds = createEmptyBBox3f();
 
-    for (Group* file = ctx.store->getFirstRoot(); file; file = file->next) {
-      assert(file->kind == Group::Kind::File);
-      for (Group* model = file->children.first; model; model = model->next) {
-        assert(model->kind == Group::Kind::Model);
-        for (Group* group = model->children.first; group; group = group->next) {
+    for (Node* file = ctx.store->getFirstRoot(); file; file = file->next) {
+      assert(file->kind == Node::Kind::File);
+      for (Node* model = file->children.first; model; model = model->next) {
+        assert(model->kind == Node::Kind::Model);
+        for (Node* group = model->children.first; group; group = group->next) {
           extendBounds(ctx, worldBounds, group);
         }
       }
@@ -426,11 +426,11 @@ namespace {
   void buildRootNodes(Context& ctx, rj::Value& rootNodes)
   {
     auto& alloc = ctx.rjDoc.GetAllocator();
-    for (Group* file = ctx.store->getFirstRoot(); file; file = file->next) {
-      assert(file->kind == Group::Kind::File);
-      for (Group* model = file->children.first; model; model = model->next) {
-        assert(model->kind == Group::Kind::Model);
-        for (Group* group = model->children.first; group; group = group->next) {
+    for (Node* file = ctx.store->getFirstRoot(); file; file = file->next) {
+      assert(file->kind == Node::Kind::File);
+      for (Node* model = file->children.first; model; model = model->next) {
+        assert(model->kind == Node::Kind::Model);
+        for (Node* group = model->children.first; group; group = group->next) {
           rootNodes.PushBack(processGroup(ctx, group), alloc);
         }
       }

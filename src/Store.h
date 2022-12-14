@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "LinAlg.h"
 
-struct Group;
+struct Node;
 struct Geometry;
 
 struct Contour
@@ -186,9 +186,9 @@ struct Attribute
 };
 
 
-struct Group
+struct Node
 {
-  Group() {}
+  Node() {}
 
   enum struct Kind
   {
@@ -203,8 +203,8 @@ struct Group
     ClientFlagStart = 1
   };
 
-  Group* next = nullptr;
-  ListHeader<Group> children;
+  Node* next = nullptr;
+  ListHeader<Node> children;
   ListHeader<Attribute> attributes;
 
   Kind kind = Kind::Group;
@@ -258,23 +258,23 @@ class Store
 public:
   Store();
 
-  Color* newColor(Group* parent);
+  Color* newColor(Node* parent);
 
-  Geometry* newGeometry(Group* parent);
+  Geometry* newGeometry(Node* parent);
 
-  Geometry* cloneGeometry(Group* parent, const Geometry* src);
+  Geometry* cloneGeometry(Node* parent, const Geometry* src);
 
-  Group* getDefaultModel();
+  Node* getDefaultModel();
 
-  Group* newGroup(Group * parent, Group::Kind kind);
+  Node* newGroup(Node * parent, Node::Kind kind);
 
-  Group* cloneGroup(Group* parent, const Group* src);
+  Node* cloneGroup(Node* parent, const Node* src);
 
-  Group* findRootGroup(const char* name);
+  Node* findRootGroup(const char* name);
 
-  Attribute* getAttribute(Group* group, const char* key);
+  Attribute* getAttribute(Node* group, const char* key);
 
-  Attribute* newAttribute(Group* group, const char* key);
+  Attribute* newAttribute(Node* group, const char* key);
 
   void addDebugLine(float* a, float* b, uint32_t color);
 
@@ -293,7 +293,7 @@ public:
   const char* errorString() const { return error_str; }
   void setErrorString(const char* str);
 
-  Group* getFirstRoot() { return roots.first; }
+  Node* getFirstRoot() { return roots.first; }
   Connection* getFirstConnection() { return connections.first; }
   DebugLine* getFirstDebugLine() { return debugLines.first; }
 
@@ -319,11 +319,11 @@ private:
 
   const char* error_str = nullptr;
 
-  void updateCountsRecurse(Group* group);
+  void updateCountsRecurse(Node* group);
 
-  void apply(StoreVisitor* visitor, Group* group);
+  void apply(StoreVisitor* visitor, Node* group);
 
-  ListHeader<Group> roots;
+  ListHeader<Node> roots;
   ListHeader<DebugLine> debugLines;
   ListHeader<Connection> connections;
   

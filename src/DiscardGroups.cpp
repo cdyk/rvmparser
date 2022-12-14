@@ -37,10 +37,10 @@ namespace {
   }
 
 
-  void pruneChildren(Context* context, Group* group)
+  void pruneChildren(Context* context, Node* group)
   {
 
-    ListHeader<Group> groupsNew;
+    ListHeader<Node> groupsNew;
     groupsNew.clear();
     for (auto * child = group->children.first; child; ) {
       auto * next = child->next;

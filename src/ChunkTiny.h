@@ -14,7 +14,7 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
-  void beginGroup(struct Group* group)  override;
+  void beginGroup(struct Node* group)  override;
 
   void EndGroup() override;
 
@@ -25,7 +25,7 @@ protected:
   struct StackItem
   {
     unsigned vertices;
-    Group * group;
+    Node * group;
     bool keep;
   };
   StackItem* stack = nullptr;

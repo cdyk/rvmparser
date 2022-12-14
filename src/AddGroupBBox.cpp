@@ -8,7 +8,7 @@
 void AddGroupBBox::init(class Store& store_)
 {
   store = &store_;
-  stack = (Group**)arena.alloc(sizeof(Group*)*store->groupCountAllocated());
+  stack = (Node**)arena.alloc(sizeof(Node*)*store->groupCountAllocated());
   stack_p = 0;
 }
 
@@ -18,7 +18,7 @@ void AddGroupBBox::geometry(struct Geometry* geometry)
   engulf(stack[stack_p - 1]->group.bboxWorld, geometry->bboxWorld);
 }
 
-void AddGroupBBox::beginGroup(struct Group* group)
+void AddGroupBBox::beginGroup(struct Node* group)
 {
   group->group.bboxWorld = createEmptyBBox3f();
   stack[stack_p] = group;

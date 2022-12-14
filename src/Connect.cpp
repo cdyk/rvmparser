@@ -123,7 +123,7 @@ namespace {
   }
 
 
-  void recurse(Context* context, Group* group)
+  void recurse(Context* context, Node* group)
   {
     auto offset = context->anchors_n;
     for (auto * child = group->children.first; child != nullptr; child = child->next) {

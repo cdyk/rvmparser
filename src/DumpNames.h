@@ -9,15 +9,15 @@ public:
 
   bool done() override;
 
-  void beginFile(struct Group* group) override;
+  void beginFile(struct Node* group) override;
 
   void endFile() override;
 
-  void beginModel(struct Group* group) override;
+  void beginModel(struct Node* group) override;
 
   void endModel() override;
 
-  void beginGroup(struct Group* group) override;
+  void beginGroup(struct Node* group) override;
 
   void EndGroup() override;
 
