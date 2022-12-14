@@ -67,7 +67,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: linux-gcc
+        name: linux-gcc-executable
         path: make/rvmparser
 
 
@@ -89,7 +89,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: linux-clang
+        name: linux-clang-executable
         path: make/rvmparser
 
 
@@ -107,5 +107,5 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: macos
+        name: macos-executable
         path: make/rvmparser
