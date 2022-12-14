@@ -31,12 +31,21 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: windows
+        name: windows-executable
         path: msvc15/x64/Release/rvmparser.exe
 
     - name: Test
       working-directory: ${{env.GITHUB_WORKSPACE}}\test
       run: test.bat
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: windows-test-results
+        path: |
+          test/plm-sample.glb
+          test/plm-sample.json
+          test/plm-sample.obj
+          test/plm-sample.mtl
 
   linux-gcc:
     runs-on: ubuntu-latest
