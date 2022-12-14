@@ -1,50 +1,39 @@
-name: Build
+name: Publish
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-
-permissions:
-  contents: read
+    tags:
+      - '*'
 
 jobs:
 
+  windows:
     runs-on: windows-latest
-
     env:
       SOLUTION_FILE_PATH: msvc15/rvmparser.sln
       BUILD_CONFIGURATION: Release
-
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
-
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
-
-    - uses: actions/upload-artifact@v3
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
       with:
-        name: windows
-        path: msvc15/x64/Release/rvmparser.exe
-
-    - name: Test
-      working-directory: ${{env.GITHUB_WORKSPACE}}\test
-      run: test.bat
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: msvc15/x64/Release/rvmparser.exe
+        asset_name: rvmparser-windows-bin.exe
+        tag: ${{ github.ref }}
 
   linux-gcc:
     runs-on: ubuntu-latest
-
     env:
       CXXFLAGS: -fms-extensions
       CFLAGS: -fms-extensions
-
     steps:
     - uses: actions/checkout@v3
       with:
@@ -53,38 +42,16 @@ jobs:
       run: |
         cd make
         make
-
-    - uses: actions/upload-artifact@v3
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
       with:
-        name: linux-gcc
-        path: make/rvmparser
-
-
-  linux-clang:
-    runs-on: ubuntu-latest
-
-    env:
-      CXX: clang++
-      CC: clang
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - name: Build
-      run: |
-        cd make
-        make
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: linux-clang
-        path: make/rvmparser
-
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: make/rvmparser
+        asset_name: rvmparser-linux-bin
+        tag: ${{ github.ref }}
 
   macos:
     runs-on: macos-latest
-
     steps:
     - uses: actions/checkout@v3
       with:
@@ -93,8 +60,10 @@ jobs:
       run: |
         cd make
         make
-
-    - uses: actions/upload-artifact@v3
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
       with:
-        name: macos
-        path: make/rvmparser
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: make/rvmparser
+        asset_name: rvmparser-macos-bin
+        tag: ${{ github.ref }}
