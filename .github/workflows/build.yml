@@ -32,8 +32,22 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: windows
+        name: windows-executable
         path: msvc15/x64/Release/rvmparser.exe
+
+    - name: Test
+      run: |
+        cd test
+        .\test-win32.bat
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: windows-test-results
+        path: |
+          test/plm-sample.glb
+          test/plm-sample.json
+          test/plm-sample.obj
+          test/plm-sample.mtl
 
   linux-gcc:
     runs-on: ubuntu-latest
@@ -53,7 +67,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: linux-gcc
+        name: linux-gcc-executable
         path: make/rvmparser
 
 
@@ -75,7 +89,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: linux-clang
+        name: linux-clang-executable
         path: make/rvmparser
 
 
@@ -93,5 +107,5 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
-        name: macos
+        name: macos-executable
         path: make/rvmparser
