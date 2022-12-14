@@ -51,10 +51,10 @@ Group* Store::findRootGroup(const char* name)
 {
   for (auto * file = roots.first; file != nullptr; file = file->next) {
     assert(file->kind == Group::Kind::File);
-    for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+    for (auto * model = file->children.first; model != nullptr; model = model->next) {
       //fprintf(stderr, "model '%s'\n", model->model.name);
       assert(model->kind == Group::Kind::Model);
-      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+      for (auto * group = model->children.first; group != nullptr; group = group->next) {
         //fprintf(stderr, "group '%s' %p\n", group->group.name, (void*)group->group.name);
         if (group->group.name == name) return group;
       }
@@ -177,7 +177,7 @@ Group* Store::newGroup(Group* parent, Group::Kind kind)
     insert(roots, grp);
   }
   else {
-    insert(parent->groups, grp);
+    insert(parent->children, grp);
   }
 
   grp->kind = kind;
@@ -213,7 +213,7 @@ Group* Store::getDefaultModel()
     file->file.user = strings.intern("");
     file->file.encoding = strings.intern("");
   }
-  auto * model = file->groups.first;
+  auto * model = file->children.first;
   if (model == nullptr) {
     model = newGroup(file, Group::Kind::Model);
     model->model.project = strings.intern("");
@@ -282,9 +282,9 @@ void Store::apply(StoreVisitor* visitor, Group* group)
 
   visitor->doneGroupContents(group);
 
-  if (group->groups.first != nullptr) {
+  if (group->children.first != nullptr) {
     visitor->beginChildren(group);
-    for (auto * g = group->groups.first; g != nullptr; g = g->next) {
+    for (auto * g = group->children.first; g != nullptr; g = g->next) {
       apply(visitor, g);
     }
     visitor->endChildren();
@@ -301,11 +301,11 @@ void Store::apply(StoreVisitor* visitor)
       assert(file->kind == Group::Kind::File);
       visitor->beginFile(file);
 
-      for (auto * model = file->groups.first; model != nullptr; model = model->next) {
+      for (auto * model = file->children.first; model != nullptr; model = model->next) {
         assert(model->kind == Group::Kind::Model);
         visitor->beginModel(model);
 
-        for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+        for (auto * group = model->children.first; group != nullptr; group = group->next) {
           apply(visitor, group);
         }
         visitor->endModel();
@@ -319,21 +319,21 @@ void Store::apply(StoreVisitor* visitor)
 void Store::updateCountsRecurse(Group* group)
 {
 
-  for (auto * child = group->groups.first; child != nullptr; child = child->next) {
+  for (auto * child = group->children.first; child != nullptr; child = child->next) {
     updateCountsRecurse(child);
   }
 
   numGroups++;
-  if (group->groups.first == nullptr) {
+  if (group->children.first == nullptr) {
     numLeaves++;
   }
 
   if (group->kind == Group::Kind::Group) {
-    if (group->groups.first == nullptr && group->group.geometries.first == nullptr) {
+    if (group->children.first == nullptr && group->group.geometries.first == nullptr) {
       numEmptyLeaves++;
     }
 
-    if (group->groups.first != nullptr && group->group.geometries.first != nullptr) {
+    if (group->children.first != nullptr && group->group.geometries.first != nullptr) {
       numNonEmptyNonLeaves++;
     }
 
@@ -361,7 +361,7 @@ namespace {
 
   void storeGroupIndexInGeometriesRecurse(Group* group)
   {
-    for (auto * child = group->groups.first; child != nullptr; child = child->next) {
+    for (auto * child = group->children.first; child != nullptr; child = child->next) {
       storeGroupIndexInGeometriesRecurse(child);
     }
     if (group->kind == Group::Kind::Group) {

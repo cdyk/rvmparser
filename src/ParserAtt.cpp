@@ -58,7 +58,7 @@ namespace {
 
       auto * parent = ctx->stack[ctx->stack_p - 1].group;
       if (parent) {
-        for (auto * child = parent->groups.first; child; child = child->next) {
+        for (auto * child = parent->children.first; child; child = child->next) {
           if (child->group.name == id) {
             group = child;
             break;

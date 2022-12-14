@@ -204,7 +204,7 @@ struct Group
   };
 
   Group* next = nullptr;
-  ListHeader<Group> groups;
+  ListHeader<Group> children;
   ListHeader<Attribute> attributes;
 
   Kind kind = Kind::Group;

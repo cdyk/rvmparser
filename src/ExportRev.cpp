@@ -216,7 +216,7 @@ namespace {
                1000.f * group->group.translation[2]);
     fprintf(ctx->out, "%6u\n", group->group.material);
 
-    for (Group* child = group->groups.first; child; child = child->next) {
+    for (Group* child = group->children.first; child; child = child->next) {
       writeGroup(ctx, child);
     }
 
@@ -235,7 +235,7 @@ namespace {
     fprintf(ctx->out, "%s\n%s\n",
             model->model.project,
             model->model.name);
-    for (Group* group = model->groups.first; group; group = group->next) {
+    for (Group* group = model->children.first; group; group = group->next) {
       writeGroup(ctx, group);
     }
   }
@@ -250,7 +250,7 @@ namespace {
             file->file.note,
             file->file.date,
             file->file.user);
-    for (Group* model = file->groups.first; model; model = model->next) {
+    for (Group* model = file->children.first; model; model = model->next) {
       writeModel(ctx, model);
     }
     writeChunkHeader(ctx, "END:");

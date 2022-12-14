@@ -373,7 +373,7 @@ namespace {
     }
 
     // And recurse into children
-    for (Group* child = group->groups.first; child; child = child->next) {
+    for (Group* child = group->children.first; child; child = child->next) {
       children.PushBack(processGroup(ctx, child), alloc);
     }
 
@@ -392,7 +392,7 @@ namespace {
   {
     assert(group->kind == Group::Kind::Group);
 
-    for (Group* child = group->groups.first; child; child = child->next) {
+    for (Group* child = group->children.first; child; child = child->next) {
       extendBounds(ctx, worldBounds, child);
     }
     for (Geometry* geo = group->group.geometries.first; geo; geo = geo->next) {
@@ -407,9 +407,9 @@ namespace {
 
     for (Group* file = ctx.store->getFirstRoot(); file; file = file->next) {
       assert(file->kind == Group::Kind::File);
-      for (Group* model = file->groups.first; model; model = model->next) {
+      for (Group* model = file->children.first; model; model = model->next) {
         assert(model->kind == Group::Kind::Model);
-        for (Group* group = model->groups.first; group; group = group->next) {
+        for (Group* group = model->children.first; group; group = group->next) {
           extendBounds(ctx, worldBounds, group);
         }
       }
@@ -428,9 +428,9 @@ namespace {
     auto& alloc = ctx.rjDoc.GetAllocator();
     for (Group* file = ctx.store->getFirstRoot(); file; file = file->next) {
       assert(file->kind == Group::Kind::File);
-      for (Group* model = file->groups.first; model; model = model->next) {
+      for (Group* model = file->children.first; model; model = model->next) {
         assert(model->kind == Group::Kind::Model);
-        for (Group* group = model->groups.first; group; group = group->next) {
+        for (Group* group = model->children.first; group; group = group->next) {
           rootNodes.PushBack(processGroup(ctx, group), alloc);
         }
       }

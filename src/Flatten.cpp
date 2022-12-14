@@ -55,7 +55,7 @@ void Flatten::populateSrcTagsRecurse(Group* srcGroup)
 {
   srcGroup->group.id = -1;
   srcTags.insert(uint64_t(srcGroup->group.name), uint64_t(srcGroup));
-  for (auto * srcChild = srcGroup->groups.first; srcChild != nullptr; srcChild = srcChild->next) {
+  for (auto * srcChild = srcGroup->children.first; srcChild != nullptr; srcChild = srcChild->next) {
     populateSrcTagsRecurse(srcChild);
   }
 }
@@ -65,8 +65,8 @@ void Flatten::populateSrcTags()
   // Sets all group.index to ~0u, and records the tag-names in srcTags. Nothing is selected yet.
   // name of groups are already interned in srcGroup
   for (auto * srcRoot = srcStore->getFirstRoot(); srcRoot != nullptr; srcRoot = srcRoot->next) {
-    for (auto * srcModel = srcRoot->groups.first; srcModel != nullptr; srcModel = srcModel->next) {
-      for (auto * srcGroup = srcModel->groups.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
+    for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
+      for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
         populateSrcTagsRecurse(srcGroup);
       }
     }
@@ -84,7 +84,7 @@ bool Flatten::anyChildrenSelectedAndTagRecurse(Group* srcGroup, int32_t id)
   }
 
   bool anyChildrenSelected = false;
-  for (auto * srcChild = srcGroup->groups.first; srcChild != nullptr; srcChild = srcChild->next) {
+  for (auto * srcChild = srcGroup->children.first; srcChild != nullptr; srcChild = srcChild->next) {
     anyChildrenSelected = anyChildrenSelectedAndTagRecurse(srcChild, srcGroup->group.id) || anyChildrenSelected;
   }
 
@@ -110,7 +110,7 @@ void Flatten::buildPrunedCopyRecurse(Group* dstParent, Group* srcGroup, unsigned
     dstStore->cloneGeometry(dstParent, srcGeo);
   }
 
-  for (auto * srcChild = srcGroup->groups.first; srcChild != nullptr; srcChild = srcChild->next) {
+  for (auto * srcChild = srcGroup->children.first; srcChild != nullptr; srcChild = srcChild->next) {
     buildPrunedCopyRecurse(dstParent, srcChild, level + 1);
   }
 }
@@ -123,9 +123,9 @@ Store* Flatten::run()
   // set group.index of parents of selected nodes to ~1u so we can retain them in the culling pass.
   for (auto * srcRoot = srcStore->getFirstRoot(); srcRoot != nullptr; srcRoot = srcRoot->next) {
     assert(srcRoot->kind == Group::Kind::File);
-    for (auto * srcModel = srcRoot->groups.first; srcModel != nullptr; srcModel = srcModel->next) {
+    for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
       assert(srcModel->kind == Group::Kind::Model);
-      for (auto * srcGroup = srcModel->groups.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
+      for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
         anyChildrenSelectedAndTagRecurse(srcGroup);
       }
     }
@@ -137,12 +137,12 @@ Store* Flatten::run()
     assert(srcRoot->kind == Group::Kind::File);
     auto * dstRoot = dstStore->cloneGroup(nullptr, srcRoot);
 
-    for (auto * srcModel = srcRoot->groups.first; srcModel != nullptr; srcModel = srcModel->next) {
+    for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
 
       assert(srcModel->kind == Group::Kind::Model);
       auto * dstModel = dstStore->cloneGroup(dstRoot, srcModel);
 
-      for (auto * srcGroup = srcModel->groups.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
+      for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
         buildPrunedCopyRecurse(dstModel, srcGroup, 0);
       }
     }
