@@ -11,6 +11,7 @@ permissions:
 
 jobs:
 
+  windows:
     runs-on: windows-latest
 
     env:
