@@ -266,7 +266,7 @@ public:
 
   Node* getDefaultModel();
 
-  Node* newGroup(Node * parent, Node::Kind kind);
+  Node* newNode(Node * parent, Node::Kind kind);
 
   Node* cloneGroup(Node* parent, const Node* src);
 

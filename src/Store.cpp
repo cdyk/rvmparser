@@ -168,7 +168,7 @@ Geometry* Store::cloneGeometry(Node* parent, const Geometry* src)
 }
 
 
-Node* Store::newGroup(Node* parent, Node::Kind kind)
+Node* Store::newNode(Node* parent, Node::Kind kind)
 {
   auto grp = arena.alloc<Node>();
   std::memset(grp, 0, sizeof(Node));
@@ -206,7 +206,7 @@ Node* Store::getDefaultModel()
 {
   auto * file = roots.first;
   if (file == nullptr) {
-    file = newGroup(nullptr, Node::Kind::File);
+    file = newNode(nullptr, Node::Kind::File);
     file->file.info = strings.intern("");
     file->file.note = strings.intern("");
     file->file.date = strings.intern("");
@@ -215,7 +215,7 @@ Node* Store::getDefaultModel()
   }
   auto * model = file->children.first;
   if (model == nullptr) {
-    model = newGroup(file, Node::Kind::Model);
+    model = newNode(file, Node::Kind::Model);
     model->model.project = strings.intern("");
     model->model.name = strings.intern("");
   }
@@ -225,7 +225,7 @@ Node* Store::getDefaultModel()
 
 Node* Store::cloneGroup(Node* parent, const Node* src)
 {
-  auto * dst = newGroup(parent, src->kind);
+  auto * dst = newNode(parent, src->kind);
   switch (src->kind) {
   case Node::Kind::File:
     dst->file.info = strings.intern(src->file.info);

@@ -113,7 +113,7 @@ namespace {
   const char* parse_head(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
   {
     assert(ctx->group_stack.empty());
-    auto * g = ctx->store->newGroup(nullptr, Node::Kind::File);
+    auto * g = ctx->store->newNode(nullptr, Node::Kind::File);
     ctx->group_stack.push_back(g);
 
     uint32_t version;
@@ -137,7 +137,7 @@ namespace {
   const char* parse_modl(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
   {
     assert(!ctx->group_stack.empty());
-    auto * g = ctx->store->newGroup(ctx->group_stack.back(), Node::Kind::Model);
+    auto * g = ctx->store->newNode(ctx->group_stack.back(), Node::Kind::Model);
     ctx->group_stack.push_back(g);
 
     uint32_t version;
@@ -330,7 +330,7 @@ namespace {
     assert(!ctx->group_stack.empty());
     Node* parent = ctx->group_stack.back();
 
-    Node* g = ctx->store->newGroup(parent, Node::Kind::Group);
+    Node* g = ctx->store->newNode(parent, Node::Kind::Group);
 
     // Inherit properties from parent
     if (ctx->group_stack.back()->kind == Node::Kind::Group) {
