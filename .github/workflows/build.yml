@@ -38,7 +38,7 @@ jobs:
     - name: Test
       run: |
         cd test
-        test-win32.bat
+        .\test-win32.bat
 
     - uses: actions/upload-artifact@v3
       with:
