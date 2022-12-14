@@ -268,7 +268,7 @@ public:
 
   Node* newNode(Node * parent, Node::Kind kind);
 
-  Node* cloneGroup(Node* parent, const Node* src);
+  Node* cloneNode(Node* parent, const Node* src);
 
   Node* findRootGroup(const char* name);
 

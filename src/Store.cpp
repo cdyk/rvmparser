@@ -223,7 +223,7 @@ Node* Store::getDefaultModel()
 }
 
 
-Node* Store::cloneGroup(Node* parent, const Node* src)
+Node* Store::cloneNode(Node* parent, const Node* src)
 {
   auto * dst = newNode(parent, src->kind);
   switch (src->kind) {

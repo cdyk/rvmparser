@@ -102,7 +102,7 @@ void Flatten::buildPrunedCopyRecurse(Node* dstParent, Node* srcGroup, unsigned l
   }
 
   if (srcGroup->group.id != -1) {
-    dstParent = dstStore->cloneGroup(dstParent, srcGroup);
+    dstParent = dstStore->cloneNode(dstParent, srcGroup);
     dstParent->group.id = srcGroup->group.id;
   }
 
@@ -135,12 +135,12 @@ Store* Flatten::run()
   for (auto * srcRoot = srcStore->getFirstRoot(); srcRoot != nullptr; srcRoot = srcRoot->next) {
 
     assert(srcRoot->kind == Node::Kind::File);
-    auto * dstRoot = dstStore->cloneGroup(nullptr, srcRoot);
+    auto * dstRoot = dstStore->cloneNode(nullptr, srcRoot);
 
     for (auto * srcModel = srcRoot->children.first; srcModel != nullptr; srcModel = srcModel->next) {
 
       assert(srcModel->kind == Node::Kind::Model);
-      auto * dstModel = dstStore->cloneGroup(dstRoot, srcModel);
+      auto * dstModel = dstStore->cloneNode(dstRoot, srcModel);
 
       for (auto * srcGroup = srcModel->children.first; srcGroup != nullptr; srcGroup = srcGroup->next) {
         buildPrunedCopyRecurse(dstModel, srcGroup, 0);
