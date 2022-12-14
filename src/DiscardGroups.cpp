@@ -37,12 +37,12 @@ namespace {
   }
 
 
-  void pruneChildren(Context* context, Group* group)
+  void pruneChildren(Context* context, Node* group)
   {
 
-    ListHeader<Group> groupsNew;
+    ListHeader<Node> groupsNew;
     groupsNew.clear();
-    for (auto * child = group->groups.first; child; ) {
+    for (auto * child = group->children.first; child; ) {
       auto * next = child->next;
       if (context->discardTags.get(uint64_t(child->group.name))) {
         //context->logger(0, "Discarded %s", child->group.name);
@@ -54,7 +54,7 @@ namespace {
       }
       child = next;
     }
-    group->groups = groupsNew;
+    group->children = groupsNew;
   }
 
 }
@@ -68,7 +68,7 @@ bool discardGroups(Store* store, Logger logger, const void* ptr, size_t size)
   readTagList(&context, ptr, size);
 
   for (auto * root = store->getFirstRoot(); root != nullptr; root = root->next) {
-    for (auto * model = root->groups.first; model != nullptr; model = model->next) {
+    for (auto * model = root->children.first; model != nullptr; model = model->next) {
       pruneChildren(&context, model);
     }
   }

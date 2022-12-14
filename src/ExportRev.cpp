@@ -204,9 +204,9 @@ namespace {
   }
 
 
-  void writeGroup(Context* ctx, Group* group)
+  void writeGroup(Context* ctx, Node* group)
   {
-    assert(group->kind == Group::Kind::Group);
+    assert(group->kind == Node::Kind::Group);
     writeChunkHeader(ctx, "CNTB");
     fprintf(ctx->out, "%s\n", group->group.name);
    
@@ -216,7 +216,7 @@ namespace {
                1000.f * group->group.translation[2]);
     fprintf(ctx->out, "%6u\n", group->group.material);
 
-    for (Group* child = group->groups.first; child; child = child->next) {
+    for (Node* child = group->children.first; child; child = child->next) {
       writeGroup(ctx, child);
     }
 
@@ -227,22 +227,22 @@ namespace {
     writeChunkHeader(ctx, "CNTE");
   }
 
-  void writeModel(Context* ctx, Group* model)
+  void writeModel(Context* ctx, Node* model)
   {
-    assert(model->kind == Group::Kind::Model);
+    assert(model->kind == Node::Kind::Model);
     
     writeChunkHeader(ctx, "MODL");
     fprintf(ctx->out, "%s\n%s\n",
             model->model.project,
             model->model.name);
-    for (Group* group = model->groups.first; group; group = group->next) {
+    for (Node* group = model->children.first; group; group = group->next) {
       writeGroup(ctx, group);
     }
   }
 
-  void writeFile(Context* ctx, Group* file)
+  void writeFile(Context* ctx, Node* file)
   {
-    assert(file->kind == Group::Kind::File);
+    assert(file->kind == Node::Kind::File);
 
     writeChunkHeader(ctx, "HEAD");
     fprintf(ctx->out, "%s\n%s\n%s\n%s\n",
@@ -250,7 +250,7 @@ namespace {
             file->file.note,
             file->file.date,
             file->file.user);
-    for (Group* model = file->groups.first; model; model = model->next) {
+    for (Node* model = file->children.first; model; model = model->next) {
       writeModel(ctx, model);
     }
     writeChunkHeader(ctx, "END:");
@@ -284,7 +284,7 @@ bool exportRev(Store* store, Logger logger, const char* path)
   }
 #endif
   logger(2, "exportRev: Writing %s...", path);
-  for (Group* file = store->getFirstRoot(); file; file = file->next) {
+  for (Node* file = store->getFirstRoot(); file; file = file->next) {
     writeFile(&ctx, file);
   }
   logger(2, "exportRev: Writing %s... done", path);

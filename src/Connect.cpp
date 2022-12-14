@@ -123,10 +123,10 @@ namespace {
   }
 
 
-  void recurse(Context* context, Group* group)
+  void recurse(Context* context, Node* group)
   {
     auto offset = context->anchors_n;
-    for (auto * child = group->groups.first; child != nullptr; child = child->next) {
+    for (auto * child = group->children.first; child != nullptr; child = child->next) {
       recurse(context, child);
     }
     for (auto * geo = group->group.geometries.first; geo != nullptr; geo = geo->next) {
@@ -264,8 +264,8 @@ void connect(Store* store, Logger logger)
   auto time0 = std::chrono::high_resolution_clock::now();
   context.anchors_n = 0;
   for (auto * root = store->getFirstRoot(); root != nullptr; root = root->next) {
-    for (auto * model = root->groups.first; model != nullptr; model = model->next) {
-      for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+    for (auto * model = root->children.first; model != nullptr; model = model->next) {
+      for (auto * group = model->children.first; group != nullptr; group = group->next) {
         recurse(&context, group);
       }
     }

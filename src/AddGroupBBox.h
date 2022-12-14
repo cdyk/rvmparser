@@ -10,7 +10,7 @@ public:
 
   void geometry(struct Geometry* geometry) override;
 
-  void beginGroup(struct Group* group)  override;
+  void beginGroup(struct Node* group)  override;
 
   void EndGroup() override;
 
@@ -18,7 +18,7 @@ protected:
   Store* store = nullptr;
 
   Arena arena;
-  Group** stack = nullptr;
+  Node** stack = nullptr;
   unsigned stack_p = 0;
 
 };

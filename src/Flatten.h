@@ -34,15 +34,15 @@ private:
   Store* srcStore = nullptr;
   Store* dstStore = nullptr;
 
-  Group** stack = nullptr;
+  Node** stack = nullptr;
   unsigned stack_p = 0;
   unsigned ignore_n = 0;
 
-  void populateSrcTagsRecurse(Group* srcGroup);
+  void populateSrcTagsRecurse(Node* srcGroup);
 
   void populateSrcTags();
 
-  bool anyChildrenSelectedAndTagRecurse(Group* srcGroup, int32_t id = -1);
+  bool anyChildrenSelectedAndTagRecurse(Node* srcGroup, int32_t id = -1);
 
-  void buildPrunedCopyRecurse(Group* dstParent, Group* srcGroup, unsigned level);
+  void buildPrunedCopyRecurse(Node* dstParent, Node* srcGroup, unsigned level);
 };

@@ -13,7 +13,7 @@ void ChunkTiny::init(class Store& store)
   stack_p = 0;
 }
 
-void ChunkTiny::beginGroup(struct Group* group)
+void ChunkTiny::beginGroup(struct Node* group)
 {
   auto & item = stack[stack_p++];
   item.group = group;

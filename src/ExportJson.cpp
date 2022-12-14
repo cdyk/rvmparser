@@ -13,9 +13,9 @@ namespace rj = rapidjson;
 namespace {
 
 
-  void process(rj::MemoryPoolAllocator<>& alloc, rj::Value& jParentArray, Logger logger, Group* group)
+  void process(rj::MemoryPoolAllocator<>& alloc, rj::Value& jParentArray, Logger logger, Node* group)
   {
-    assert(group->kind == Group::Kind::Group);
+    assert(group->kind == Node::Kind::Group);
 
     rj::Value jGroup(rj::kObjectType);
     jGroup.AddMember("name", rj::Value(group->group.name, alloc), alloc);
@@ -38,9 +38,9 @@ namespace {
       jGroup.AddMember("attributes", jAttributes, alloc);
     }
 
-    if (group->groups.first) {
+    if (group->children.first) {
       rj::Value jChildren(rj::kArrayType);
-      for (auto * child = group->groups.first; child; child = child->next) {
+      for (auto * child = group->children.first; child; child = child->next) {
         process(alloc, jChildren, logger, child);
       }
       jGroup.AddMember("children", jChildren, alloc);
@@ -60,25 +60,25 @@ bool exportJson(Store* store, Logger logger, const char* path)
   auto & alloc = d.GetAllocator();
 
   for (auto * root = store->getFirstRoot(); root != nullptr; root = root->next) {
-    assert(root->kind == Group::Kind::File);
+    assert(root->kind == Node::Kind::File);
     rj::Value jRoot(rj::kObjectType);
     jRoot.AddMember("info", rj::Value(root->file.info, alloc), alloc);
     jRoot.AddMember("note", rj::Value(root->file.note, alloc), alloc);
     jRoot.AddMember("date", rj::Value(root->file.date, alloc), alloc);
     jRoot.AddMember("user", rj::Value(root->file.user, alloc), alloc);
 
-    if (root->groups.first) {
+    if (root->children.first) {
       rj::Value jRootChildren(rj::kArrayType);
-      for (auto * model = root->groups.first; model != nullptr; model = model->next) {
+      for (auto * model = root->children.first; model != nullptr; model = model->next) {
 
-        assert(model->kind == Group::Kind::Model);
+        assert(model->kind == Node::Kind::Model);
         rj::Value jModel(rj::kObjectType);
         jModel.AddMember("project", rj::Value(model->model.project, alloc), alloc);
         jModel.AddMember("name", rj::Value(model->model.name, alloc), alloc);
 
-        if (model->groups.first) {
+        if (model->children.first) {
           rj::Value jModelChildren(rj::kArrayType);
-          for (auto * group = model->groups.first; group != nullptr; group = group->next) {
+          for (auto * group = model->children.first; group != nullptr; group = group->next) {
             process(alloc, jModelChildren, logger, group);
           }
           jModel.AddMember("children", jModelChildren, alloc);

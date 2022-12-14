@@ -11,7 +11,7 @@ public:
 
   void init(Store& store) override;
 
-  void beginGroup(Group* group) override;
+  void beginGroup(Node* group) override;
 
   void EndGroup() override;
 
