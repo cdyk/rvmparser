@@ -36,8 +36,9 @@ jobs:
         path: msvc15/x64/Release/rvmparser.exe
 
     - name: Test
-      working-directory: ${{env.GITHUB_WORKSPACE}}\test
-      run: test.bat
+      run: |
+        cd test
+        test.bat
 
     - uses: actions/upload-artifact@v3
       with:
