@@ -1127,8 +1127,19 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
   vertices.clear();
   normals.clear();
   indices.clear();
-  for (unsigned p = 0; p < fg.polygons_n; p++) {
-    auto & poly = fg.polygons[p];
+  for (size_t p = 0; p < fg.polygons_n; p++) {
+    const Polygon& poly = fg.polygons[p];
+
+    // Verify that all vertices is composed of finite numbers, otherwise skip polygon.
+    for (size_t c = 0; c < poly.contours_n; c++) {
+      const Contour& cont = poly.contours[c];
+      for (size_t v = 0; v < 3 * cont.vertices_n; v++) {
+        if (!std::isfinite(cont.vertices[v])) {
+          logger(1, "Encountered malformed vertex data in facet group, skipping polygon");
+          goto skip_polygon;
+        }
+      }
+    }
 
     if (poly.contours_n == 1 && poly.contours[0].vertices_n == 3) {
       auto & cont = poly.contours[0];
@@ -1268,6 +1279,9 @@ Triangulation* TriangulationFactory::facetGroup(Arena* arena, const Geometry* ge
 
       tessDeleteTess(tess);
     }
+
+  skip_polygon:
+    ;
   }
 
   assert(vertices.size() == normals.size());
