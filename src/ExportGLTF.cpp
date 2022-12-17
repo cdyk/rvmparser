@@ -38,6 +38,7 @@ namespace {
     rj::Value rjAccessors = rj::Value(rj::kArrayType);
     rj::Value rjBufferViews = rj::Value(rj::kArrayType);
     rj::Value rjMaterials = rj::Value(rj::kArrayType);
+    rj::Value rjBuffers = rj::Value(rj::kArrayType);
 
     uint32_t dataBytes = 0;
     ListHeader<DataItem> dataItems{};
@@ -84,13 +85,31 @@ namespace {
   uint32_t createBufferView(Context& ctx, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
   {
     assert(count);
-    uint32_t byteLength = byte_stride * count;
-    uint32_t byteOffset = addDataItem(ctx, data, byteLength, copy);
-
     auto& alloc = ctx.rjDoc.GetAllocator();
+
+    uint32_t bufferIndex = 0;
+    uint32_t byteOffset = 0;
+    uint32_t byteLength = byte_stride * count;
+
+    // For GLB, we have one large buffer containing everything that we make later
+    if (ctx.glbContainer) {
+      byteOffset = addDataItem(ctx, data, byteLength, copy);
+    }
+
+    // For GLTF, buffer data is base64-encoded in the URI
+    else {
+      rj::Value rjBuffer(rj::kObjectType);
+      rjBuffer.AddMember("uri", "foo", alloc);
+      rjBuffer.AddMember("byteLength", byteLength, alloc);
+      bufferIndex = ctx.rjBufferViews.Size();
+      ctx.rjBuffers.PushBack(rjBuffer, alloc);
+    }
+
     rj::Value rjBufferView(rj::kObjectType);
-    rjBufferView.AddMember("buffer", 0, alloc);
-    rjBufferView.AddMember("byteOffset", byteOffset, alloc);
+    rjBufferView.AddMember("buffer", bufferIndex, alloc);
+    if (byteOffset) {
+      rjBufferView.AddMember("byteOffset", byteOffset, alloc);
+    }
     rjBufferView.AddMember("byteLength", byteLength, alloc);
 
     rjBufferView.AddMember("target", target, alloc);
@@ -518,14 +537,16 @@ namespace {
     ctx.rjDoc.AddMember("bufferViews", ctx.rjBufferViews, ctx.rjDoc.GetAllocator());
 
     // ------- buffers ---------------------------------------------------------
-    rj::Value rjGlbBuffer(rj::kObjectType);
-    rjGlbBuffer.AddMember("byteLength", ctx.dataBytes, alloc);
-
-    rj::Value rjBuffers(rj::kArrayType);
-    rjBuffers.PushBack(rjGlbBuffer, alloc);
-
-    ctx.rjDoc.AddMember("buffers", rjBuffers, alloc);
-
+    //
+    // If we have a GLB container, add a single buffer that holds all data
+    //
+    if (ctx.glbContainer) {
+      assert(ctx.rjBuffers.Empty());
+      rj::Value rjGlbBuffer(rj::kObjectType);
+      rjGlbBuffer.AddMember("byteLength", ctx.dataBytes, alloc);
+      ctx.rjBuffers.PushBack(rjGlbBuffer, alloc);
+    }
+    ctx.rjDoc.AddMember("buffers", ctx.rjBuffers, alloc);
   }
 
   bool writeAsGLB(Context& ctx, FILE* out, const char* path)
