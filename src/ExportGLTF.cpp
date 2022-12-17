@@ -29,7 +29,6 @@ namespace {
   };
 
   struct Context {
-    Store* store = nullptr;
     Logger logger = nullptr;
 
     rj::Document rjDoc;
@@ -340,7 +339,7 @@ namespace {
     rjChildren.PushBack(node_ix, alloc);
   }
 
-  uint32_t processGroup(Context& ctx, Node* group)
+  uint32_t processGroup(Context& ctx, const Node* group)
   {
     assert(group->kind == Node::Kind::Group);
     auto& alloc = ctx.rjDoc.GetAllocator();
@@ -390,31 +389,24 @@ namespace {
   }
 
 
-  void extendBounds(Context& ctx, BBox3f& worldBounds, Node* group)
+  void extendBounds(Context& ctx, BBox3f& worldBounds, const Node* node)
   {
-    assert(group->kind == Node::Kind::Group);
-
-    for (Node* child = group->children.first; child; child = child->next) {
+    for (Node* child = node->children.first; child; child = child->next) {
       extendBounds(ctx, worldBounds, child);
     }
-    for (Geometry* geo = group->group.geometries.first; geo; geo = geo->next) {
-      engulf(worldBounds, geo->bboxWorld);
+    if (node->kind == Node::Kind::Group) {
+      for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+        engulf(worldBounds, geo->bboxWorld);
+      }
     }
   }
 
-  void calculateOrigin(Context& ctx)
+  void calculateOrigin(Context& ctx, const Node* firstNode)
   {
-
     BBox3f worldBounds = createEmptyBBox3f();
 
-    for (Node* file = ctx.store->getFirstRoot(); file; file = file->next) {
-      assert(file->kind == Node::Kind::File);
-      for (Node* model = file->children.first; model; model = model->next) {
-        assert(model->kind == Node::Kind::Model);
-        for (Node* group = model->children.first; group; group = group->next) {
-          extendBounds(ctx, worldBounds, group);
-        }
-      }
+    for (const Node* node = firstNode; node; node = node->next) {
+      extendBounds(ctx, worldBounds, node);
     }
 
     ctx.origin = 0.5f * (worldBounds.min + worldBounds.max);
@@ -425,24 +417,22 @@ namespace {
                ctx.origin.x, ctx.origin.y, ctx.origin.z);
   }
 
-  void buildRootNodes(Context& ctx, rj::Value& rootNodes)
+  void buildRootNodes(Context& ctx, rj::Value& rootNodes, const Node* firstNode)
   {
-    auto& alloc = ctx.rjDoc.GetAllocator();
-    for (Node* file = ctx.store->getFirstRoot(); file; file = file->next) {
-      assert(file->kind == Node::Kind::File);
-      for (Node* model = file->children.first; model; model = model->next) {
-        assert(model->kind == Node::Kind::Model);
-        for (Node* group = model->children.first; group; group = group->next) {
-          rootNodes.PushBack(processGroup(ctx, group), alloc);
-        }
+    for (const Node* node = firstNode; node; node = node->next) {
+      if (node->kind == Node::Kind::Group) {
+        rootNodes.PushBack(processGroup(ctx, node), ctx.rjDoc.GetAllocator());
+      }
+      else {
+        buildRootNodes(ctx, rootNodes, node->children.first);
       }
     }
   }
 
-  void buildGLTF(Context& ctx, const Node* firstRoot)
+  void buildGLTF(Context& ctx, const Node* firstNode)
   {
     if (ctx.centerModel) {
-      calculateOrigin(ctx);
+      calculateOrigin(ctx, firstNode);
     }
 
     ctx.rjDoc.SetObject();
@@ -485,7 +475,7 @@ namespace {
 
       // Add file hierarchy below rotation node
       rj::Value children(rj::kArrayType);
-      buildRootNodes(ctx, children);
+      buildRootNodes(ctx, children, firstNode);
 
       // Add node to document
       rj::Value node(rj::kObjectType);
@@ -500,7 +490,7 @@ namespace {
       rjSceneInstanceNodes.PushBack(node_ix, alloc);
     }
     else {
-      buildRootNodes(ctx, rjSceneInstanceNodes);
+      buildRootNodes(ctx, rjSceneInstanceNodes, firstNode);
     }
 
 
@@ -645,7 +635,6 @@ namespace {
 bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, bool centerModel, bool includeAttributes)
 {
   Context ctx{
-    .store = store,
     .logger = logger,
     .centerModel = centerModel,
     .rotateZToY = rotateZToY,
@@ -693,7 +682,7 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
              ctx.centerModel ? 1 : 0,
              ctx.includeAttributes ? 1 : 0);
 
-  buildGLTF(ctx, ctx.store->getFirstRoot());
+  buildGLTF(ctx, store->getFirstRoot());
 
   // ------- pretty-printed JSON to stdout for debugging ---------------------
   if (ctx.dumpDebugJson) {
