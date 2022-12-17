@@ -527,7 +527,16 @@ namespace {
 
   bool writeAsGLTF(Context& ctx, FILE* out, const char* path)
   {
+    std::vector<char> writeBuffer(0x10000);
+    rj::FileWriteStream os(out, writeBuffer.data(), writeBuffer.size());
 
+    rj::PrettyWriter<rj::FileWriteStream> writer(os);
+    writer.SetIndent(' ', 2);
+    writer.SetMaxDecimalPlaces(4);
+    if (!ctx.rjDoc.Accept(writer)) {
+      ctx.logger(2, "%s: Failed to write json", path);
+      return false;
+    }
     return true;
   }
 
