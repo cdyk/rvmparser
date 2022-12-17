@@ -17,6 +17,8 @@
 #include "Store.h"
 #include "LinAlgOps.h"
 
+#define RVMPARSER_GLTF_PRETTY_PRINT (0)
+
 namespace rj = rapidjson;
 
 namespace {
@@ -52,10 +54,8 @@ namespace {
 
     bool centerModel = true;
     bool rotateZToY = true;
-    bool dumpDebugJson = false;
     bool includeAttributes = false;
     bool glbContainer = false;
-
   };
 
 
@@ -600,7 +600,13 @@ namespace {
   {
     // ------- build json buffer -----------------------------------------------
     rj::StringBuffer buffer;
+#if RVMPARSER_GLTF_PRETTY_PRINT == 1
+    // Pretty printer for debug purposes
+    rj::PrettyWriter<rj::StringBuffer> writer(buffer);
+    writer.SetIndent(' ', 2);
+#else
     rj::Writer<rj::StringBuffer> writer(buffer);
+#endif
     ctx.rjDoc.Accept(writer);
     size_t jsonByteSize = buffer.GetSize();
     size_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
@@ -686,10 +692,13 @@ namespace {
   {
     std::vector<char> writeBuffer(0x10000);
     rj::FileWriteStream os(out, writeBuffer.data(), writeBuffer.size());
-
+#if RVMPARSER_GLTF_PRETTY_PRINT == 1
+    // Pretty printer for debug purposes
     rj::PrettyWriter<rj::FileWriteStream> writer(os);
     writer.SetIndent(' ', 2);
-    writer.SetMaxDecimalPlaces(4);
+#else
+    rj::Writer<rj::FileWriteStream> writer(os);
+#endif
     if (!ctx.rjDoc.Accept(writer)) {
       ctx.logger(2, "%s: Failed to write json", path);
       return false;
@@ -751,18 +760,6 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
              ctx.includeAttributes ? 1 : 0);
 
   buildGLTF(ctx, store->getFirstRoot());
-
-  // ------- pretty-printed JSON to stdout for debugging ---------------------
-  if (ctx.dumpDebugJson) {
-    std::vector<char> writeBuffer(0x10000);
-    rj::FileWriteStream os(stdout, writeBuffer.data(), writeBuffer.size());
-    rj::PrettyWriter<rj::FileWriteStream> writer(os);
-    writer.SetIndent(' ', 2);
-    writer.SetMaxDecimalPlaces(4);
-    ctx.rjDoc.Accept(writer);
-    putc('\n', stdout);
-    fflush(stdout);
-  }
 
 #ifdef _WIN32
   FILE* out = nullptr;
