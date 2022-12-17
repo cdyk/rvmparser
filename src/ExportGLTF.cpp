@@ -439,6 +439,105 @@ namespace {
     }
   }
 
+  void buildGLTF(Context& ctx, const Node* firstRoot)
+  {
+    if (ctx.centerModel) {
+      calculateOrigin(ctx);
+    }
+
+    ctx.rjDoc.SetObject();
+
+    // ------- asset -----------------------------------------------------------
+    auto& alloc = ctx.rjDoc.GetAllocator();
+    rj::Value rjAsset(rj::kObjectType);
+    rjAsset.AddMember("version", "2.0", alloc);
+    rjAsset.AddMember("generator", "rvmparser", alloc);
+    if (ctx.centerModel) {
+      rj::Value rjOrigin(rj::kArrayType);
+      rjOrigin.PushBack(ctx.origin.x, alloc);
+      rjOrigin.PushBack(ctx.origin.y, alloc);
+      rjOrigin.PushBack(ctx.origin.z, alloc);
+
+      rj::Value rjExtras(rj::kObjectType);
+      rjExtras.AddMember("rvmparser-origin", rjOrigin, alloc);
+
+      rjAsset.AddMember("extras", rjExtras, alloc);
+    }
+    ctx.rjDoc.AddMember("asset", rjAsset, ctx.rjDoc.GetAllocator());
+
+    // ------- scene -----------------------------------------------------------
+    ctx.rjDoc.AddMember("scene", 0, ctx.rjDoc.GetAllocator());
+
+    // ------- scenes ----------------------------------------------------------
+    rj::Value rjSceneInstanceNodes(rj::kArrayType);
+
+    if (ctx.rotateZToY) {
+      //
+      // Rotation +Z to +Y by rotation -90 degrees about the X axis
+      // 
+      // quaternion is x,y,z = sin(angle/2) * [1,0,0], w=cos(angle/2)
+      //
+      rj::Value rotation(rj::kArrayType);
+      rotation.PushBack(std::sin(-M_PI_4), alloc);
+      rotation.PushBack(0.f, alloc);
+      rotation.PushBack(0.f, alloc);
+      rotation.PushBack(std::cos(-M_PI_4), alloc);
+
+      // Add file hierarchy below rotation node
+      rj::Value children(rj::kArrayType);
+      buildRootNodes(ctx, children);
+
+      // Add node to document
+      rj::Value node(rj::kObjectType);
+      node.AddMember("name", "rvmparser-rotate-z-to-y", alloc);
+      node.AddMember("rotation", rotation, alloc);
+      node.AddMember("children", children, alloc);
+
+      uint32_t node_ix = ctx.rjNodes.Size();
+      ctx.rjNodes.PushBack(node, alloc);
+
+      // Set root
+      rjSceneInstanceNodes.PushBack(node_ix, alloc);
+    }
+    else {
+      buildRootNodes(ctx, rjSceneInstanceNodes);
+    }
+
+
+
+    rj::Value rjSceneInstance(rj::kObjectType);
+    rjSceneInstance.AddMember("nodes", rjSceneInstanceNodes, alloc);
+
+    rj::Value rjScenes(rj::kArrayType);
+    rjScenes.PushBack(rjSceneInstance, alloc);
+    ctx.rjDoc.AddMember("scenes", rjScenes, ctx.rjDoc.GetAllocator());
+
+    // ------ nodes ------------------------------------------------------------
+    ctx.rjDoc.AddMember("nodes", ctx.rjNodes, ctx.rjDoc.GetAllocator());
+
+    // ------ meshes -----------------------------------------------------------
+    ctx.rjDoc.AddMember("meshes", ctx.rjMeshes, ctx.rjDoc.GetAllocator());
+
+    // ------ materials --------------------------------------------------------
+    ctx.rjDoc.AddMember("materials", ctx.rjMaterials, ctx.rjDoc.GetAllocator());
+
+    // ------ accessors --------------------------------------------------------
+    ctx.rjDoc.AddMember("accessors", ctx.rjAccessors, ctx.rjDoc.GetAllocator());
+
+    // ------ buffer views  ----------------------------------------------------
+    ctx.rjDoc.AddMember("bufferViews", ctx.rjBufferViews, ctx.rjDoc.GetAllocator());
+
+    // ------- buffers ---------------------------------------------------------
+    rj::Value rjGlbBuffer(rj::kObjectType);
+    rjGlbBuffer.AddMember("byteLength", ctx.dataBytes, alloc);
+
+    rj::Value rjBuffers(rj::kArrayType);
+    rjBuffers.PushBack(rjGlbBuffer, alloc);
+
+    ctx.rjDoc.AddMember("buffers", rjBuffers, alloc);
+
+  }
+
   bool writeAsGLB(Context& ctx, FILE* out, const char* path)
   {
     // ------- build json buffer -----------------------------------------------
@@ -594,104 +693,8 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
              ctx.centerModel ? 1 : 0,
              ctx.includeAttributes ? 1 : 0);
 
-  if (ctx.centerModel) {
-    calculateOrigin(ctx);
-  }
+  buildGLTF(ctx, ctx.store->getFirstRoot());
 
-
-  ctx.rjDoc.SetObject();
-
-  // ------- asset -----------------------------------------------------------
-  auto& alloc = ctx.rjDoc.GetAllocator();
-  rj::Value rjAsset(rj::kObjectType);
-  rjAsset.AddMember("version", "2.0", alloc);
-  rjAsset.AddMember("generator", "rvmparser", alloc);
-  if (ctx.centerModel) {
-    rj::Value rjOrigin(rj::kArrayType);
-    rjOrigin.PushBack(ctx.origin.x, alloc);
-    rjOrigin.PushBack(ctx.origin.y, alloc);
-    rjOrigin.PushBack(ctx.origin.z, alloc);
-
-    rj::Value rjExtras(rj::kObjectType);
-    rjExtras.AddMember("rvmparser-origin", rjOrigin, alloc);
-
-    rjAsset.AddMember("extras", rjExtras, alloc);
-  }
-  ctx.rjDoc.AddMember("asset", rjAsset, ctx.rjDoc.GetAllocator());
-
-  // ------- scene -----------------------------------------------------------
-  ctx.rjDoc.AddMember("scene", 0, ctx.rjDoc.GetAllocator());
-
-  // ------- scenes ----------------------------------------------------------
-  rj::Value rjSceneInstanceNodes(rj::kArrayType);
-
-  if (ctx.rotateZToY) {
-    //
-    // Rotation +Z to +Y by rotation -90 degrees about the X axis
-    // 
-    // quaternion is x,y,z = sin(angle/2) * [1,0,0], w=cos(angle/2)
-    //
-    rj::Value rotation(rj::kArrayType);
-    rotation.PushBack(std::sin(-M_PI_4), alloc);
-    rotation.PushBack(0.f, alloc);
-    rotation.PushBack(0.f, alloc);
-    rotation.PushBack(std::cos(-M_PI_4), alloc);
-
-    // Add file hierarchy below rotation node
-    rj::Value children(rj::kArrayType);
-    buildRootNodes(ctx, children);
-
-    // Add node to document
-    rj::Value node(rj::kObjectType);
-    node.AddMember("name", "rvmparser-rotate-z-to-y", alloc);
-    node.AddMember("rotation", rotation, alloc);
-    node.AddMember("children", children, alloc);
-
-    uint32_t node_ix = ctx.rjNodes.Size();
-    ctx.rjNodes.PushBack(node, alloc);
-
-    // Set root
-    rjSceneInstanceNodes.PushBack(node_ix, alloc);
-  }
-  else {
-    buildRootNodes(ctx, rjSceneInstanceNodes);
-  }
-
-
-
-  rj::Value rjSceneInstance(rj::kObjectType);
-  rjSceneInstance.AddMember("nodes", rjSceneInstanceNodes, alloc);
-
-  rj::Value rjScenes(rj::kArrayType);
-  rjScenes.PushBack(rjSceneInstance, alloc);
-  ctx.rjDoc.AddMember("scenes", rjScenes, ctx.rjDoc.GetAllocator());
-
-  // ------ nodes ------------------------------------------------------------
-  ctx.rjDoc.AddMember("nodes", ctx.rjNodes, ctx.rjDoc.GetAllocator());
-
-  // ------ meshes -----------------------------------------------------------
-  ctx.rjDoc.AddMember("meshes", ctx.rjMeshes, ctx.rjDoc.GetAllocator());
-
-  // ------ materials --------------------------------------------------------
-  ctx.rjDoc.AddMember("materials", ctx.rjMaterials, ctx.rjDoc.GetAllocator());
-
-  // ------ accessors --------------------------------------------------------
-  ctx.rjDoc.AddMember("accessors", ctx.rjAccessors, ctx.rjDoc.GetAllocator());
-
-  // ------ buffer views  ----------------------------------------------------
-  ctx.rjDoc.AddMember("bufferViews", ctx.rjBufferViews, ctx.rjDoc.GetAllocator());
-
-  // ------- buffers ---------------------------------------------------------
-  rj::Value rjGlbBuffer(rj::kObjectType);
-  rjGlbBuffer.AddMember("byteLength", ctx.dataBytes, alloc);
-
-  rj::Value rjBuffers(rj::kArrayType);
-  rjBuffers.PushBack(rjGlbBuffer, alloc);
-
-  ctx.rjDoc.AddMember("buffers", rjBuffers, alloc);
-
- 
-  
   // ------- pretty-printed JSON to stdout for debugging ---------------------
   if (ctx.dumpDebugJson) {
     std::vector<char> writeBuffer(0x10000);
