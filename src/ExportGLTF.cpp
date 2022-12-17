@@ -439,33 +439,103 @@ namespace {
     }
   }
 
+  bool writeAsGLB(Context& ctx, FILE* out, const char* path)
+  {
+    // ------- build json buffer -----------------------------------------------
+    rj::StringBuffer buffer;
+    rj::Writer<rj::StringBuffer> writer(buffer);
+    ctx.rjDoc.Accept(writer);
+    size_t jsonByteSize = buffer.GetSize();
+    size_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
+
+    // ------- write glb header ------------------------------------------------
+
+    size_t total_size =
+      12 +                                  // Initial header
+      8 + jsonByteSize + jsonPaddingSize +  // JSON header, payload and padding
+      8 + ctx.dataBytes;                   // BVIN header and payload
+
+    if (std::numeric_limits<uint32_t>::max() < total_size) {
+      ctx.logger(2, "%s: File would be %zu bytes, a number too large to store in 32 bits in the GLB header.");
+      return false;
+    }
+    uint32_t header[3] = {
+      0x46546C67,                       // magic
+      2,                                // version
+      static_cast<uint32_t>(total_size) // total size
+    };
+    if (fwrite(header, sizeof(header), 1, out) != 1) {
+      ctx.logger(2, "%s: Error writing header", path);
+      fclose(out);
+      return false;
+    }
+
+    // ------- write JSON chunk ------------------------------------------------
+    uint32_t jsonhunkHeader[2] = {
+      static_cast<uint32_t>(jsonByteSize + jsonPaddingSize),  // length of chunk data
+      0x4E4F534A                                              // chunk type (JSON)
+    };
+    if (fwrite(jsonhunkHeader, sizeof(jsonhunkHeader), 1, out) != 1) {
+      ctx.logger(2, "%s: Error writing JSON chunk header", path);
+      fclose(out);
+      return false;
+    }
+
+    if (fwrite(buffer.GetString(), jsonByteSize, 1, out) != 1) {
+      ctx.logger(2, "%s: Error writing JSON data", path);
+      fclose(out);
+      return false;
+    }
+    if (jsonPaddingSize) {
+      assert(jsonPaddingSize < 4);
+      const char* padding = "   ";
+      if (fwrite(padding, jsonPaddingSize, 1, out) != 1) {
+        ctx.logger(2, "%s: Error writing JSON padding", path);
+        fclose(out);
+        return false;
+      }
+    }
+
+    // -------- write BIN chunk ------------------------------------------------
+    uint32_t binChunkHeader[2] = {
+      ctx.dataBytes,  // length of chunk data
+      0x004E4942      // chunk type (BIN)
+    };
+
+    if (fwrite(binChunkHeader, sizeof(binChunkHeader), 1, out) != 1) {
+      ctx.logger(2, "%s: Error writing BIN chunk header", path);
+      fclose(out);
+      return false;
+    }
+
+    uint32_t offset = 0;
+    for (DataItem* item = ctx.dataItems.first; item; item = item->next) {
+      if (fwrite(item->ptr, item->size, 1, out) != 1) {
+        ctx.logger(2, "%s: Error writing BIN chunk data at offset %u", path, offset);
+        fclose(out);
+        return false;
+      }
+      offset += item->size;
+    }
+    assert(offset == ctx.dataBytes);
+
+    // ------- close file and exit ---------------------------------------------
+
+    ctx.logger(0, "exportGLTF: Successfully wrote %s (%zu KB)", path, (total_size + 1023) / 1024);
+    return true;
+  }
+
+  bool writeAsGLTF(Context& ctx, FILE* out, const char* path)
+  {
+
+    return true;
+  }
 
 }
 
 
 bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, bool centerModel, bool includeAttributes)
 {
-
-#ifdef _WIN32
-  FILE* out = nullptr;
-  auto err = fopen_s(&out, path, "wb");
-  if (err != 0) {
-    char buf[256];
-    if (strerror_s(buf, sizeof(buf), err) != 0) {
-      buf[0] = '\0';
-    }
-    logger(2, "Failed to open %s for writing: %s", path, buf);
-    return false;
-  }
-  assert(out);
-#else
-  FILE* out = fopen(path, "w");
-  if (out == nullptr) {
-    logger(2, "Failed to open %s for writing.", path);
-    return false;
-  }
-#endif
-
   Context ctx{
     .store = store,
     .logger = logger,
@@ -611,12 +681,7 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
 
   ctx.rjDoc.AddMember("buffers", rjBuffers, alloc);
 
-  // ------- build json buffer -----------------------------------------------
-  rj::StringBuffer buffer;
-  rj::Writer<rj::StringBuffer> writer(buffer);
-  ctx.rjDoc.Accept(writer);
-  size_t jsonByteSize = buffer.GetSize();
-  size_t jsonPaddingSize = (4 - (jsonByteSize % 4)) % 4;
+ 
   
   // ------- pretty-printed JSON to stdout for debugging ---------------------
   if (ctx.dumpDebugJson) {
@@ -630,81 +695,35 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
     fflush(stdout);
   }
 
-  // ------- write glb header ------------------------------------------------
-
-  size_t total_size =
-    12 +                                  // Initial header
-    8 + jsonByteSize + jsonPaddingSize +  // JSON header, payload and padding
-    8 + ctx.dataBytes;                   // BVIN header and payload
-
-  if (std::numeric_limits<uint32_t>::max() < total_size) {
-    logger(2, "%s: File would be %zu bytes, a number too large to store in 32 bits in the GLB header.");
-    return false;
-  }
-  uint32_t header[3] = {
-    0x46546C67,                       // magic
-    2,                                // version
-    static_cast<uint32_t>(total_size) // total size
-  };
-  if (fwrite(header, sizeof(header), 1, out) != 1) {
-    logger(2, "%s: Error writing header", path);
-    fclose(out);
-    return false;
-  }
-
-  // ------- write JSON chunk ------------------------------------------------
-  uint32_t jsonhunkHeader[2] = {
-    static_cast<uint32_t>(jsonByteSize + jsonPaddingSize),  // length of chunk data
-    0x4E4F534A                                              // chunk type (JSON)
-  };
-  if (fwrite(jsonhunkHeader, sizeof(jsonhunkHeader), 1, out) != 1) {
-    logger(2, "%s: Error writing JSON chunk header", path);
-    fclose(out);
-    return false;
-  }
-
-  if (fwrite(buffer.GetString(), jsonByteSize, 1, out) != 1) {
-    logger(2, "%s: Error writing JSON data", path);
-    fclose(out);
-    return false;
-  }
-  if (jsonPaddingSize) {
-    assert(jsonPaddingSize < 4);
-    const char* padding = "   ";
-    if (fwrite(padding, jsonPaddingSize, 1, out) != 1) {
-      logger(2, "%s: Error writing JSON padding", path);
-      fclose(out);
-      return false;
+#ifdef _WIN32
+  FILE* out = nullptr;
+  auto err = fopen_s(&out, path, "wb");
+  if (err != 0) {
+    char buf[256];
+    if (strerror_s(buf, sizeof(buf), err) != 0) {
+      buf[0] = '\0';
     }
-  }
-
-  // -------- write BIN chunk ------------------------------------------------
-  uint32_t binChunkHeader[2] = {
-    ctx.dataBytes,  // length of chunk data
-    0x004E4942      // chunk type (BIN)
-  };
-
-  if (fwrite(binChunkHeader, sizeof(binChunkHeader), 1, out) != 1) {
-    logger(2, "%s: Error writing BIN chunk header", path);
-    fclose(out);
+    logger(2, "Failed to open %s for writing: %s", path, buf);
     return false;
   }
-    
-  uint32_t offset = 0;
-  for (DataItem* item = ctx.dataItems.first; item; item = item->next) {
-    if (fwrite(item->ptr, item->size, 1, out) != 1) {
-      logger(2, "%s: Error writing BIN chunk data at offset %u", path, offset);
-      fclose(out);
-      return false;
-    }
-    offset += item->size;
+  assert(out);
+#else
+  FILE* out = fopen(path, "w");
+  if (out == nullptr) {
+    logger(2, "Failed to open %s for writing.", path);
+    return false;
   }
-  assert(offset == ctx.dataBytes);
+#endif
 
-  // ------- close file and exit ---------------------------------------------
+  bool success = true;
+  if (ctx.glbContainer) {
+    success = writeAsGLB(ctx, out, path);
+  }
+  else {
+    success = writeAsGLTF(ctx, out, path);
+  }
+
   fclose(out);
 
-  ctx.logger(0, "exportGLTF: Successfully wrote %s (%zu KB)", path, (total_size + 1023) / 1024);
-
-  return true;
+  return success;
 }
