@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
+#include <cctype>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -53,6 +54,7 @@ namespace {
     bool rotateZToY = true;
     bool dumpDebugJson = false;
     bool includeAttributes = false;
+    bool glbContainer = false;
 
   };
 
@@ -471,6 +473,43 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
     .rotateZToY = rotateZToY,
     .includeAttributes = includeAttributes,
   };
+
+  { // Split into stem and suffix
+    size_t o = 0; // offset of last dot
+    size_t n = 0; // string length of output
+    assert(path);
+    for (; path[n] != '\0'; n++) {
+      if (path[n] == '.') {
+        o = n;
+      }
+    }
+    if (path[o] != '.') {
+      ctx.logger(2, "exportGLTF: Failed to find path suffix in string '%s'", path);
+      return false;
+    }
+    size_t m = n - o; // length of suffix
+    if ((m == 4) || (m == 5)) {
+      char suffixLc[4] = { 0, 0, 0, 0 };  // lower-case version
+      for (size_t i = 0; i + 1 < m; i++) {
+        suffixLc[i] = static_cast<char>(std::tolower(path[o + i + 1]));
+      }
+      if (std::memcmp(suffixLc, "glb", 3) == 0) {
+        ctx.glbContainer = true;
+        goto recognized_suffix;
+      }
+      else if (std::memcmp(suffixLc, "gltf", 4) == 0) {
+        ctx.glbContainer = false;
+        goto recognized_suffix;
+      }
+    }
+    ctx.logger(2, "exportGLTF: Failed to recognize path suffix (.glb or .gltf) in string '%s'", path);
+    return false;
+
+  recognized_suffix:
+    ;
+  }
+
+
   ctx.logger(0, "exportGLTF: rotate-z-to-y=%u center=%u attributes=%u",
              ctx.rotateZToY ? 1 : 0,
              ctx.centerModel ? 1 : 0,
