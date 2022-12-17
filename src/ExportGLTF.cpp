@@ -47,7 +47,7 @@ namespace {
     Map definedMaterials;
 
     Vec3f origin = makeVec3f(0.f);
-
+    std::vector<char> tmpBase64;
     std::vector<Vec3f> tmp3f;
 
     bool centerModel = true;
@@ -81,6 +81,49 @@ namespace {
     return offset;
   }
 
+  void encodeBase64(Context& ctx, const uint8_t* data, size_t byteLength)
+  {
+    // Base64 table from RFC4648
+    static const char rfc4648[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    static_assert(sizeof(rfc4648) == 65);
+
+    static const char prefix[] = "data:application/octet-stream;base64,";
+    static const size_t prefixLength = sizeof(prefix) - 1;
+
+    // Add data prefix
+    const size_t totalLength = prefixLength + 4 * ((byteLength + 2) / 3);
+    ctx.tmpBase64.resize(totalLength);
+    std::memcpy(ctx.tmpBase64.data(), prefix, prefixLength);
+    size_t o = prefixLength;
+
+    // Handle range that is a multiple of three
+    size_t i = 0;
+    while (3 * i + 2 < byteLength) {
+      const size_t i3 = 3 * i;
+      const size_t i4 = 4 * i;
+      const uint8_t d0 = data[i3 + 0];
+      const uint8_t d1 = data[i3 + 1];
+      const uint8_t d2 = data[i3 + 2];
+      ctx.tmpBase64[o + i4 + 0] = rfc4648[(d0 >> 2)];
+      ctx.tmpBase64[o + i4 + 1] = rfc4648[((d0 << 4) & 0x30) | (d1 >> 4)];
+      ctx.tmpBase64[o + i4 + 2] = rfc4648[((d1 << 2) & 0x3c) | (d2 >> 6)];
+      ctx.tmpBase64[o + i4 + 3] = rfc4648[d2 & 0x3f];
+      i++;
+    }
+
+    // Handle end if byteLength is not a multiple of three
+    if (3 * i < byteLength) { // End padding
+      const size_t i3 = 3 * i;
+      const size_t i4 = 4 * i;
+      const bool two = (i3 + 1 < byteLength);  // one or two extra bytes (three would go into loop above)?
+      const uint8_t d0 = data[i3 + 0];
+      const uint8_t d1 = two ? data[i3 + 1] : 0;
+      ctx.tmpBase64[o + i4 + 0] = rfc4648[(d0 >> 2)];
+      ctx.tmpBase64[o + i4 + 1] = rfc4648[((d0 << 4) & 0x30) | (d1 >> 4)];
+      ctx.tmpBase64[o + i4 + 2] = two ? rfc4648[((d1 << 2) & 0x3c)] : '=';
+      ctx.tmpBase64[o + i4 + 3] = '=';
+    }
+  }
 
   uint32_t createBufferView(Context& ctx, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
   {
@@ -98,8 +141,12 @@ namespace {
 
     // For GLTF, buffer data is base64-encoded in the URI
     else {
+
+      encodeBase64(ctx, static_cast<const uint8_t*>(data), byteLength);
+      rj::Value rjData(ctx.tmpBase64.data(), static_cast<rapidjson::SizeType>(ctx.tmpBase64.size()), alloc);
+
       rj::Value rjBuffer(rj::kObjectType);
-      rjBuffer.AddMember("uri", "foo", alloc);
+      rjBuffer.AddMember("uri", rjData, alloc);
       rjBuffer.AddMember("byteLength", byteLength, alloc);
       bufferIndex = ctx.rjBufferViews.Size();
       ctx.rjBuffers.PushBack(rjBuffer, alloc);
