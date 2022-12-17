@@ -35,10 +35,12 @@ Options:
                                       with its children. Default is no groups are discarded.
   --output-json=<filename.json>       Write hierarchy with attributes to a json file.
   --output-txt=<filename.txt>         Dump all group names to a text file.
-  --output-rev=filename.rev    Write database as a text .rev file.
+  --output-rev=filename.rev           Write database as a text .rev file.
   --output-obj=<filenamestem>         Write geometry to an obj file. The suffices .obj and .mtl are
                                       added to the filenamestem.
-  --output-gltf=<filename.glb>        Write geometry into a GLTF file.
+  --output-gltf=<filename.gltf>       Write geometry into a GLTF file (pure JSON with buffers base64
+             or <filename.glb>        encoded inline) or a GLB file (JSON with binary buffers in a
+                                      GLB container). Type of file is specified by the suffix.
   --output-gltf-attributes=<bool>     Include rvm attributes in the extra member of nodes. Default
                                       value is true.
   --output-gltf-center=<bool>         Position the model at the bounding box center and store the
