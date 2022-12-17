@@ -240,7 +240,7 @@ namespace {
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, geo->transparency);
+      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, static_cast<uint8_t>(geo->transparency));
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -292,7 +292,7 @@ namespace {
       rjPrimitive.AddMember("material", createOrGetColor(ctx,
                                                          geo->colorName,
                                                          geo->color,
-                                                         geo->transparency),
+                                                         static_cast<uint8_t>(geo->transparency)),
                             alloc);
 
       rjPrimitivesNode.PushBack(rjPrimitive, alloc);
