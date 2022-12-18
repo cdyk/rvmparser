@@ -52,12 +52,20 @@ namespace {
   };
 
   struct Context {
-    Model model;
     Logger logger = nullptr;
     
+    const char* path = nullptr; // Path without suffix
+    const char* suffix = nullptr;
 
     std::vector<char> tmpBase64;
     std::vector<Vec3f> tmp3f;
+    
+    struct {
+      size_t level = 3;   // Level to do splitting
+      size_t choose = 0;  // Keeping track of which split we are processing
+      size_t index = 0;   // Which subtree we are to descend
+      bool done = false;  // Set to true when there are no more splits
+    } split;
 
     bool centerModel = true;
     bool rotateZToY = true;
@@ -66,24 +74,24 @@ namespace {
   };
 
 
-  uint32_t addDataItem(Context& ctx, const void* ptr, size_t size, bool copy)
+  uint32_t addDataItem(Context& /*ctx*/, Model& model, const void* ptr, size_t size, bool copy)
   {
     assert((size % 4) == 0);
-    assert(ctx.model.dataBytes + size <= std::numeric_limits<uint32_t>::max());
+    assert(model.dataBytes + size <= std::numeric_limits<uint32_t>::max());
 
     if (copy) {
-      void* copied_ptr = ctx.model.arena.alloc(size);
+      void* copied_ptr = model.arena.alloc(size);
       std::memcpy(copied_ptr, ptr, size);
       ptr = copied_ptr;
     }
 
-    DataItem* item = ctx.model.arena.alloc<DataItem>();
-    ctx.model.dataItems.insert(item);
+    DataItem* item = model.arena.alloc<DataItem>();
+    model.dataItems.insert(item);
     item->ptr = ptr;
     item->size = static_cast<uint32_t>(size);
 
-    uint32_t offset = ctx.model.dataBytes;
-    ctx.model.dataBytes += item->size;
+    uint32_t offset = model.dataBytes;
+    model.dataBytes += item->size;
 
     return offset;
   }
@@ -132,10 +140,10 @@ namespace {
     }
   }
 
-  uint32_t createBufferView(Context& ctx, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
+  uint32_t createBufferView(Context& ctx, Model& model, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
   {
     assert(count);
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     uint32_t bufferIndex = 0;
     uint32_t byteOffset = 0;
@@ -143,7 +151,7 @@ namespace {
 
     // For GLB, we have one large buffer containing everything that we make later
     if (ctx.glbContainer) {
-      byteOffset = addDataItem(ctx, data, byteLength, copy);
+      byteOffset = addDataItem(ctx, model, data, byteLength, copy);
     }
 
     // For GLTF, buffer data is base64-encoded in the URI
@@ -155,8 +163,8 @@ namespace {
       rj::Value rjBuffer(rj::kObjectType);
       rjBuffer.AddMember("uri", rjData, alloc);
       rjBuffer.AddMember("byteLength", byteLength, alloc);
-      bufferIndex = ctx.model.rjBufferViews.Size();
-      ctx.model.rjBuffers.PushBack(rjBuffer, alloc);
+      bufferIndex = model.rjBufferViews.Size();
+      model.rjBuffers.PushBack(rjBuffer, alloc);
     }
 
     rj::Value rjBufferView(rj::kObjectType);
@@ -168,15 +176,16 @@ namespace {
 
     rjBufferView.AddMember("target", target, alloc);
 
-    uint32_t view_ix = ctx.model.rjBufferViews.Size();
-    ctx.model.rjBufferViews.PushBack(rjBufferView, alloc);
+    uint32_t view_ix = model.rjBufferViews.Size();
+    model.rjBufferViews.PushBack(rjBufferView, alloc);
     return view_ix;
   }
 
-  uint32_t createAccessorVec3f(Context& ctx, const Vec3f* data, uint32_t count, bool copy)
+  uint32_t createAccessorVec3f(Context& ctx, Model& model, const Vec3f* data, uint32_t count, bool copy)
   {
     assert(count);
-    uint32_t view_ix = createBufferView(ctx, data,
+    uint32_t view_ix = createBufferView(ctx, model,
+                                        data,
                                         count,
                                         3 * static_cast<uint32_t>(sizeof(float)),
                                         0x8892 /* GL_ARRAY_BUFFER */,
@@ -190,7 +199,7 @@ namespace {
       max_val = max(max_val, data[i]);
     }
 
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
     rj::Value rjMin(rj::kArrayType);
     rj::Value rjMax(rj::kArrayType);
     for (size_t i = 0; i < 3; i++) {
@@ -207,15 +216,16 @@ namespace {
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
-    uint32_t accessor_ix = ctx.model.rjAccessors.Size();
-    ctx.model.rjAccessors.PushBack(rjAccessor, alloc);
+    uint32_t accessor_ix = model.rjAccessors.Size();
+    model.rjAccessors.PushBack(rjAccessor, alloc);
     return accessor_ix;
   }
 
-  uint32_t createAccessorUint32(Context& ctx, const uint32_t* data, uint32_t count, bool copy)
+  uint32_t createAccessorUint32(Context& ctx, Model& model, const uint32_t* data, uint32_t count, bool copy)
   {
     assert(count);
-    uint32_t view_ix = createBufferView(ctx, data,
+    uint32_t view_ix = createBufferView(ctx, model,
+                                        data,
                                         count,
                                         static_cast<uint32_t>(sizeof(uint32_t)),
                                         0x8893 /* GL_ELEMENT_ARRAY_BUFFER */,
@@ -229,7 +239,7 @@ namespace {
       max_val = std::max(max_val, data[i]);
     }
 
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     rj::Value rjMin(rj::kArrayType);
     rjMin.PushBack(min_val, alloc);
@@ -246,20 +256,20 @@ namespace {
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
-    uint32_t accessorIndex = ctx.model.rjAccessors.Size();
-    ctx.model.rjAccessors.PushBack(rjAccessor, alloc);
+    uint32_t accessorIndex = model.rjAccessors.Size();
+    model.rjAccessors.PushBack(rjAccessor, alloc);
     return accessorIndex;
   }
 
-  uint32_t createOrGetColor(Context& ctx, const char* colorName, uint32_t color, uint8_t transparency)
+  uint32_t createOrGetColor(Context& /*ctx*/, Model& model, const char* colorName, uint32_t color, uint8_t transparency)
   {
     // make sure key is never zero
     uint64_t key = (uint64_t(color) << 9) | (uint64_t(transparency) << 1) | 1;
-    if (uint64_t val; ctx.model.definedMaterials.get(val, key)) {
+    if (uint64_t val; model.definedMaterials.get(val, key)) {
       return uint32_t(val);
     }
 
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     rj::Value rjColor(rj::kArrayType);
     rjColor.PushBack((1.f / 255.f) * ((color >> 16) & 0xff), alloc);
@@ -281,16 +291,16 @@ namespace {
       material.AddMember("alphaMode", "BLEND", alloc);
     }
 
-    uint32_t colorIndex = ctx.model.rjMaterials.Size();
-    ctx.model.definedMaterials.insert(key, colorIndex);
-    ctx.model.rjMaterials.PushBack(material, alloc);
+    uint32_t colorIndex = model.rjMaterials.Size();
+    model.definedMaterials.insert(key, colorIndex);
+    model.rjMaterials.PushBack(material, alloc);
 
     return colorIndex;
   }
 
-  void addGeometryPrimitive(Context& ctx, rj::Value& rjPrimitivesNode, Geometry* geo)
+  void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, Geometry* geo)
   {
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
     if (geo->kind == Geometry::Kind::Line) {
       float positions[2 * 3] = {
         geo->line.a, 0.f, 0.f,
@@ -301,12 +311,12 @@ namespace {
 
       rj::Value rjAttributes(rj::kObjectType);
 
-      uint32_t accessor_ix = createAccessorVec3f(ctx, (Vec3f*)positions, 2, true);
+      uint32_t accessor_ix = createAccessorVec3f(ctx, model, (Vec3f*)positions, 2, true);
       rjAttributes.AddMember("POSITION", accessor_ix, alloc);
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, geo->colorName, geo->color, static_cast<uint8_t>(geo->transparency));
+      uint32_t material_ix = createOrGetColor(ctx, model, geo->colorName, geo->color, static_cast<uint8_t>(geo->transparency));
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -326,7 +336,7 @@ namespace {
       rj::Value rjAttributes(rj::kObjectType);
 
       if (tri->vertices) {
-        uint32_t accessor_ix = createAccessorVec3f(ctx, (Vec3f*)tri->vertices, tri->vertices_n, false);
+        uint32_t accessor_ix = createAccessorVec3f(ctx, model, (Vec3f*)tri->vertices, tri->vertices_n, false);
         rjAttributes.AddMember("POSITION", accessor_ix, alloc);
       }
 
@@ -344,18 +354,18 @@ namespace {
         }
 
         // And make a copy when setting up the accessor
-        uint32_t accessor_ix = createAccessorVec3f(ctx, tmpNormals.data(), tri->vertices_n, true);
+        uint32_t accessor_ix = createAccessorVec3f(ctx, model, tmpNormals.data(), tri->vertices_n, true);
         rjAttributes.AddMember("NORMAL", accessor_ix, alloc);
       }
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
       if (tri->indices) {
-        uint32_t accessor_ix = createAccessorUint32(ctx, tri->indices, 3 * tri->triangles_n, false);
+        uint32_t accessor_ix = createAccessorUint32(ctx, model, tri->indices, 3 * tri->triangles_n, false);
         rjPrimitive.AddMember("indices", accessor_ix, alloc);
       }
 
-      rjPrimitive.AddMember("material", createOrGetColor(ctx,
+      rjPrimitive.AddMember("material", createOrGetColor(ctx, model,
                                                          geo->colorName,
                                                          geo->color,
                                                          static_cast<uint8_t>(geo->transparency)),
@@ -365,12 +375,12 @@ namespace {
     }
   }
 
-  void createGeometryNode(Context& ctx, rj::Value& rjChildren, Geometry* geo)
+  void createGeometryNode(Context& ctx, Model& model, rj::Value& rjChildren, Geometry* geo)
   {
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     rj::Value rjPrimitives(rj::kArrayType);
-    addGeometryPrimitive(ctx, rjPrimitives, geo);
+    addGeometryPrimitive(ctx, model, rjPrimitives, geo);
 
     // If no primitives were produced, no point in creating mesh and mesh-holding node
     if (rjPrimitives.Empty()) return;
@@ -378,8 +388,8 @@ namespace {
     // Create mesh
     rj::Value mesh(rj::kObjectType);
     mesh.AddMember("primitives", rjPrimitives, alloc);
-    uint32_t meshIndex = ctx.model.rjMeshes.Size();
-    ctx.model.rjMeshes.PushBack(mesh, alloc);
+    uint32_t meshIndex = model.rjMeshes.Size();
+    model.rjMeshes.PushBack(mesh, alloc);
 
     // Create mesh holding node
 
@@ -394,23 +404,23 @@ namespace {
       matrix.PushBack(0.f, alloc);
     }
     for (size_t r = 0; r < 3; r++) {
-      matrix.PushBack(geo->M_3x4.cols[3][r] - ctx.model.origin[r], alloc);
+      matrix.PushBack(geo->M_3x4.cols[3][r] - model.origin[r], alloc);
     }
     matrix.PushBack(1.f, alloc);
 
     node.AddMember("matrix", matrix, alloc);
 
     // Add this node to document
-    uint32_t nodeIndex = ctx.model.rjNodes.Size();
-    ctx.model.rjNodes.PushBack(node, alloc);
+    uint32_t nodeIndex = model.rjNodes.Size();
+    model.rjNodes.PushBack(node, alloc);
     rjChildren.PushBack(nodeIndex, alloc);
   }
 
-  void addAttributes(Context& ctx, rj::Value rjNode, const Node* node)
+  void addAttributes(Context& ctx, Model& model, rj::Value rjNode, const Node* node)
   {
     // Optionally add all attributes under an "extras" object member.
     if (ctx.includeAttributes && node->attributes.first) {
-      rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+      rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
       rj::Value extras(rj::kObjectType);
 
       rj::Value attributes(rj::kObjectType);
@@ -425,10 +435,30 @@ namespace {
       rjNode.AddMember("extras", extras, alloc);
     }
   }
+  uint32_t processNode(Context& ctx, Model& model, const Node* node, size_t level);
 
-  uint32_t processNode(Context& ctx, const Node* node)
+  void processChildren(Context& ctx, Model& model, rj::Value& children, const Node* firstChild, size_t level)
   {
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    size_t nextLevel = level + 1;
+    if (nextLevel == ctx.split.level) {
+      for (const Node* child = firstChild; child; child = child->next) {
+        if (ctx.split.index == ctx.split.choose) {
+          ctx.logger(0, "exportGLTF: At split level %zu: Restricting to subtree %zu", nextLevel, ctx.split.index);
+          children.PushBack(processNode(ctx, model, child, nextLevel), model.rjAlloc);
+        }
+        ctx.split.index++;
+      }
+    }
+    else {
+      for (const Node* child = firstChild; child; child = child->next) {
+        children.PushBack(processNode(ctx, model, child, nextLevel), model.rjAlloc);
+      }
+    }
+  }
+
+  uint32_t processNode(Context& ctx, Model& model, const Node* node, size_t level)
+  {
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     rj::Value rjNode(rj::kObjectType);
     rj::Value children(rj::kArrayType);
@@ -453,7 +483,7 @@ namespace {
 
       // Create a child node for each geometry since transforms are per-geomtry
       for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-        createGeometryNode(ctx, children, geo);
+        createGeometryNode(ctx, model, children, geo);
       }
       break;
 
@@ -463,24 +493,23 @@ namespace {
     }
 
     // And recurse into children
-    for (Node* child = node->children.first; child; child = child->next) {
-      children.PushBack(processNode(ctx, child), alloc);
-    }
+    processChildren(ctx, model, children, node->children.first, level);
 
     if (!children.Empty()) {
       rjNode.AddMember("children", children, alloc);
     }
 
     // Add this node to document
-    uint32_t nodeIndex = ctx.model.rjNodes.Size();
-    ctx.model.rjNodes.PushBack(rjNode, alloc);
+    uint32_t nodeIndex = model.rjNodes.Size();
+    model.rjNodes.PushBack(rjNode, alloc);
     return nodeIndex;
   }
 
-  void extendBounds(Context& ctx, BBox3f& worldBounds, const Node* node)
+
+  void extendBounds(BBox3f& worldBounds, const Node* node)
   {
     for (Node* child = node->children.first; child; child = child->next) {
-      extendBounds(ctx, worldBounds, child);
+      extendBounds(worldBounds, child);
     }
     if (node->kind == Node::Kind::Group) {
       for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
@@ -489,35 +518,28 @@ namespace {
     }
   }
 
-  void calculateOrigin(Context& ctx, const Node* firstNode)
+  void calculateOrigin(Context& ctx, Model& model, const Node* firstNode)
   {
     BBox3f worldBounds = createEmptyBBox3f();
 
     for (const Node* node = firstNode; node; node = node->next) {
-      extendBounds(ctx, worldBounds, node);
+      extendBounds(worldBounds, node);
     }
 
-    ctx.model.origin = 0.5f * (worldBounds.min + worldBounds.max);
+    model.origin = 0.5f * (worldBounds.min + worldBounds.max);
     ctx.logger(0, "exportGLTF: world bounds = [%.2f, %.2f, %.2f]x[%.2f, %.2f, %.2f]",
                worldBounds.min.x, worldBounds.min.y, worldBounds.min.z,
                worldBounds.max.x, worldBounds.max.y, worldBounds.max.z);
     ctx.logger(0, "exportGLTF: setting origin = [%.2f, %.2f, %.2f]",
-               ctx.model.origin.x, ctx.model.origin.y, ctx.model.origin.z);
+               model.origin.x, model.origin.y, model.origin.z);
   }
 
-  void buildRootNodes(Context& ctx, rj::Value& rootNodes, const Node* firstNode)
+  rj::Document buildGLTF(Context& ctx, Model& model, const Node* firstNode)
   {
-    for (const Node* node = firstNode; node; node = node->next) {
-      rootNodes.PushBack(processNode(ctx, node), ctx.model.rjAlloc);
-    }
-  }
-
-  rj::Document buildGLTF(Context& ctx, const Node* firstNode)
-  {
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     if (ctx.centerModel) {
-      calculateOrigin(ctx, firstNode);
+      calculateOrigin(ctx, model, firstNode);
     }
 
     rj::Document rjDoc(rj::kObjectType, &alloc);
@@ -528,9 +550,9 @@ namespace {
     rjAsset.AddMember("generator", "rvmparser", alloc);
     if (ctx.centerModel) {
       rj::Value rjOrigin(rj::kArrayType);
-      rjOrigin.PushBack(ctx.model.origin.x, alloc);
-      rjOrigin.PushBack(ctx.model.origin.y, alloc);
-      rjOrigin.PushBack(ctx.model.origin.z, alloc);
+      rjOrigin.PushBack(model.origin.x, alloc);
+      rjOrigin.PushBack(model.origin.y, alloc);
+      rjOrigin.PushBack(model.origin.z, alloc);
 
       rj::Value rjExtras(rj::kObjectType);
       rjExtras.AddMember("rvmparser-origin", rjOrigin, alloc);
@@ -559,7 +581,7 @@ namespace {
 
       // Add file hierarchy below rotation node
       rj::Value children(rj::kArrayType);
-      buildRootNodes(ctx, children, firstNode);
+      processChildren(ctx, model, children, firstNode, 0);
 
       // Add node to document
       rj::Value node(rj::kObjectType);
@@ -567,22 +589,22 @@ namespace {
       node.AddMember("rotation", rotation, alloc);
       node.AddMember("children", children, alloc);
 
-      uint32_t nodeIndex = ctx.model.rjNodes.Size();
-      ctx.model.rjNodes.PushBack(node, alloc);
+      uint32_t nodeIndex = model.rjNodes.Size();
+      model.rjNodes.PushBack(node, alloc);
 
       // Set root
       rjSceneInstanceNodes.PushBack(nodeIndex, alloc);
     }
     else {
-      buildRootNodes(ctx, rjSceneInstanceNodes, firstNode);
+      processChildren(ctx, model, rjSceneInstanceNodes, firstNode, 0);
     }
 
     // If we have a GLB container, add a single buffer that holds all data
     if (ctx.glbContainer) {
-      assert(ctx.model.rjBuffers.Empty());
+      assert(model.rjBuffers.Empty());
       rj::Value rjGlbBuffer(rj::kObjectType);
-      rjGlbBuffer.AddMember("byteLength", ctx.model.dataBytes, alloc);
-      ctx.model.rjBuffers.PushBack(rjGlbBuffer, alloc);
+      rjGlbBuffer.AddMember("byteLength", model.dataBytes, alloc);
+      model.rjBuffers.PushBack(rjGlbBuffer, alloc);
     }
 
 
@@ -592,17 +614,17 @@ namespace {
     rj::Value rjScenes(rj::kArrayType);
     rjScenes.PushBack(rjSceneInstance, alloc);
     rjDoc.AddMember("scenes", rjScenes, alloc);
-    rjDoc.AddMember("nodes", ctx.model.rjNodes, alloc);
-    rjDoc.AddMember("meshes", ctx.model.rjMeshes, alloc);
-    rjDoc.AddMember("materials", ctx.model.rjMaterials, alloc);
-    rjDoc.AddMember("accessors", ctx.model.rjAccessors, alloc);
-    rjDoc.AddMember("bufferViews", ctx.model.rjBufferViews, alloc);
-    rjDoc.AddMember("buffers", ctx.model.rjBuffers, alloc);
+    rjDoc.AddMember("nodes", model.rjNodes, alloc);
+    rjDoc.AddMember("meshes", model.rjMeshes, alloc);
+    rjDoc.AddMember("materials", model.rjMaterials, alloc);
+    rjDoc.AddMember("accessors", model.rjAccessors, alloc);
+    rjDoc.AddMember("bufferViews", model.rjBufferViews, alloc);
+    rjDoc.AddMember("buffers", model.rjBuffers, alloc);
 
     return rjDoc;
   }
 
-  bool writeAsGLB(Context& ctx, FILE* out, const char* path, const rj::Document& rjDoc)
+  bool writeAsGLB(Context& ctx, Model& model, FILE* out, const char* path, const rj::Document& rjDoc)
   {
     // ------- build json buffer -----------------------------------------------
     rj::StringBuffer buffer;
@@ -622,7 +644,7 @@ namespace {
     size_t total_size =
       12 +                                  // Initial header
       8 + jsonByteSize + jsonPaddingSize +  // JSON header, payload and padding
-      8 + ctx.model.dataBytes;              // BVIN header and payload
+      8 + model.dataBytes;              // BVIN header and payload
 
     if (std::numeric_limits<uint32_t>::max() < total_size) {
       ctx.logger(2, "%s: File would be %zu bytes, a number too large to store in 32 bits in the GLB header.");
@@ -667,7 +689,7 @@ namespace {
 
     // -------- write BIN chunk ------------------------------------------------
     uint32_t binChunkHeader[2] = {
-      ctx.model.dataBytes,  // length of chunk data
+      model.dataBytes,  // length of chunk data
       0x004E4942            // chunk type (BIN)
     };
 
@@ -678,7 +700,7 @@ namespace {
     }
 
     uint32_t offset = 0;
-    for (DataItem* item = ctx.model.dataItems.first; item; item = item->next) {
+    for (DataItem* item = model.dataItems.first; item; item = item->next) {
       if (fwrite(item->ptr, item->size, 1, out) != 1) {
         ctx.logger(2, "%s: Error writing BIN chunk data at offset %u", path, offset);
         fclose(out);
@@ -686,7 +708,7 @@ namespace {
       }
       offset += item->size;
     }
-    assert(offset == ctx.model.dataBytes);
+    assert(offset == model.dataBytes);
 
     // ------- close file and exit ---------------------------------------------
 
@@ -714,7 +736,9 @@ namespace {
 
   bool processSubtree(Context& ctx, const char* path, const Node* firstNode)
   {
-    rj::Document rjDoc = buildGLTF(ctx, firstNode);
+    Model model;
+
+    rj::Document rjDoc = buildGLTF(ctx, model, firstNode);
 
 #ifdef _WIN32
     FILE* out = nullptr;
@@ -736,9 +760,10 @@ namespace {
     }
 #endif
 
+
     bool success = true;
     if (ctx.glbContainer) {
-      success = writeAsGLB(ctx, out, path, rjDoc);
+      success = writeAsGLB(ctx, model, out, path, rjDoc);
     }
     else {
       success = writeAsGLTF(ctx, out, path, rjDoc);
@@ -793,7 +818,8 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
     return false;
 
   recognized_suffix:
-    ;
+    ctx.path = store->strings.intern(path, path + o);
+    ctx.suffix = store->strings.intern(path + o);
   }
 
 
@@ -801,10 +827,33 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
              ctx.rotateZToY ? 1 : 0,
              ctx.centerModel ? 1 : 0,
              ctx.includeAttributes ? 1 : 0);
+  do {
+    ctx.split.index = 0;
 
-  if (!processSubtree(ctx, path, store->getFirstRoot())) {
-    return false;
-  }
+    std::vector<char> tmp(1);
+    const char* currentPath = path;
+    if (ctx.split.choose != 0) {
+      while (true) {
+        int n = snprintf(tmp.data(), tmp.size(), "%s%zu%s", ctx.path, ctx.split.choose, ctx.suffix);
+        if (n < 0) {
+          ctx.logger(2, "exportGLTF: sprintf error");
+          return false;
+        }
+        if (n < tmp.size()) {
+          currentPath = tmp.data();
+          break;
+        }
+        tmp.resize(n + 1);
+      }
+    }
+
+    if (!processSubtree(ctx, currentPath, store->getFirstRoot())) {
+      return false;
+    }
+    ctx.logger(0, "exportGLTF: Wrote %s", currentPath);
+    ctx.split.choose++;
+  } while (ctx.split.choose < ctx.split.index);
+
 
   return true;
 }
