@@ -160,6 +160,11 @@ Options:
                                       rotation of 90 degrees about the X axis such that the +Z axis
                                       will map to the +Y axis, which is the up-direction of GLTF-
                                       files. Default value is true.
+  --output-gltf-split-level=<uint>    Specify a level in the hierarchy to split the output into
+                                      multiple files, where 0 implies no split. Geometries and
+                                      attributes below the split point are included in the first
+                                      file, while subsequent files while have empty nodes just to
+                                      represent the hierarchy. Default value is 0.
   --group-bounding-boxes              Include wireframe of boundingboxes of groups in output.
   --color-attribute=key               Specify which attributes that contain color, empty key
                                       implies that material id of group is used.
@@ -214,6 +219,7 @@ int main(int argc, char** argv)
   bool output_gltf_rotate_z_to_y = true;
   bool output_gltf_center = false;
   bool output_gltf_attributes = true;
+  size_t output_gltf_split_level = 0;
 
   std::string output_rev;
   std::string output_obj_stem;
@@ -281,6 +287,10 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-gltf-attributes") {
           output_gltf_attributes = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-split-level") {
+          output_gltf_split_level = std::stoul(val);
           continue;
         }
         else if (key == "--color-attribute") {
@@ -481,12 +491,13 @@ int main(int argc, char** argv)
     auto time0 = std::chrono::high_resolution_clock::now();
     if (exportGLTF(store, logger,
                    output_gltf.c_str(),
+                   output_gltf_split_level,
                    output_gltf_rotate_z_to_y,
                    output_gltf_center,
                    output_gltf_attributes))
     {
       long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
-      logger(0, "Exported gltf into %s (%lldms)", output_gltf.c_str(), e);
+      logger(0, "Exported gltf in %lldms", e);
     }
     else {
       logger(2, "Failed to export gltf into %s", output_gltf.c_str());

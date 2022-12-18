@@ -51,6 +51,11 @@ Options:
                                       rotation of 90 degrees about the X axis such that the +Z axis
                                       will map to the +Y axis, which is the up-direction of GLTF-
                                       files. Default value is true.
+  --output-gltf-split-level=<uint>    Specify a level in the hierarchy to split the output into
+                                      multiple files, where 0 implies no split. Geometries and
+                                      attributes below the split point are included in the first
+                                      file, while subsequent files while have empty nodes just to
+                                      represent the hierarchy. Default value is 0.
   --group-bounding-boxes              Include wireframe of boundingboxes of groups in output.
   --color-attribute=key               Specify which attributes that contain color, empty key
                                       implies that material id of group is used.

@@ -61,7 +61,7 @@ namespace {
     std::vector<Vec3f> tmp3f;
     
     struct {
-      size_t level = 3;   // Level to do splitting
+      size_t level = 0;   // Level to do splitting, 0 for no splitting
       size_t choose = 0;  // Keeping track of which split we are processing
       size_t index = 0;   // Which subtree we are to descend
       bool done = false;  // Set to true when there are no more splits
@@ -792,7 +792,7 @@ namespace {
 }
 
 
-bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, bool centerModel, bool includeAttributes)
+bool exportGLTF(Store* store, Logger logger, const char* path, size_t splitLevel, bool rotateZToY, bool centerModel, bool includeAttributes)
 {
   Context ctx{
     .logger = logger,
@@ -800,6 +800,7 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
     .rotateZToY = rotateZToY,
     .includeAttributes = includeAttributes,
   };
+  ctx.split.level = splitLevel;
 
   { // Split into stem and suffix
     size_t o = 0; // offset of last dot
