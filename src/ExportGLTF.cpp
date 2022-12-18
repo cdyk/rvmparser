@@ -770,7 +770,7 @@ namespace {
 #else
     FILE* out = fopen(path, "w");
     if (out == nullptr) {
-      logger(2, "Failed to open %s for writing.", path);
+      ctx.logger(2, "Failed to open %s for writing.", path);
       return false;
     }
 #endif
