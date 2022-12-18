@@ -221,6 +221,7 @@ struct Node
       const char* date;
       const char* user;
       const char* encoding;
+      const char* path;
     } file;
     struct {
       ListHeader<Color> colors;

@@ -110,7 +110,7 @@ namespace {
     }
   }
 
-  const char* parse_head(Context* ctx, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
+  const char* parse_head(Context* ctx, const char* path, const char* base_ptr, const char* curr_ptr, const char* end_ptr, uint32_t expected_next_chunk_offset)
   {
     assert(ctx->group_stack.empty());
     auto * g = ctx->store->newNode(nullptr, Node::Kind::File);
@@ -128,6 +128,7 @@ namespace {
     else {
       g->file.encoding = ctx->store->strings.intern("");
     }
+    g->file.path = ctx->store->strings.intern(path);
 
     if (!verifyOffset(ctx, "HEAD", base_ptr, curr_ptr, expected_next_chunk_offset)) return nullptr;
 
@@ -429,7 +430,7 @@ namespace {
 
 }
 
-bool parseRVM(class Store* store, const void * ptr, size_t size)
+bool parseRVM(class Store* store, const char* path, const void * ptr, size_t size)
 {
   char buf[1024];
   Context ctx = { store,  buf, sizeof(buf) };
@@ -448,7 +449,7 @@ bool parseRVM(class Store* store, const void * ptr, size_t size)
     store->setErrorString(buf);
     return false;
   }
-  curr_ptr = parse_head(&ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
+  curr_ptr = parse_head(&ctx, path, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
   if (curr_ptr == nullptr) return false;
 
   curr_ptr = parse_chunk_header(chunk_id, expected_next_chunk_offset, dunno, curr_ptr, end_ptr);

@@ -406,22 +406,15 @@ namespace {
     rjChildren.PushBack(nodeIndex, alloc);
   }
 
-  uint32_t processGroup(Context& ctx, const Node* group)
+  void addAttributes(Context& ctx, rj::Value rjNode, const Node* node)
   {
-    assert(group->kind == Node::Kind::Group);
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
-
-    rj::Value node(rj::kObjectType);
-    if (group->group.name) {
-      node.AddMember("name", rj::Value(group->group.name, alloc), alloc);
-    }
-
     // Optionally add all attributes under an "extras" object member.
-    if (ctx.includeAttributes && group->attributes.first) {
+    if (ctx.includeAttributes && node->attributes.first) {
+      rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
       rj::Value extras(rj::kObjectType);
 
       rj::Value attributes(rj::kObjectType);
-      for (Attribute* att = group->attributes.first; att; att = att->next) {
+      for (Attribute* att = node->attributes.first; att; att = att->next) {
         if (attributes.HasMember(att->key)) {
           ctx.logger(1, "exportGLTF: Duplicate attribute key, discarding %s=\"%s\"", att->key, att->val);
         }
@@ -429,29 +422,58 @@ namespace {
       }
 
       extras.AddMember("rvm-attributes", attributes, alloc);
-      node.AddMember("extras", extras, alloc);
+      rjNode.AddMember("extras", extras, alloc);
     }
+  }
 
+  uint32_t processNode(Context& ctx, const Node* node)
+  {
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = ctx.model.rjAlloc;
 
+    rj::Value rjNode(rj::kObjectType);
     rj::Value children(rj::kArrayType);
 
-    // Create a child node for each geometry since transforms are per-geomtry
-    for (Geometry* geo = group->group.geometries.first; geo; geo = geo->next) {
-      createGeometryNode(ctx, children, geo);
+    switch (node->kind) {
+    case Node::Kind::File:
+      if (node->file.path) {
+        rjNode.AddMember("name", rj::Value(node->file.path, alloc), alloc);
+      }
+      break;
+
+    case Node::Kind::Model:
+      if (node->model.name) {
+        rjNode.AddMember("name", rj::Value(node->model.name, alloc), alloc);
+      }
+      break;
+
+    case Node::Kind::Group:
+      if (node->group.name) {
+        rjNode.AddMember("name", rj::Value(node->group.name, alloc), alloc);
+      }
+
+      // Create a child node for each geometry since transforms are per-geomtry
+      for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+        createGeometryNode(ctx, children, geo);
+      }
+      break;
+
+    default:
+      assert(false && "Illegal enum");
+      break;
     }
 
     // And recurse into children
-    for (Node* child = group->children.first; child; child = child->next) {
-      children.PushBack(processGroup(ctx, child), alloc);
+    for (Node* child = node->children.first; child; child = child->next) {
+      children.PushBack(processNode(ctx, child), alloc);
     }
 
     if (!children.Empty()) {
-      node.AddMember("children", children, alloc);
+      rjNode.AddMember("children", children, alloc);
     }
 
     // Add this node to document
     uint32_t nodeIndex = ctx.model.rjNodes.Size();
-    ctx.model.rjNodes.PushBack(node, alloc);
+    ctx.model.rjNodes.PushBack(rjNode, alloc);
     return nodeIndex;
   }
 
@@ -486,12 +508,7 @@ namespace {
   void buildRootNodes(Context& ctx, rj::Value& rootNodes, const Node* firstNode)
   {
     for (const Node* node = firstNode; node; node = node->next) {
-      if (node->kind == Node::Kind::Group) {
-        rootNodes.PushBack(processGroup(ctx, node), ctx.model.rjAlloc);
-      }
-      else {
-        buildRootNodes(ctx, rootNodes, node->children.first);
-      }
+      rootNodes.PushBack(processNode(ctx, node), ctx.model.rjAlloc);
     }
   }
 
@@ -695,6 +712,43 @@ namespace {
     return true;
   }
 
+  bool processSubtree(Context& ctx, const char* path, const Node* firstNode)
+  {
+    rj::Document rjDoc = buildGLTF(ctx, firstNode);
+
+#ifdef _WIN32
+    FILE* out = nullptr;
+    auto err = fopen_s(&out, path, "wb");
+    if (err != 0) {
+      char buf[256];
+      if (strerror_s(buf, sizeof(buf), err) != 0) {
+        buf[0] = '\0';
+      }
+      ctx.logger(2, "Failed to open %s for writing: %s", path, buf);
+      return false;
+    }
+    assert(out);
+#else
+    FILE* out = fopen(path, "w");
+    if (out == nullptr) {
+      logger(2, "Failed to open %s for writing.", path);
+      return false;
+    }
+#endif
+
+    bool success = true;
+    if (ctx.glbContainer) {
+      success = writeAsGLB(ctx, out, path, rjDoc);
+    }
+    else {
+      success = writeAsGLTF(ctx, out, path, rjDoc);
+    }
+
+    fclose(out);
+
+    return success;
+  }
+
 }
 
 
@@ -748,37 +802,9 @@ bool exportGLTF(Store* store, Logger logger, const char* path, bool rotateZToY, 
              ctx.centerModel ? 1 : 0,
              ctx.includeAttributes ? 1 : 0);
 
-  rj::Document rjDoc = buildGLTF(ctx, store->getFirstRoot());
-
-#ifdef _WIN32
-  FILE* out = nullptr;
-  auto err = fopen_s(&out, path, "wb");
-  if (err != 0) {
-    char buf[256];
-    if (strerror_s(buf, sizeof(buf), err) != 0) {
-      buf[0] = '\0';
-    }
-    logger(2, "Failed to open %s for writing: %s", path, buf);
+  if (!processSubtree(ctx, path, store->getFirstRoot())) {
     return false;
   }
-  assert(out);
-#else
-  FILE* out = fopen(path, "w");
-  if (out == nullptr) {
-    logger(2, "Failed to open %s for writing.", path);
-    return false;
-  }
-#endif
 
-  bool success = true;
-  if (ctx.glbContainer) {
-    success = writeAsGLB(ctx, out, path, rjDoc);
-  }
-  else {
-    success = writeAsGLTF(ctx, out, path, rjDoc);
-  }
-
-  fclose(out);
-
-  return success;
+  return true;
 }

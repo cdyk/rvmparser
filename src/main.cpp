@@ -177,7 +177,7 @@ Post bug reports or questions at https://github.com/cdyk/rvmparser
   {
     std::string lower;
     for (const char c : value) {
-      lower.push_back(std::tolower(c));
+      lower.push_back(static_cast<char>(std::tolower(c)));
     }
     if (lower == "true" || lower == "1" || lower == "yes") {
       return true;
@@ -308,11 +308,11 @@ int main(int argc, char** argv)
     }
 
     auto arg_lc = arg;
-    for (auto & c : arg_lc) c = std::tolower(c);
+    for (auto & c : arg_lc) c = static_cast<char>(std::tolower(c));
 
     // parse rvm file
     if (arg_lc.rfind(".rvm") != std::string::npos) {
-      if (processFile(arg, [store](const void * ptr, size_t size) { return parseRVM(store, ptr, size); }))
+      if (processFile(arg, [store, arg](const void * ptr, size_t size) { return parseRVM(store, arg.c_str(), ptr, size); }))
       {
         fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
       }
