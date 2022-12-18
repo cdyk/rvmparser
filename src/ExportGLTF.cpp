@@ -416,7 +416,7 @@ namespace {
     rjChildren.PushBack(nodeIndex, alloc);
   }
 
-  void addAttributes(Context& ctx, Model& model, rj::Value rjNode, const Node* node)
+  void addAttributes(Context& ctx, Model& model, rj::Value& rjNode, const Node* node)
   {
     // Optionally add all attributes under an "extras" object member.
     if (ctx.includeAttributes && node->attributes.first) {
@@ -463,10 +463,20 @@ namespace {
     rj::Value rjNode(rj::kObjectType);
     rj::Value children(rj::kArrayType);
 
+    // If we are splitting, only include attributes and geometries below the split
+    // point in the first file
+    bool includeContent = true;
+    if (level < ctx.split.level && ctx.split.index != 0) {
+      includeContent = false;
+    }
+
     switch (node->kind) {
     case Node::Kind::File:
       if (node->file.path) {
         rjNode.AddMember("name", rj::Value(node->file.path, alloc), alloc);
+      }
+      if (includeContent) {
+        addAttributes(ctx, model, rjNode, node);
       }
       break;
 
@@ -474,16 +484,21 @@ namespace {
       if (node->model.name) {
         rjNode.AddMember("name", rj::Value(node->model.name, alloc), alloc);
       }
+      if (includeContent) {
+        addAttributes(ctx, model, rjNode, node);
+      }
       break;
 
     case Node::Kind::Group:
       if (node->group.name) {
         rjNode.AddMember("name", rj::Value(node->group.name, alloc), alloc);
       }
-
-      // Create a child node for each geometry since transforms are per-geomtry
-      for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-        createGeometryNode(ctx, model, children, geo);
+      if (includeContent) {
+        addAttributes(ctx, model, rjNode, node);
+        // Create a child node for each geometry since transforms are per-geomtry
+        for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+          createGeometryNode(ctx, model, children, geo);
+        }
       }
       break;
 
