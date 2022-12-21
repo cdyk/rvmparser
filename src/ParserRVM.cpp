@@ -99,7 +99,7 @@ namespace {
   bool verifyOffset(Context* ctx, const char* chunk_type, const char* base_ptr, const char* curr_ptr, uint32_t expected_next_chunk_offset)
   {
     size_t current_offset = curr_ptr - base_ptr;
-    if (current_offset == expected_next_chunk_offset) {
+    if (static_cast<uint32_t>(current_offset) == expected_next_chunk_offset) {
       return true;
     }
     else {
