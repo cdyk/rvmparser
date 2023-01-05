@@ -378,6 +378,71 @@ namespace {
     }
   }
 
+
+  void mergeGeometries(Context& ctx, const std::vector<const Geometry*>& geos)
+  {
+    // Calc average pos and count number of vertices
+    size_t nv = 0;
+    size_t nt = 0;
+    Vec3d avg = makeVec3d(0.0, 0.0, 0.0);
+    for (const Geometry* geo : geos) {
+      assert(geo->triangulation);
+
+      const Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
+        avg = avg + mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
+      }
+      nv += geo->triangulation->vertices_n;
+      nt += geo->triangulation->triangles_n;
+    }
+    assert(nv < std::numeric_limits<uint32_t>::max());
+
+    avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
+
+    std::vector<Vec3f>& V = ctx.tmp3f_1;
+    V.resize(nv);
+
+    std::vector<Vec3f>& N = ctx.tmp3f_2;
+    N.resize(nv);
+
+    std::vector<uint32_t>& I = ctx.tmp32ui;
+    I.clear();
+    I.reserve(3 * nt);
+
+    size_t ov = 0;  // vertex offset
+    for (const Geometry* geo : geos) {
+
+      // Matrix that transform from local transform to cog
+      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      M.m03 -= avg.x;
+      M.m13 -= avg.y;
+      M.m23 -= avg.z;
+
+      const Mat3f T = makeMat3f(geo->M_3x4.data);
+
+      // Transform vertices and normals into new frame
+      for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
+        const Vec3d p = mul(M, makeVec3d(geo->triangulation->vertices + 3*i));
+        ctx.tmp3f_1[ov + i] = makeVec3f(static_cast<float>(p.x),
+                                        static_cast<float>(p.y),
+                                        static_cast<float>(p.z));
+        Vec3f n = normalize(mul(T, makeVec3f(geo->triangulation->normals + 3 * i)));
+        if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
+          n = makeVec3f(1.f, 0.f, 0.f);
+        }
+        N[ov + i] = n;
+      }
+
+      // Transform indices
+      for (size_t i = 0; i < 3 * geo->triangulation->triangles_n; i++) {
+        I.push_back(static_cast<uint32_t>(geo->triangulation->indices[i] + ov));
+      }
+      ov += geo->triangulation->vertices_n;
+    }
+    assert(ov == nv);
+    assert(I.size() == 3 * nt);
+  }
+
   void createGeometryNode(Context& ctx, Model& model, rj::Value& rjChildren, Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
@@ -505,6 +570,8 @@ namespace {
             ctx.geos.push_back(geo);
           }
         }
+        mergeGeometries(ctx, ctx.geos);
+
         // Create a child node for each geometry since transforms are per-geomtry
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
           createGeometryNode(ctx, model, children, geo);
