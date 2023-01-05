@@ -58,8 +58,10 @@ namespace {
     const char* suffix = nullptr;
 
     std::vector<char> tmpBase64;
-    std::vector<Vec3f> tmp3f;
-    
+    std::vector<Vec3f> tmp3f_1;
+    std::vector<Vec3f> tmp3f_2;
+    std::vector<uint32_t> tmp32ui;
+
     struct {
       size_t level = 0;   // Level to do splitting, 0 for no splitting
       size_t choose = 0;  // Keeping track of which split we are processing
@@ -343,7 +345,7 @@ namespace {
       if (tri->normals) {
 
         // Make sure that normal vectors are of unit length
-        std::vector<Vec3f>& tmpNormals = ctx.tmp3f;
+        std::vector<Vec3f>& tmpNormals = ctx.tmp3f_1;
         tmpNormals.resize(tri->vertices_n * 3);
         for (size_t i = 0; i < tri->vertices_n; i++) {
           Vec3f n = normalize(makeVec3f(tri->normals + 3 * i));
