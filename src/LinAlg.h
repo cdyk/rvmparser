@@ -148,3 +148,32 @@ struct Mat3x4f
 
 inline Mat3x4f makeMat3x4f(const Mat3x4f& a) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = a.data[i]; return r; }
 inline Mat3x4f makeMat3x4f(const float* ptr) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = ptr[i]; return r; }
+
+struct Mat3x4d
+{
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+  union {
+    struct {
+      double m00;
+      double m10;
+      double m20;
+
+      double m01;
+      double m11;
+      double m21;
+
+      double m02;
+      double m12;
+      double m22;
+
+      double m03;
+      double m13;
+      double m23;
+    };
+    Vec3d cols[4];
+    double data[4 * 3];
+  };
+#pragma warning(pop)
+};
+inline Mat3x4d makeMat3x4d(const float* ptr) { Mat3x4d r; for (size_t i = 0; i < 4 * 3; i++) { r.data[i] = ptr[i]; } return r; }

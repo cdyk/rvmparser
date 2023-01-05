@@ -84,6 +84,15 @@ inline Vec3f mul(const Mat3x4f& A, const Vec3f& x)
   return r;
 }
 
+inline Vec3d mul(const Mat3x4d& A, const Vec3d& x)
+{
+  Vec3d r;
+  for (size_t k = 0; k < 3; k++) {
+    r.data[k] = A.data[k] * x.data[0] + A.data[3 + k] * x.data[1] + A.data[6 + k] * x.data[2] + A.data[9 + k];
+  }
+  return r;
+}
+
 inline BBox3f createEmptyBBox3f()
 {
   return makeBBox3f(makeVec3f(FLT_MAX, FLT_MAX, FLT_MAX), makeVec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX));
