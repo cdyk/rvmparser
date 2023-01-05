@@ -44,6 +44,25 @@ inline Vec3f makeVec3f(float* ptr) { Vec3f r; r.x = ptr[0]; r.y = ptr[1]; r.z = 
 inline Vec3f makeVec3f(float x, float y, float z) { Vec3f r; r.x = x; r.y = y; r.z = z; return r; }
 inline Vec3f makeVec3f(const Vec2f& a, float z) { Vec3f r; r.x = a.x; r.y = a.y; r.z = z; return r; }
 
+struct Vec3d
+{
+#pragma warning(push)
+#pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+  union {
+    struct {
+      double x;
+      double y;
+      double z;
+    };
+    double data[3];
+  };
+#pragma warning(pop)
+  double& operator[](size_t i) { return data[i]; }
+  const double& operator[](size_t i) const { return data[i]; }
+};
+inline Vec3d makeVec3d(const float* ptr) { Vec3d r; r.x = ptr[0]; r.y = ptr[1]; r.z = ptr[2]; return r; }
+inline Vec3d makeVec3d(double x, double y, double z) { Vec3d r; r.x = x; r.y = y; r.z = z; return r; }
+
 
 struct BBox3f
 {

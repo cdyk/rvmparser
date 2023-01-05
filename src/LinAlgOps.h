@@ -52,6 +52,11 @@ inline Vec3f min(const Vec3f& a, const Vec3f& b)
                    a.z < b.z ? a.z : b.z);
 }
 
+inline Vec3d operator+(const Vec3d& a, const Vec3d& b) { return makeVec3d(a.x + b.x, a.y + b.y, a.z + b.z); }
+
+inline Vec3d operator*(const double a, const Vec3d& b) { return makeVec3d(a * b.x, a * b.y, a * b.z); }
+
+
 Mat3f inverse(const Mat3f& M);
 
 Mat3f mul(const Mat3f& A, const Mat3f& B);
