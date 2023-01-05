@@ -68,7 +68,7 @@ inline float getScale(const Mat3x4f& M) { return getScale(makeMat3f(M.data)); }
 inline Vec3f mul(const Mat3f& A, const Vec3f& x)
 {
   Vec3f r;
-  for (unsigned k = 0; k < 3; k++) {
+  for (size_t k = 0; k < 3; k++) {
     r.data[k] = A.data[k] * x.data[0] + A.data[3 + k] * x.data[1] + A.data[6 + k] * x.data[2];
   }
   return r;
@@ -78,7 +78,7 @@ inline Vec3f mul(const Mat3f& A, const Vec3f& x)
 inline Vec3f mul(const Mat3x4f& A, const Vec3f& x)
 {
   Vec3f r;
-  for (unsigned k = 0; k < 3; k++) {
+  for (size_t k = 0; k < 3; k++) {
     r.data[k] = A.data[k] * x.data[0] + A.data[3 + k] * x.data[1] + A.data[6 + k] * x.data[2] + A.data[9 + k];
   }
   return r;
@@ -127,30 +127,30 @@ inline bool isNotEmpty(const BBox3f& b) { return b.min.x <= b.max.x; }
 
 inline float maxSideLength(const BBox3f& b)
 {
-  auto l = b.max - b.min;
-  auto t = l.x > l.y ? l.x : l.y;
+  Vec3f l = b.max - b.min;
+  float t = l.x > l.y ? l.x : l.y;
   return l.z > t ? l.z : t;
 }
 
 inline bool isStrictlyInside(const BBox3f& a, const BBox3f& b)
 {
-  auto lx = a.min.x <= b.min.x;
-  auto ly = a.min.y <= b.min.y;
-  auto lz = a.min.z <= b.min.z;
-  auto ux = b.max.x <= a.max.x;
-  auto uy = b.max.y <= a.max.y;
-  auto uz = b.max.z <= a.max.z;
+  bool lx = a.min.x <= b.min.x;
+  bool ly = a.min.y <= b.min.y;
+  bool lz = a.min.z <= b.min.z;
+  bool ux = b.max.x <= a.max.x;
+  bool uy = b.max.y <= a.max.y;
+  bool uz = b.max.z <= a.max.z;
   return lx && ly && lz && ux && uy && uz;
 }
 
 inline bool isNotOverlapping(const BBox3f& a, const BBox3f& b)
 {
-  auto lx = b.max.x < a.min.x;
-  auto ly = b.max.y < a.min.y;
-  auto lz = b.max.z < a.min.z;
-  auto ux = a.max.x < b.min.x;
-  auto uy = a.max.y < b.min.y;
-  auto uz = a.max.z < b.min.z;
+  bool lx = b.max.x < a.min.x;
+  bool ly = b.max.y < a.min.y;
+  bool lz = b.max.z < a.min.z;
+  bool ux = a.max.x < b.min.x;
+  bool uy = a.max.y < b.min.y;
+  bool uz = a.max.z < b.min.z;
   return lx || ly || lz || ux || uy || uz;
 }
 

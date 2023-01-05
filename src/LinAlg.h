@@ -17,7 +17,7 @@ struct Vec2f
 };
 
 inline Vec2f makeVec2f(float x) { Vec2f r; r.x = x; r.y = x; return r; }
-inline Vec2f makeVec2f(float* ptr) { Vec2f r; r.x = ptr[0]; r.y = ptr[1]; return r; }
+inline Vec2f makeVec2f(const float* ptr) { Vec2f r; r.x = ptr[0]; r.y = ptr[1]; return r; }
 inline Vec2f makeVec2f(float x, float y) { Vec2f r; r.x = x; r.y = y; return r; }
 
 
@@ -40,7 +40,7 @@ struct Vec3f
 
 inline Vec3f makeVec3f(const Vec3f& q) { Vec3f r; r.x = q.x; r.y = q.y; r.z = q.z; return r; }
 inline Vec3f makeVec3f(float x) { Vec3f r; r.x = x; r.y = x; r.z = x; return r; }
-inline Vec3f makeVec3f(float* ptr) { Vec3f r; r.x = ptr[0]; r.y = ptr[1]; r.z = ptr[2]; return r; }
+inline Vec3f makeVec3f(const float* ptr) { Vec3f r; r.x = ptr[0]; r.y = ptr[1]; r.z = ptr[2]; return r; }
 inline Vec3f makeVec3f(float x, float y, float z) { Vec3f r; r.x = x; r.y = y; r.z = z; return r; }
 inline Vec3f makeVec3f(const Vec2f& a, float z) { Vec3f r; r.x = a.x; r.y = a.y; r.z = z; return r; }
 
@@ -104,8 +104,8 @@ struct Mat3f
 #pragma warning(pop)
 };
 
-inline Mat3f makeMat3f(const Mat3f& a) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) r.data[i] = a.data[i]; return r; }
-inline Mat3f makeMat3f(const float* ptr) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) r.data[i] = ptr[i]; return r; }
+inline Mat3f makeMat3f(const Mat3f& a) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) { r.data[i] = a.data[i]; } return r; }
+inline Mat3f makeMat3f(const float* ptr) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) { r.data[i] = ptr[i]; } return r; }
 inline Mat3f makeMat3f(float m00, float m01, float m02,
                        float m10, float m11, float m12,
                        float m20, float m21, float m22)
@@ -146,8 +146,8 @@ struct Mat3x4f
 #pragma warning(pop)
 };
 
-inline Mat3x4f makeMat3x4f(const Mat3x4f& a) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = a.data[i]; return r; }
-inline Mat3x4f makeMat3x4f(const float* ptr) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) r.data[i] = ptr[i]; return r; }
+inline Mat3x4f makeMat3x4f(const Mat3x4f& a) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) { r.data[i] = a.data[i]; } return r; }
+inline Mat3x4f makeMat3x4f(const float* ptr) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) { r.data[i] = ptr[i]; } return r; }
 
 struct Mat3x4d
 {
