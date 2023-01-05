@@ -61,6 +61,7 @@ namespace {
     std::vector<Vec3f> tmp3f_1;
     std::vector<Vec3f> tmp3f_2;
     std::vector<uint32_t> tmp32ui;
+    std::vector<const Geometry*> geos;
 
     struct {
       size_t level = 0;   // Level to do splitting, 0 for no splitting
@@ -497,6 +498,13 @@ namespace {
       }
       if (includeContent) {
         addAttributes(ctx, model, rjNode, node);
+
+        ctx.geos.clear();
+        for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+          if (geo->triangulation) {
+            ctx.geos.push_back(geo);
+          }
+        }
         // Create a child node for each geometry since transforms are per-geomtry
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
           createGeometryNode(ctx, model, children, geo);
