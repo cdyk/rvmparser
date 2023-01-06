@@ -173,7 +173,7 @@ namespace {
 
       rj::Value rjBuffer(rj::kObjectType);
       rjBuffer.AddMember("uri", rjData, alloc);
-      rjBuffer.AddMember("byteLength", byteLength, alloc);
+      rjBuffer.AddMember("byteLength", static_cast<uint64_t>(byteLength), alloc);
       bufferIndex = model.rjBufferViews.Size();
       model.rjBuffers.PushBack(rjBuffer, alloc);
     }
