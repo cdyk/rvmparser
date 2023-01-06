@@ -183,7 +183,7 @@ namespace {
     if (byteOffset) {
       rjBufferView.AddMember("byteOffset", byteOffset, alloc);
     }
-    rjBufferView.AddMember("byteLength", byteLength, alloc);
+    rjBufferView.AddMember("byteLength", static_cast<uint64_t>(byteLength), alloc);
 
     rjBufferView.AddMember("target", target, alloc);
 
