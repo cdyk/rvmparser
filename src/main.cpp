@@ -373,7 +373,18 @@ int main(int argc, char** argv)
   } 
 
   if (rv == 0 && !keep_regex.empty()) {
-    if (!flattenRegex(store, logger, keep_regex.c_str())) {
+    unsigned prevGroups = store->groupCount_();
+    unsigned prevGeos = store->geometryCount_();
+    auto time0 = std::chrono::high_resolution_clock::now();
+    if (flattenRegex(store, logger, keep_regex.c_str())) {
+      long long ms = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
+      store->updateCounts();
+      logger(0, "Flatten hierarchy using regex '%s' in %lldms, %u -> %u nodes, %u -> %u geometries",
+             keep_regex.c_str(), ms,
+             prevGroups, store->groupCount_(),
+             prevGeos, store->geometryCount_());
+    }
+    else {
       logger(2, "Failed to flatten hierarchy using regex '%s'", keep_regex.c_str());
       rv = -1;
     }
