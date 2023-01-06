@@ -81,6 +81,7 @@ namespace {
     bool rotateZToY = true;
     bool includeAttributes = false;
     bool glbContainer = false;
+    bool mergeGeometries = true;
   };
 
 
@@ -383,6 +384,41 @@ namespace {
     }
   }
 
+  bool insertGeometryIntoNode(Context& ctx, Model& model, rj::Value& node, Geometry* geo)
+  {
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+    rj::Value rjPrimitives(rj::kArrayType);
+    addGeometryPrimitive(ctx, model, rjPrimitives, geo);
+
+    // If no primitives were produced, no point in creating mesh and mesh-holding node
+    if (rjPrimitives.Empty()) return false;
+
+    // Create mesh
+    rj::Value mesh(rj::kObjectType);
+    mesh.AddMember("primitives", rjPrimitives, alloc);
+    uint32_t meshIndex = model.rjMeshes.Size();
+    model.rjMeshes.PushBack(mesh, alloc);
+
+    node.AddMember("mesh", meshIndex, alloc);
+
+    rj::Value matrix(rj::kArrayType);
+    for (size_t c = 0; c < 3; c++) {
+      for (size_t r = 0; r < 3; r++) {
+        matrix.PushBack(geo->M_3x4.cols[c][r], alloc);
+      }
+      matrix.PushBack(0.f, alloc);
+    }
+    for (size_t r = 0; r < 3; r++) {
+      matrix.PushBack(geo->M_3x4.cols[3][r] - model.origin[r], alloc);
+    }
+    matrix.PushBack(1.f, alloc);
+
+    node.AddMember("matrix", matrix, alloc);
+
+    return true;
+  }
+
   void addPrimitiveForLines(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
     assert(!geos.empty());
@@ -421,7 +457,6 @@ namespace {
 
     ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
   }
-
 
   void addPrimitiveForTriangulations(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
@@ -553,47 +588,6 @@ namespace {
     node.AddMember("translation", translation, alloc);
   }
 
-  void createGeometryNode(Context& ctx, Model& model, rj::Value& rjChildren, Geometry* geo)
-  {
-    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
-
-    rj::Value rjPrimitives(rj::kArrayType);
-    addGeometryPrimitive(ctx, model, rjPrimitives, geo);
-
-    // If no primitives were produced, no point in creating mesh and mesh-holding node
-    if (rjPrimitives.Empty()) return;
-
-    // Create mesh
-    rj::Value mesh(rj::kObjectType);
-    mesh.AddMember("primitives", rjPrimitives, alloc);
-    uint32_t meshIndex = model.rjMeshes.Size();
-    model.rjMeshes.PushBack(mesh, alloc);
-
-    // Create mesh holding node
-
-    rj::Value node(rj::kObjectType);
-    node.AddMember("mesh", meshIndex, alloc);
-
-    rj::Value matrix(rj::kArrayType);
-    for (size_t c = 0; c < 3; c++) {
-      for (size_t r = 0; r < 3; r++) {
-        matrix.PushBack(geo->M_3x4.cols[c][r], alloc);
-      }
-      matrix.PushBack(0.f, alloc);
-    }
-    for (size_t r = 0; r < 3; r++) {
-      matrix.PushBack(geo->M_3x4.cols[3][r] - model.origin[r], alloc);
-    }
-    matrix.PushBack(1.f, alloc);
-
-    node.AddMember("matrix", matrix, alloc);
-
-    // Add this node to document
-    uint32_t nodeIndex = model.rjNodes.Size();
-    model.rjNodes.PushBack(node, alloc);
-    rjChildren.PushBack(nodeIndex, alloc);
-  }
-
   void addAttributes(Context& ctx, Model& model, rj::Value& rjNode, const Node* node)
   {
     // Optionally add all attributes under an "extras" object member.
@@ -613,6 +607,7 @@ namespace {
       rjNode.AddMember("extras", extras, alloc);
     }
   }
+
   uint32_t processNode(Context& ctx, Model& model, const Node* node, size_t level);
 
   void processChildren(Context& ctx, Model& model, rj::Value& children, const Node* firstChild, size_t level)
@@ -674,23 +669,45 @@ namespace {
       if (includeContent) {
         addAttributes(ctx, model, rjNode, node);
 
-        ctx.geos.clear();
-        for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-          size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
-          ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
-        }
-        if (!ctx.geos.empty()) {
-          rj::Value geometryNode(rj::kObjectType);
-          insertMergedGeometriesIntoNode(ctx, model, geometryNode, ctx.geos);
+        if (node->group.geometries.first) {
 
-          uint32_t nodeIndex = model.rjNodes.Size();
-          model.rjNodes.PushBack(geometryNode, alloc);
-          children.PushBack(nodeIndex, alloc);
-        }
+          // Just a single geometry, store in node
+          if (node->group.geometries.first->next == nullptr) {
+            insertGeometryIntoNode(ctx, model, rjNode, node->group.geometries.first);
+          }
 
-        // Create a child node for each geometry since transforms are per-geomtry
-        for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-          //createGeometryNode(ctx, model, children, geo);
+          // Multiple geometries, merge them using a common frame
+          else if(ctx.mergeGeometries) {
+
+            ctx.geos.clear();
+            for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+              size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
+              ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
+            }
+            if (!ctx.geos.empty()) {
+              rj::Value geometryNode(rj::kObjectType);
+              insertMergedGeometriesIntoNode(ctx, model, geometryNode, ctx.geos);
+
+              uint32_t nodeIndex = model.rjNodes.Size();
+              model.rjNodes.PushBack(geometryNode, alloc);
+              children.PushBack(nodeIndex, alloc);
+            }
+          }
+
+          // Create a child node for each geometry since transforms are per-geomtry
+          else {
+            for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+
+              rj::Value geometryNode(rj::kObjectType);
+              if (insertGeometryIntoNode(ctx, model, geometryNode, geo)) {
+
+                // Add this node to document
+                uint32_t nodeIndex = model.rjNodes.Size();
+                model.rjNodes.PushBack(geometryNode, alloc);
+                children.PushBack(nodeIndex, alloc);
+              }
+            }
+          }
         }
       }
       break;
