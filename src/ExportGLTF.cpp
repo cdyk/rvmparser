@@ -68,7 +68,7 @@ namespace {
     std::vector<Vec3f> tmp3f_1;
     std::vector<Vec3f> tmp3f_2;
     std::vector<uint32_t> tmp32ui;
-    std::vector<GeometryItem> geos;
+    std::vector<GeometryItem> tmpGeos;
 
     struct {
       size_t level = 0;   // Level to do splitting, 0 for no splitting
@@ -647,6 +647,37 @@ namespace {
     }
   }
 
+  void addGeometries(Context& ctx, Model& model, rj::Value& rjNode, rj::Value& rjNodeChildren, std::vector<GeometryItem>& geos, const bool modifyNodeTransform)
+  {
+    // Handle merging of multiple geometries
+    if (ctx.mergeGeometries && 1 < geos.size()) {
+      if (modifyNodeTransform) {
+        insertMergedGeometriesIntoNode(ctx, model, rjNode, geos);
+      }
+      else {
+        rj::Value geometryNode(rj::kObjectType);
+        if (insertMergedGeometriesIntoNode(ctx, model, geometryNode, geos)) {
+          addChildNode(model, rjNodeChildren, geometryNode);
+        }
+      }
+    }
+
+    // Handle single geometry when we can modify the node transform
+    else if (modifyNodeTransform && geos.size() == 1) {
+      insertGeometryIntoNode(ctx, model, rjNode, geos[0].geo);
+    }
+
+    // Or we have to create holder geometries for all
+    else {
+      for (const GeometryItem& item : geos) {
+        rj::Value geometryNode(rj::kObjectType);
+        if (insertGeometryIntoNode(ctx, model, geometryNode, item.geo)) {
+          addChildNode(model, rjNodeChildren, geometryNode);
+        }
+      }
+    }
+  }
+
   uint32_t processNode(Context& ctx, Model& model, const Node* node, size_t level)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
@@ -687,45 +718,19 @@ namespace {
       if (includeContent) {
         addAttributes(ctx, model, rjNode, node);
 
-        if (node->group.geometries.first) {
+        if(node->group.geometries.first != nullptr) {
 
-          // Just a single geometry, store in node
-          if (node->group.geometries.first->next == nullptr) {
-            insertGeometryIntoNode(ctx, model, rjNode, node->group.geometries.first);
+          // Collect all geometries
+          std::vector<GeometryItem>& geos = ctx.tmpGeos;
+          geos.clear();
+          for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+            size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
+            geos.push_back({ .sortKey = sortKey, .geo = geo });
           }
 
-          // Multiple geometries, merge them using a common frame
-          else if(ctx.mergeGeometries) {
+          // Add geometries under node
+          addGeometries(ctx, model, rjNode, children, geos, node->children.first == nullptr);
 
-            ctx.geos.clear();
-            for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-              size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
-              ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
-            }
-            if (!ctx.geos.empty()) {
-              rj::Value geometryNode(rj::kObjectType);
-              insertMergedGeometriesIntoNode(ctx, model, geometryNode, ctx.geos);
-
-              uint32_t nodeIndex = model.rjNodes.Size();
-              model.rjNodes.PushBack(geometryNode, alloc);
-              children.PushBack(nodeIndex, alloc);
-            }
-          }
-
-          // Create a child node for each geometry since transforms are per-geomtry
-          else {
-            for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-
-              rj::Value geometryNode(rj::kObjectType);
-              if (insertGeometryIntoNode(ctx, model, geometryNode, geo)) {
-
-                // Add this node to document
-                uint32_t nodeIndex = model.rjNodes.Size();
-                model.rjNodes.PushBack(geometryNode, alloc);
-                children.PushBack(nodeIndex, alloc);
-              }
-            }
-          }
         }
       }
       break;
