@@ -282,5 +282,8 @@
     <ClCompile Include="..\src\ExportRev.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\FlattenRegex.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
