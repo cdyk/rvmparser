@@ -379,7 +379,7 @@ namespace {
   }
 
 
-  void mergeGeometries(Context& ctx, const std::vector<const Geometry*>& geos)
+  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, const std::vector<const Geometry*>& geos)
   {
     // Calc average pos and count number of vertices
     size_t nv = 0;
@@ -441,6 +441,47 @@ namespace {
     }
     assert(ov == nv);
     assert(I.size() == 3 * nt);
+    ctx.logger(2, "exportGLTF: merged %zu meshes", geos.size());
+
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+
+
+    uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), nv, true);
+    uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), nv, true);
+    uint32_t indicesAccesorIx = createAccessorUint32(ctx, model,  I.data(), 3 * nt, false);
+
+
+    rj::Value rjAttributes(rj::kObjectType);
+    rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
+    rjAttributes.AddMember("NORMAL", normalAccessorIx, alloc);
+
+    rj::Value rjPrimitive(rj::kObjectType);
+    rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
+    rjPrimitive.AddMember("attributes", rjAttributes, alloc);
+    rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
+    rjPrimitive.AddMember("material", createOrGetColor(ctx, model,
+                                                       geos[0]->colorName,
+                                                       geos[0]->color,
+                                                       static_cast<uint8_t>(geos[0]->transparency)),
+                          alloc);
+
+    rj::Value rjPrimitives(rj::kArrayType);
+    rjPrimitives.PushBack(rjPrimitive, alloc);
+
+    // Create mesh
+    rj::Value mesh(rj::kObjectType);
+    mesh.AddMember("primitives", rjPrimitives, alloc);
+    uint32_t meshIndex = model.rjMeshes.Size();
+    model.rjMeshes.PushBack(mesh, alloc);
+
+    node.AddMember("mesh", meshIndex, alloc);
+
+    rj::Value translation(rj::kArrayType);
+    for (size_t r = 0; r < 3; r++) {
+      translation.PushBack(avg[r] - model.origin[r], alloc);
+    }
+    node.AddMember("translation", translation, alloc);
   }
 
   void createGeometryNode(Context& ctx, Model& model, rj::Value& rjChildren, Geometry* geo)
@@ -570,11 +611,18 @@ namespace {
             ctx.geos.push_back(geo);
           }
         }
-        mergeGeometries(ctx, ctx.geos);
+        if (!ctx.geos.empty()) {
+          rj::Value geometryNode(rj::kObjectType);
+          insertMergedGeometriesIntoNode(ctx, model, geometryNode, ctx.geos);
+
+          uint32_t nodeIndex = model.rjNodes.Size();
+          model.rjNodes.PushBack(geometryNode, alloc);
+          children.PushBack(nodeIndex, alloc);
+        }
 
         // Create a child node for each geometry since transforms are per-geomtry
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-          createGeometryNode(ctx, model, children, geo);
+          //createGeometryNode(ctx, model, children, geo);
         }
       }
       break;
