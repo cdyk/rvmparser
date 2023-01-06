@@ -2,8 +2,10 @@
 
 struct Vec2f
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       float x;
@@ -11,7 +13,9 @@ struct Vec2f
     };
     float data[2];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
@@ -23,8 +27,10 @@ inline Vec2f makeVec2f(float x, float y) { Vec2f r; r.x = x; r.y = y; return r; 
 
 struct Vec3f
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       float x;
@@ -33,7 +39,9 @@ struct Vec3f
     };
     float data[3];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   float& operator[](size_t i) { return data[i]; }
   const float& operator[](size_t i) const { return data[i]; }
 };
@@ -46,8 +54,10 @@ inline Vec3f makeVec3f(const Vec2f& a, float z) { Vec3f r; r.x = a.x; r.y = a.y;
 
 struct Vec3d
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       double x;
@@ -56,7 +66,9 @@ struct Vec3d
     };
     double data[3];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
   double& operator[](size_t i) { return data[i]; }
   const double& operator[](size_t i) const { return data[i]; }
 };
@@ -67,8 +79,10 @@ inline Vec3f makeVec3f(const Vec3d& q) { Vec3f r; r.x = static_cast<float>(q.x);
 
 struct BBox3f
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       Vec3f min;
@@ -76,7 +90,9 @@ struct BBox3f
     };
     float data[6];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 };
 
 inline BBox3f makeBBox3f(const BBox3f& a) { BBox3f r; r.min = a.min; r.max = a.max; return r; }
@@ -85,8 +101,10 @@ inline BBox3f makeBBox3f(const Vec3f& min, const Vec3f& max) { BBox3f r; r.min =
 
 struct Mat3f
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       float m00;
@@ -102,7 +120,9 @@ struct Mat3f
     Vec3f cols[3];
     float data[3 * 3];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 };
 
 inline Mat3f makeMat3f(const Mat3f& a) { Mat3f r; for (size_t i = 0; i < 3 * 3; i++) { r.data[i] = a.data[i]; } return r; }
@@ -121,8 +141,10 @@ inline Mat3f makeMat3f(float m00, float m01, float m02,
 
 struct Mat3x4f
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       float m00;
@@ -144,7 +166,9 @@ struct Mat3x4f
     Vec3f cols[4];
     float data[4 * 3];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 };
 
 inline Mat3x4f makeMat3x4f(const Mat3x4f& a) { Mat3x4f r; for (size_t i = 0; i < 4 * 3; i++) { r.data[i] = a.data[i]; } return r; }
@@ -152,8 +176,10 @@ inline Mat3x4f makeMat3x4f(const float* ptr) { Mat3x4f r; for (size_t i = 0; i <
 
 struct Mat3x4d
 {
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4201)  // Nonstandard extension of nameless struct/union
+#endif
   union {
     struct {
       double m00;
@@ -175,6 +201,8 @@ struct Mat3x4d
     Vec3d cols[4];
     double data[4 * 3];
   };
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 };
 inline Mat3x4d makeMat3x4d(const float* ptr) { Mat3x4d r; for (size_t i = 0; i < 4 * 3; i++) { r.data[i] = ptr[i]; } return r; }
