@@ -176,6 +176,17 @@ struct ListHeader
       last = item;
     }
   }
+
+  T* popFront()
+  {
+    T* rv = first;
+    if (rv) {
+      first = rv->next;
+      rv->next = nullptr;
+    }
+    return rv;
+  }
+
 };
 
 struct Attribute
