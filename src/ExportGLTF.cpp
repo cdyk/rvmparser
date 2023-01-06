@@ -54,8 +54,8 @@ namespace {
 
   struct GeometryItem
   {
+    size_t sortKey;   // Bit 0 is line-not-line, bits 1 and up are material index
     const Geometry* geo;
-    uint32_t materialIx;
   };
 
   struct Context {
@@ -393,7 +393,7 @@ namespace {
     }
   }
 
-  void mergeAndAddTriangulationRange(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  void addPrimitiveForGeometries(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
     std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
     std::vector<Vec3f>& N = ctx.tmp3f_2;
@@ -458,13 +458,13 @@ namespace {
       rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
       rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
-      rjPrimitive.AddMember("material", geos[0].materialIx, alloc);
+      rjPrimitive.AddMember("material", geos[0].sortKey >> 1, alloc);
 
       rjPrimitives.PushBack(rjPrimitive, alloc);
     }
   }
 
-  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, const std::vector<GeometryItem>& geos)
+  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, std::vector<GeometryItem>& geos)
   {
     // Calc average pos and count number of vertices
     size_t nv = 0;
@@ -485,9 +485,22 @@ namespace {
 
     avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
 
-
     rj::Value rjPrimitives(rj::kArrayType);
-    mergeAndAddTriangulationRange(ctx, model, rjPrimitives, geos, avg);
+
+    // Break down into ranges of fixed sort key (fixed material and primitive type)    
+    std::sort(geos.begin(), geos.end(), [](const GeometryItem& a, const GeometryItem& b) { return a.sortKey < b.sortKey; });
+    for (size_t a = 0, n = geos.size(); a < n; ) {
+      size_t b = a + 1;
+      while (b < n && geos[a].sortKey == geos[b].sortKey) { b++; }
+
+      // build primitive containing range
+      addPrimitiveForGeometries(ctx, model,
+                                rjPrimitives,
+                                std::span<const GeometryItem>(geos.data() + a, b - a),
+                                avg);
+
+      a = b;
+    }
 
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
@@ -629,10 +642,8 @@ namespace {
         ctx.geos.clear();
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
           if (geo->triangulation) {
-            ctx.geos.push_back({
-              .geo = geo,
-              .materialIx = createOrGetColor(ctx, model, geo)
-            });
+            size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
+            ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
           }
         }
         if (!ctx.geos.empty()) {
