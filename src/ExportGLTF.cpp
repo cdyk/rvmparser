@@ -461,7 +461,7 @@ namespace {
 
     rjPrimitives.PushBack(rjPrimitive, alloc);
 
-    ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
+    //ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
 
     return true;  // We did add geometry
   }
@@ -514,7 +514,7 @@ namespace {
       indexOffset += indexCount;
     }
 
-    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
+    //ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
     if (vertexOffset != 0 && indexOffset != 0) {
       uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
       uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
