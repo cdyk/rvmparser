@@ -172,6 +172,7 @@
     <ClCompile Include="..\src\ExportObj.cpp" />
     <ClCompile Include="..\src\ExportRev.cpp" />
     <ClCompile Include="..\src\Flatten.cpp" />
+    <ClCompile Include="..\src\FlattenRegex.cpp" />
     <ClCompile Include="..\src\LinAlgOps.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\ParserAtt.cpp" />

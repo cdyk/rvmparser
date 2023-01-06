@@ -136,6 +136,8 @@ Files with .rvm-suffix will be interpreted as a geometry files, and files with .
 will be interpreted as attribute files. A rvm file typically has a matching attribute file.
 
 Options:
+  --keep-regex=<keep-regex>           Prune hierarchy by flattening node hierarchy that has names
+                                      that do not match the regular expression.
   --keep-groups=filename.txt          Provide a list of group names to keep. Groups not itself or
                                       with a child in this list will be merged with the first
                                       parent that should be kept.
@@ -211,6 +213,7 @@ int main(int argc, char** argv)
   unsigned chunkTinyVertexThreshold = 0;
 
   bool groupBoundingBoxes = false;
+  std::string keep_regex;
   std::string discard_groups;
   std::string keep_groups;
   std::string output_json;
@@ -247,6 +250,10 @@ int main(int argc, char** argv)
         auto val = arg.substr(e + 1);
         if (key == "--keep-groups") {
           keep_groups = val;
+          continue;
+        }
+        else if (key == "--keep-regex") {
+          keep_regex = val;
           continue;
         }
         else if (key == "--discard-groups") {
@@ -363,6 +370,12 @@ int main(int argc, char** argv)
     }
   } 
 
+  if (rv == 0 && !keep_regex.empty()) {
+    if (!flattenRegex(store, logger, keep_regex.c_str())) {
+      logger(2, "Failed to flatten hierarchy using regex '%s'", keep_regex.c_str());
+      rv = -1;
+    }
+  }
 
   if (rv == 0) {
     connect(store, logger);
