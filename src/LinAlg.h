@@ -62,6 +62,7 @@ struct Vec3d
 };
 inline Vec3d makeVec3d(const float* ptr) { Vec3d r; r.x = ptr[0]; r.y = ptr[1]; r.z = ptr[2]; return r; }
 inline Vec3d makeVec3d(double x, double y, double z) { Vec3d r; r.x = x; r.y = y; r.z = z; return r; }
+inline Vec3f makeVec3f(const Vec3d& q) { Vec3f r; r.x = static_cast<float>(q.x); r.y = static_cast<float>(q.y); r.z = static_cast<float>(q.z); return r; }
 
 
 struct BBox3f
