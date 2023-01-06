@@ -143,14 +143,14 @@ namespace {
     }
   }
 
-  uint32_t createBufferView(Context& ctx, Model& model, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
+  uint32_t createBufferView(Context& ctx, Model& model, const void* data, size_t count, size_t byte_stride, uint32_t target, bool copy)
   {
     assert(count);
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     uint32_t bufferIndex = 0;
     uint32_t byteOffset = 0;
-    uint32_t byteLength = byte_stride * count;
+    size_t byteLength = byte_stride * count;
 
     // For GLB, we have one large buffer containing everything that we make later
     if (ctx.glbContainer) {
@@ -184,7 +184,7 @@ namespace {
     return view_ix;
   }
 
-  uint32_t createAccessorVec3f(Context& ctx, Model& model, const Vec3f* data, uint32_t count, bool copy)
+  uint32_t createAccessorVec3f(Context& ctx, Model& model, const Vec3f* data, size_t count, bool copy)
   {
     assert(count);
     uint32_t view_ix = createBufferView(ctx, model,
@@ -224,7 +224,7 @@ namespace {
     return accessor_ix;
   }
 
-  uint32_t createAccessorUint32(Context& ctx, Model& model, const uint32_t* data, uint32_t count, bool copy)
+  uint32_t createAccessorUint32(Context& ctx, Model& model, const uint32_t* data, size_t count, bool copy)
   {
     assert(count);
     uint32_t view_ix = createBufferView(ctx, model,
