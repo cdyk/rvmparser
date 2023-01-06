@@ -518,7 +518,7 @@ namespace {
     if (vertexOffset != 0 && indexOffset != 0) {
       uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
       uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
-      uint32_t indicesAccesorIx = createAccessorUint32(ctx, model, I.data(), indexOffset, false);
+      uint32_t indicesAccesorIx = createAccessorUint32(ctx, model, I.data(), indexOffset, true);
 
       rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
