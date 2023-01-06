@@ -457,7 +457,7 @@ namespace {
     rj::Value rjPrimitive(rj::kObjectType);
     rjPrimitive.AddMember("mode", 0x0001 /* GL_LINES */, alloc);
     rjPrimitive.AddMember("attributes", rjAttributes, alloc);
-    rjPrimitive.AddMember("material", geos[0].sortKey >> 1, alloc);
+    rjPrimitive.AddMember("material", static_cast<uint32_t>(geos[0].sortKey >> 1), alloc);
 
     rjPrimitives.PushBack(rjPrimitive, alloc);
 
