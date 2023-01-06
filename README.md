@@ -51,6 +51,10 @@ Options:
                                       rotation of 90 degrees about the X axis such that the +Z axis
                                       will map to the +Y axis, which is the up-direction of GLTF-
                                       files. Default value is true.
+  --output-gltf-merge-geos=<bool>     If true, all geometries below a node will be merged instead
+                                      of having a dummy holder node to hold each geometry piece.
+                                      This transform geometries into common frames, disable this to
+                                      avoid that. Default value is true.
   --output-gltf-split-level=<uint>    Specify a level in the hierarchy to split the output into
                                       multiple files, where 0 implies no split. Geometries and
                                       attributes below the split point are included in the first

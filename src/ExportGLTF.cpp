@@ -1025,13 +1025,14 @@ namespace {
 }
 
 
-bool exportGLTF(Store* store, Logger logger, const char* path, size_t splitLevel, bool rotateZToY, bool centerModel, bool includeAttributes)
+bool exportGLTF(Store* store, Logger logger, const char* path, size_t splitLevel, bool rotateZToY, bool centerModel, bool includeAttributes, bool mergeGeometries)
 {
   Context ctx{
     .logger = logger,
     .centerModel = centerModel,
     .rotateZToY = rotateZToY,
     .includeAttributes = includeAttributes,
+    .mergeGeometries = mergeGeometries
   };
   ctx.split.level = splitLevel;
 
