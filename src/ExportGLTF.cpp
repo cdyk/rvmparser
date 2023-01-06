@@ -393,16 +393,59 @@ namespace {
     }
   }
 
-  void addPrimitiveForGeometries(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  void addPrimitiveForLines(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
+    assert(!geos.empty());
+    std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
+    size_t vertexOffset = 0;
+
+    for (const GeometryItem& item : geos) {
+      const Geometry* geo = item.geo;
+      assert(geo->kind == Geometry::Kind::Line);
+
+      // Matrix that transform from local transform to cog
+      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      M.m03 -= localOrigin.x;
+      M.m13 -= localOrigin.y;
+      M.m23 -= localOrigin.z;
+
+      V.resize(vertexOffset + 2);
+      V[vertexOffset + 0] = makeVec3f(mul(M, makeVec3d(geo->line.a, 0.0, 0.0)));
+      V[vertexOffset + 1] = makeVec3f(mul(M, makeVec3d(geo->line.b, 0.0, 0.0)));
+      vertexOffset += 2;
+    }
+
+    uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
+
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+    rj::Value rjAttributes(rj::kObjectType);
+    rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
+
+    rj::Value rjPrimitive(rj::kObjectType);
+    rjPrimitive.AddMember("mode", 0x0001 /* GL_LINES */, alloc);
+    rjPrimitive.AddMember("attributes", rjAttributes, alloc);
+    rjPrimitive.AddMember("material", geos[0].sortKey >> 1, alloc);
+
+    rjPrimitives.PushBack(rjPrimitive, alloc);
+
+    ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
+  }
+
+
+  void addPrimitiveForTriangulations(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  {
+    assert(!geos.empty());
     std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
     std::vector<Vec3f>& N = ctx.tmp3f_2;
     std::vector<uint32_t>& I = ctx.tmp32ui;
-
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
+
     for (const GeometryItem& item : geos) {
       const Geometry* geo = item.geo;
+      assert(geo->kind != Geometry::Kind::Line);
+      if (!geo->triangulation) continue;  // Skip missing triangulations
 
       // Matrix that transform from local transform to cog
       Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
@@ -420,10 +463,7 @@ namespace {
       N.resize(vertexOffset + vertexCount);
 
       for (size_t i = 0; i < vertexCount; i++) {
-        const Vec3d p = mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
-        ctx.tmp3f_1[vertexOffset + i] = makeVec3f(static_cast<float>(p.x),
-                                        static_cast<float>(p.y),
-                                        static_cast<float>(p.z));
+        ctx.tmp3f_1[vertexOffset + i] = makeVec3f(mul(M, makeVec3d(geo->triangulation->vertices + 3 * i)));
         Vec3f n = normalize(mul(T, makeVec3f(geo->triangulation->normals + 3 * i)));
         if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
           n = makeVec3f(1.f, 0.f, 0.f);
@@ -440,10 +480,8 @@ namespace {
       vertexOffset += vertexCount;
       indexOffset += indexCount;
     }
-    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
 
     if (vertexOffset != 0 && indexOffset != 0) {
-
       uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
       uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
       uint32_t indicesAccesorIx = createAccessorUint32(ctx, model, I.data(), indexOffset, false);
@@ -462,28 +500,33 @@ namespace {
 
       rjPrimitives.PushBack(rjPrimitive, alloc);
     }
+    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
   }
 
   void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, std::vector<GeometryItem>& geos)
   {
     // Calc average pos and count number of vertices
-    size_t nv = 0;
-    size_t nt = 0;
     Vec3d avg = makeVec3d(0.0, 0.0, 0.0);
-    for (const GeometryItem& item : geos) {
-      const Geometry* geo = item.geo;
-      assert(geo->triangulation);
-
-      const Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
-      for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
-        avg = avg + mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
+    {
+      size_t nv = 0;
+      for (const GeometryItem& item : geos) {
+        const Geometry* geo = item.geo;
+        const Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+        if (geo->kind == Geometry::Kind::Line) {
+          avg = avg
+              + mul(M, makeVec3d(geo->line.a, 0.0, 0.0))
+              + mul(M, makeVec3d(geo->line.b, 0.0, 0.0));
+          nv += 2;
+        }
+        else if (geo->triangulation) {
+          for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
+            avg = avg + mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
+          }
+          nv += geo->triangulation->vertices_n;
+        }
       }
-      nv += geo->triangulation->vertices_n;
-      nt += geo->triangulation->triangles_n;
+      avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
     }
-    assert(nv < std::numeric_limits<uint32_t>::max());
-
-    avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
 
     rj::Value rjPrimitives(rj::kArrayType);
 
@@ -494,11 +537,13 @@ namespace {
       while (b < n && geos[a].sortKey == geos[b].sortKey) { b++; }
 
       // build primitive containing range
-      addPrimitiveForGeometries(ctx, model,
-                                rjPrimitives,
-                                std::span<const GeometryItem>(geos.data() + a, b - a),
-                                avg);
-
+      std::span<const GeometryItem> span(geos.data() + a, b - a);
+      if (geos[a].geo->kind == Geometry::Kind::Line) {
+        addPrimitiveForLines(ctx, model, rjPrimitives, span, avg);
+      }
+      else {
+        addPrimitiveForTriangulations(ctx, model, rjPrimitives, span, avg);
+      }
       a = b;
     }
 
@@ -641,10 +686,8 @@ namespace {
 
         ctx.geos.clear();
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-          if (geo->triangulation) {
-            size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
-            ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
-          }
+          size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
+          ctx.geos.push_back({ .sortKey = sortKey, .geo = geo });
         }
         if (!ctx.geos.empty()) {
           rj::Value geometryNode(rj::kObjectType);
