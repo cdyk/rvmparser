@@ -384,7 +384,7 @@ namespace {
     }
   }
 
-  bool insertGeometryIntoNode(Context& ctx, Model& model, rj::Value& node, Geometry* geo)
+  bool insertGeometryIntoNode(Context& ctx, Model& model, rj::Value& node, const Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
@@ -419,7 +419,7 @@ namespace {
     return true;
   }
 
-  void addPrimitiveForLines(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  bool addPrimitiveForLines(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
     assert(!geos.empty());
     std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
@@ -456,9 +456,11 @@ namespace {
     rjPrimitives.PushBack(rjPrimitive, alloc);
 
     ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
+
+    return true;  // We did add geometry
   }
 
-  void addPrimitiveForTriangulations(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  bool addPrimitiveForTriangulations(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
     assert(!geos.empty());
     std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
@@ -506,6 +508,7 @@ namespace {
       indexOffset += indexCount;
     }
 
+    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
     if (vertexOffset != 0 && indexOffset != 0) {
       uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
       uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
@@ -524,11 +527,14 @@ namespace {
       rjPrimitive.AddMember("material", geos[0].sortKey >> 1, alloc);
 
       rjPrimitives.PushBack(rjPrimitive, alloc);
+
+      return true;  // We did add geometry
     }
-    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
+
+    return false; // No geometry added
   }
 
-  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, std::vector<GeometryItem>& geos)
+  bool insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, std::vector<GeometryItem>& geos)
   {
     // Calc average pos and count number of vertices
     Vec3d avg = makeVec3d(0.0, 0.0, 0.0);
@@ -572,6 +578,10 @@ namespace {
       a = b;
     }
 
+    if (rjPrimitives.Empty()) {
+      return false; // No primitives
+    }
+
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     rj::Value mesh(rj::kObjectType);
@@ -586,6 +596,8 @@ namespace {
       translation.PushBack(avg[r] - model.origin[r], alloc);
     }
     node.AddMember("translation", translation, alloc);
+
+    return true;
   }
 
   void addAttributes(Context& ctx, Model& model, rj::Value& rjNode, const Node* node)
