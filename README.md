@@ -27,6 +27,10 @@ Files with .rvm-suffix will be interpreted as a geometry files, and files with .
 will be interpreted as attribute files. A rvm file typically has a matching attribute file.
 
 Options:
+  --keep-regex=<keep-regex>           Prune hierarchy by flattening node hierarchy that has names
+                                      that do not match the regular expression. Note that the full
+                                      name must match the regex, not just a part of the name, e.g.,
+                                      the regex ^/.* will match all names that start with /.
   --keep-groups=filename.txt          Provide a list of group names to keep. Groups not itself or
                                       with a child in this list will be merged with the first
                                       parent that should be kept.
