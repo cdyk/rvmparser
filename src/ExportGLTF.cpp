@@ -311,7 +311,13 @@ namespace {
     return colorIndex;
   }
 
-  void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, Geometry* geo)
+  void addChildNode(Model& model, rj::Value& rjParentChildren, rj::Value& rjChildNode)
+  {
+    rjParentChildren.PushBack(model.rjNodes.Size(), model.rjAlloc);
+    model.rjNodes.PushBack(rjChildNode, model.rjAlloc);
+  }
+
+  void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, const Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
     if (geo->kind == Geometry::Kind::Line) {
