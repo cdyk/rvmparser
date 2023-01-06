@@ -271,8 +271,10 @@ namespace {
     return accessorIndex;
   }
 
-  uint32_t createOrGetColor(Context& /*ctx*/, Model& model, const char* colorName, uint32_t color, uint8_t transparency)
+  uint32_t createOrGetColor(Context& /*ctx*/, Model& model, const Geometry* geo)
   {
+    uint32_t color = geo->color;
+    uint8_t transparency = static_cast<uint8_t>(geo->transparency);
     // make sure key is never zero
     uint64_t key = (uint64_t(color) << 9) | (uint64_t(transparency) << 1) | 1;
     if (uint64_t val; model.definedMaterials.get(val, key)) {
@@ -293,8 +295,8 @@ namespace {
     rjPbrMetallicRoughness.AddMember("roughnessFactor", 0.5f, alloc);
 
     rj::Value material(rj::kObjectType);
-    if (colorName) {
-      material.AddMember("name", rj::Value(colorName, alloc), alloc);
+    if (geo->colorName) {
+      material.AddMember("name", rj::Value(geo->colorName, alloc), alloc);
       material.AddMember("pbrMetallicRoughness", rjPbrMetallicRoughness, alloc);
     }
     if (transparency != 0) {
@@ -306,14 +308,6 @@ namespace {
     model.rjMaterials.PushBack(material, alloc);
 
     return colorIndex;
-  }
-
-  uint32_t createOrGetColor(Context& ctx, Model& model, const Geometry* geo)
-  {
-    return createOrGetColor(ctx, model,
-                            geo->colorName,
-                            geo->color,
-                            static_cast<uint8_t>(geo->transparency));
   }
 
   void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, Geometry* geo)
@@ -334,7 +328,7 @@ namespace {
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, model, geo->colorName, geo->color, static_cast<uint8_t>(geo->transparency));
+      uint32_t material_ix = createOrGetColor(ctx, model, geo);
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -383,11 +377,7 @@ namespace {
         rjPrimitive.AddMember("indices", accessor_ix, alloc);
       }
 
-      rjPrimitive.AddMember("material", createOrGetColor(ctx, model,
-                                                         geo->colorName,
-                                                         geo->color,
-                                                         static_cast<uint8_t>(geo->transparency)),
-                            alloc);
+      rjPrimitive.AddMember("material", createOrGetColor(ctx, model, geo), alloc);
 
       rjPrimitivesNode.PushBack(rjPrimitive, alloc);
     }
