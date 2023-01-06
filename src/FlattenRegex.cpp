@@ -3,6 +3,12 @@
 
 #include "Store.h"
 
+// Flatten with regex
+// ==================
+//
+// Simplifies the hierarchy by removing all nodes that doesn't have a name that
+// matches a regex. The geometries and attributes of discarded node are moved to
+// the neareast ancestor that is kept.
 
 namespace {
   
@@ -13,20 +19,58 @@ namespace {
     std::regex re;
   };
 
-  void extractKeepList(Context& ctx, const Node* group)
+  // Grabs all children from a parent node and checks the children one-by-one.
+  // 
+  // If the child is to be kept, it is inserted as a child of the nearest kept
+  // ancestor (which can be the same node as parent) and is recursed upon using
+  // that child as neareast kept ancestor.
+  //
+  // If the node is to be discarded, all attributes and geometries are moved to
+  // the neareast kept ancestor, and the function recurse on the children.
+  //
+  void handleChildren(Context& ctx, Node* nearestKeptAncestor, Node* parent)
   {
-    assert(group->kind == Node::Kind::Group);
-    if (group->group.name && std::regex_match(group->group.name, ctx.re)) {
-      ctx.logger(1, "Keep: %s", group->group.name);
-    }
-    else {
-      ctx.logger(1, "Discard: %s", group->group.name);
-    }
+    // Grab children from parent
+    ListHeader<Node> children = parent->children;
+    parent->children.clear();
 
-    for (const Node* child = group->children.first; child; child = child->next) {
-      extractKeepList(ctx, child);
+    // Process grabbed children one-by-one
+    while (Node* child = children.popFront()) {
+
+      // Child should be kept
+      if (child->group.name && std::regex_match(child->group.name, ctx.re)) {
+
+        // Set it as child of nearest kept ancestor node. That might be its original
+        // parent, but that is OK since we removed all children from the parent
+        // before the loop.
+        nearestKeptAncestor->children.insert(child);
+
+        // Recurse using child as nearest .
+        handleChildren(ctx, child, child);
+      }
+      
+      // node should be discarded, move attributes and geometries
+      else {
+
+        // Move attributes from node to be discarded to nearest kept ancestor node.
+        ListHeader<Attribute> attributes = child->attributes;
+        attributes.clear();
+        while (Attribute* att = attributes.popFront()) {
+          nearestKeptAncestor->attributes.insert(att);
+        }
+
+        // Move geometries from node to be discarded to nearest keeper node.
+        ListHeader<Geometry> geometries = child->group.geometries;
+        child->group.geometries.clear();
+        while (Geometry* geo = geometries.popFront()) {
+          nearestKeptAncestor->group.geometries.insert(geo);
+        }
+
+        handleChildren(ctx, nearestKeptAncestor, child);
+      }
     }
   }
+
 
 }
 
@@ -45,14 +89,14 @@ bool flattenRegex(Store* store, Logger logger, const char* regex)
     return false;
   }
 
-  for (const Node* root = store->getFirstRoot(); root; root = root->next) {
-    for (const Node* model = root->children.first; model; model = model->next) {
-      for (const Node* group = model->children.first; group; group = group->next) {
-        extractKeepList(ctx, group);
+  // The three lowest levels, file, model and first group are always kept
+  for (Node* root = store->getFirstRoot(); root; root = root->next) {
+    for (Node* model = root->children.first; model; model = model->next) {
+      for (Node* group = model->children.first; group; group = group->next) {
+        handleChildren(ctx, group, group);
       }
     }
   }
-
 
   return true;
 }
