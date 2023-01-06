@@ -223,7 +223,7 @@ namespace {
     rjAccessor.AddMember("byteOffset", 0, alloc);
     rjAccessor.AddMember("type", "VEC3", alloc);
     rjAccessor.AddMember("componentType", 0x1406 /* GL_FLOAT*/, alloc);
-    rjAccessor.AddMember("count", count, alloc);
+    rjAccessor.AddMember("count", static_cast<uint64_t>(count), alloc);
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
@@ -263,7 +263,7 @@ namespace {
     rjAccessor.AddMember("byteOffset", 0, alloc);
     rjAccessor.AddMember("type", "SCALAR", alloc);
     rjAccessor.AddMember("componentType", 0x1405 /* GL_UNSIGNED_INT*/, alloc);
-    rjAccessor.AddMember("count", count, alloc);
+    rjAccessor.AddMember("count", static_cast<uint64_t>(count), alloc);
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
