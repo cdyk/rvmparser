@@ -164,6 +164,10 @@ Options:
                                       rotation of 90 degrees about the X axis such that the +Z axis
                                       will map to the +Y axis, which is the up-direction of GLTF-
                                       files. Default value is true.
+  --output-gltf-merge-geos=<bool>     If true, all geometries below a node will be merged instead
+                                      of having a dummy holder node to hold each geometry piece.
+                                      This transform geometries into common frames, disable this to
+                                      avoid that. Default value is true.
   --output-gltf-split-level=<uint>    Specify a level in the hierarchy to split the output into
                                       multiple files, where 0 implies no split. Geometries and
                                       attributes below the split point are included in the first
@@ -224,6 +228,7 @@ int main(int argc, char** argv)
   bool output_gltf_rotate_z_to_y = true;
   bool output_gltf_center = false;
   bool output_gltf_attributes = true;
+  bool output_gltf_merge_geos = true;
   size_t output_gltf_split_level = 0;
 
   std::string output_rev;
@@ -296,6 +301,10 @@ int main(int argc, char** argv)
         }
         else if (key == "--output-gltf-attributes") {
           output_gltf_attributes = parseBool(logger, arg, val);
+          continue;
+        }
+        else if (key == "--output-gltf-merge-geos") {
+          output_gltf_merge_geos = parseBool(logger, arg, val);
           continue;
         }
         else if (key == "--output-gltf-split-level") {
@@ -520,7 +529,8 @@ int main(int argc, char** argv)
                    output_gltf_split_level,
                    output_gltf_rotate_z_to_y,
                    output_gltf_center,
-                   output_gltf_attributes))
+                   output_gltf_attributes,
+                   output_gltf_merge_geos))
     {
       long long e = std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::high_resolution_clock::now() - time0)).count();
       logger(0, "Exported gltf in %lldms", e);

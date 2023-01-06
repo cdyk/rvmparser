@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <span>
 #include <memory>
 #include <cctype>
 #include <rapidjson/document.h>
@@ -51,6 +52,12 @@ namespace {
     Vec3f origin = makeVec3f(0.f);
   };
 
+  struct GeometryItem
+  {
+    size_t sortKey;   // Bit 0 is line-not-line, bits 1 and up are material index
+    const Geometry* geo;
+  };
+
   struct Context {
     Logger logger = nullptr;
     
@@ -58,8 +65,11 @@ namespace {
     const char* suffix = nullptr;
 
     std::vector<char> tmpBase64;
-    std::vector<Vec3f> tmp3f;
-    
+    std::vector<Vec3f> tmp3f_1;
+    std::vector<Vec3f> tmp3f_2;
+    std::vector<uint32_t> tmp32ui;
+    std::vector<GeometryItem> tmpGeos;
+
     struct {
       size_t level = 0;   // Level to do splitting, 0 for no splitting
       size_t choose = 0;  // Keeping track of which split we are processing
@@ -71,6 +81,7 @@ namespace {
     bool rotateZToY = true;
     bool includeAttributes = false;
     bool glbContainer = false;
+    bool mergeGeometries = true;
   };
 
 
@@ -140,14 +151,14 @@ namespace {
     }
   }
 
-  uint32_t createBufferView(Context& ctx, Model& model, const void* data, uint32_t count, uint32_t byte_stride, uint32_t target, bool copy)
+  uint32_t createBufferView(Context& ctx, Model& model, const void* data, size_t count, size_t byte_stride, uint32_t target, bool copy)
   {
     assert(count);
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
     uint32_t bufferIndex = 0;
     uint32_t byteOffset = 0;
-    uint32_t byteLength = byte_stride * count;
+    size_t byteLength = byte_stride * count;
 
     // For GLB, we have one large buffer containing everything that we make later
     if (ctx.glbContainer) {
@@ -162,7 +173,7 @@ namespace {
 
       rj::Value rjBuffer(rj::kObjectType);
       rjBuffer.AddMember("uri", rjData, alloc);
-      rjBuffer.AddMember("byteLength", byteLength, alloc);
+      rjBuffer.AddMember("byteLength", static_cast<uint64_t>(byteLength), alloc);
       bufferIndex = model.rjBufferViews.Size();
       model.rjBuffers.PushBack(rjBuffer, alloc);
     }
@@ -172,7 +183,7 @@ namespace {
     if (byteOffset) {
       rjBufferView.AddMember("byteOffset", byteOffset, alloc);
     }
-    rjBufferView.AddMember("byteLength", byteLength, alloc);
+    rjBufferView.AddMember("byteLength", static_cast<uint64_t>(byteLength), alloc);
 
     rjBufferView.AddMember("target", target, alloc);
 
@@ -181,7 +192,7 @@ namespace {
     return view_ix;
   }
 
-  uint32_t createAccessorVec3f(Context& ctx, Model& model, const Vec3f* data, uint32_t count, bool copy)
+  uint32_t createAccessorVec3f(Context& ctx, Model& model, const Vec3f* data, size_t count, bool copy)
   {
     assert(count);
     uint32_t view_ix = createBufferView(ctx, model,
@@ -212,7 +223,7 @@ namespace {
     rjAccessor.AddMember("byteOffset", 0, alloc);
     rjAccessor.AddMember("type", "VEC3", alloc);
     rjAccessor.AddMember("componentType", 0x1406 /* GL_FLOAT*/, alloc);
-    rjAccessor.AddMember("count", count, alloc);
+    rjAccessor.AddMember("count", static_cast<uint64_t>(count), alloc);
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
@@ -221,7 +232,7 @@ namespace {
     return accessor_ix;
   }
 
-  uint32_t createAccessorUint32(Context& ctx, Model& model, const uint32_t* data, uint32_t count, bool copy)
+  uint32_t createAccessorUint32(Context& ctx, Model& model, const uint32_t* data, size_t count, bool copy)
   {
     assert(count);
     uint32_t view_ix = createBufferView(ctx, model,
@@ -252,7 +263,7 @@ namespace {
     rjAccessor.AddMember("byteOffset", 0, alloc);
     rjAccessor.AddMember("type", "SCALAR", alloc);
     rjAccessor.AddMember("componentType", 0x1405 /* GL_UNSIGNED_INT*/, alloc);
-    rjAccessor.AddMember("count", count, alloc);
+    rjAccessor.AddMember("count", static_cast<uint64_t>(count), alloc);
     rjAccessor.AddMember("min", rjMin, alloc);
     rjAccessor.AddMember("max", rjMax, alloc);
 
@@ -261,8 +272,10 @@ namespace {
     return accessorIndex;
   }
 
-  uint32_t createOrGetColor(Context& /*ctx*/, Model& model, const char* colorName, uint32_t color, uint8_t transparency)
+  uint32_t createOrGetColor(Context& /*ctx*/, Model& model, const Geometry* geo)
   {
+    uint32_t color = geo->color;
+    uint8_t transparency = static_cast<uint8_t>(geo->transparency);
     // make sure key is never zero
     uint64_t key = (uint64_t(color) << 9) | (uint64_t(transparency) << 1) | 1;
     if (uint64_t val; model.definedMaterials.get(val, key)) {
@@ -283,8 +296,8 @@ namespace {
     rjPbrMetallicRoughness.AddMember("roughnessFactor", 0.5f, alloc);
 
     rj::Value material(rj::kObjectType);
-    if (colorName) {
-      material.AddMember("name", rj::Value(colorName, alloc), alloc);
+    if (geo->colorName) {
+      material.AddMember("name", rj::Value(geo->colorName, alloc), alloc);
       material.AddMember("pbrMetallicRoughness", rjPbrMetallicRoughness, alloc);
     }
     if (transparency != 0) {
@@ -298,7 +311,13 @@ namespace {
     return colorIndex;
   }
 
-  void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, Geometry* geo)
+  void addChildNode(Model& model, rj::Value& rjParentChildren, rj::Value& rjChildNode)
+  {
+    rjParentChildren.PushBack(model.rjNodes.Size(), model.rjAlloc);
+    model.rjNodes.PushBack(rjChildNode, model.rjAlloc);
+  }
+
+  void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, const Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
     if (geo->kind == Geometry::Kind::Line) {
@@ -316,7 +335,7 @@ namespace {
 
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
 
-      uint32_t material_ix = createOrGetColor(ctx, model, geo->colorName, geo->color, static_cast<uint8_t>(geo->transparency));
+      uint32_t material_ix = createOrGetColor(ctx, model, geo);
       rjPrimitive.AddMember("material", material_ix, alloc);
     }
     else {
@@ -343,7 +362,7 @@ namespace {
       if (tri->normals) {
 
         // Make sure that normal vectors are of unit length
-        std::vector<Vec3f>& tmpNormals = ctx.tmp3f;
+        std::vector<Vec3f>& tmpNormals = ctx.tmp3f_1;
         tmpNormals.resize(tri->vertices_n * 3);
         for (size_t i = 0; i < tri->vertices_n; i++) {
           Vec3f n = normalize(makeVec3f(tri->normals + 3 * i));
@@ -365,17 +384,13 @@ namespace {
         rjPrimitive.AddMember("indices", accessor_ix, alloc);
       }
 
-      rjPrimitive.AddMember("material", createOrGetColor(ctx, model,
-                                                         geo->colorName,
-                                                         geo->color,
-                                                         static_cast<uint8_t>(geo->transparency)),
-                            alloc);
+      rjPrimitive.AddMember("material", createOrGetColor(ctx, model, geo), alloc);
 
       rjPrimitivesNode.PushBack(rjPrimitive, alloc);
     }
   }
 
-  void createGeometryNode(Context& ctx, Model& model, rj::Value& rjChildren, Geometry* geo)
+  bool insertGeometryIntoNode(Context& ctx, Model& model, rj::Value& node, const Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
@@ -383,7 +398,7 @@ namespace {
     addGeometryPrimitive(ctx, model, rjPrimitives, geo);
 
     // If no primitives were produced, no point in creating mesh and mesh-holding node
-    if (rjPrimitives.Empty()) return;
+    if (rjPrimitives.Empty()) return false;
 
     // Create mesh
     rj::Value mesh(rj::kObjectType);
@@ -391,9 +406,6 @@ namespace {
     uint32_t meshIndex = model.rjMeshes.Size();
     model.rjMeshes.PushBack(mesh, alloc);
 
-    // Create mesh holding node
-
-    rj::Value node(rj::kObjectType);
     node.AddMember("mesh", meshIndex, alloc);
 
     rj::Value matrix(rj::kArrayType);
@@ -410,10 +422,188 @@ namespace {
 
     node.AddMember("matrix", matrix, alloc);
 
-    // Add this node to document
-    uint32_t nodeIndex = model.rjNodes.Size();
-    model.rjNodes.PushBack(node, alloc);
-    rjChildren.PushBack(nodeIndex, alloc);
+    return true;
+  }
+
+  bool addPrimitiveForLines(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  {
+    assert(!geos.empty());
+    std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
+    size_t vertexOffset = 0;
+
+    for (const GeometryItem& item : geos) {
+      const Geometry* geo = item.geo;
+      assert(geo->kind == Geometry::Kind::Line);
+
+      // Matrix that transform from local transform to cog
+      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      M.m03 -= localOrigin.x;
+      M.m13 -= localOrigin.y;
+      M.m23 -= localOrigin.z;
+
+      V.resize(vertexOffset + 2);
+      V[vertexOffset + 0] = makeVec3f(mul(M, makeVec3d(geo->line.a, 0.0, 0.0)));
+      V[vertexOffset + 1] = makeVec3f(mul(M, makeVec3d(geo->line.b, 0.0, 0.0)));
+      vertexOffset += 2;
+    }
+
+    uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
+
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+    rj::Value rjAttributes(rj::kObjectType);
+    rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
+
+    rj::Value rjPrimitive(rj::kObjectType);
+    rjPrimitive.AddMember("mode", 0x0001 /* GL_LINES */, alloc);
+    rjPrimitive.AddMember("attributes", rjAttributes, alloc);
+    rjPrimitive.AddMember("material", static_cast<uint32_t>(geos[0].sortKey >> 1), alloc);
+
+    rjPrimitives.PushBack(rjPrimitive, alloc);
+
+    //ctx.logger(2, "exportGLTF: merged %zu lines, vertexCount=%zu", geos.size(), vertexOffset);
+
+    return true;  // We did add geometry
+  }
+
+  bool addPrimitiveForTriangulations(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
+  {
+    assert(!geos.empty());
+    std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
+    std::vector<Vec3f>& N = ctx.tmp3f_2;
+    std::vector<uint32_t>& I = ctx.tmp32ui;
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
+
+    for (const GeometryItem& item : geos) {
+      const Geometry* geo = item.geo;
+      assert(geo->kind != Geometry::Kind::Line);
+      if (!geo->triangulation) continue;  // Skip missing triangulations
+
+      // Matrix that transform from local transform to cog
+      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      M.m03 -= localOrigin.x;
+      M.m13 -= localOrigin.y;
+      M.m23 -= localOrigin.z;
+
+      const Mat3f T = makeMat3f(geo->M_3x4.data);
+
+      size_t vertexCount = geo->triangulation->vertices_n;
+      size_t indexCount = 3 * geo->triangulation->triangles_n;
+
+      // Transform vertices and normals into new frame
+      V.resize(vertexOffset + vertexCount);
+      N.resize(vertexOffset + vertexCount);
+
+      for (size_t i = 0; i < vertexCount; i++) {
+        ctx.tmp3f_1[vertexOffset + i] = makeVec3f(mul(M, makeVec3d(geo->triangulation->vertices + 3 * i)));
+        Vec3f n = normalize(mul(T, makeVec3f(geo->triangulation->normals + 3 * i)));
+        if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
+          n = makeVec3f(1.f, 0.f, 0.f);
+        }
+        N[vertexOffset + i] = n;
+      }
+
+      // Transform indices
+      I.resize(indexOffset + indexCount);
+      for (size_t i = 0; i < indexCount; i++) {
+        I[indexOffset + i] = static_cast<uint32_t>(vertexOffset + geo->triangulation->indices[i]);
+      }
+
+      vertexOffset += vertexCount;
+      indexOffset += indexCount;
+    }
+
+    //ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
+    if (vertexOffset != 0 && indexOffset != 0) {
+      uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
+      uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
+      uint32_t indicesAccesorIx = createAccessorUint32(ctx, model, I.data(), indexOffset, true);
+
+      rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+      rj::Value rjAttributes(rj::kObjectType);
+      rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
+      rjAttributes.AddMember("NORMAL", normalAccessorIx, alloc);
+
+      rj::Value rjPrimitive(rj::kObjectType);
+      rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
+      rjPrimitive.AddMember("attributes", rjAttributes, alloc);
+      rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
+      rjPrimitive.AddMember("material", static_cast<uint32_t>(geos[0].sortKey >> 1), alloc);
+
+      rjPrimitives.PushBack(rjPrimitive, alloc);
+
+      return true;  // We did add geometry
+    }
+
+    return false; // No geometry added
+  }
+
+  bool insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, std::vector<GeometryItem>& geos)
+  {
+    // Calc average pos and count number of vertices
+    Vec3d avg = makeVec3d(0.0, 0.0, 0.0);
+    {
+      size_t nv = 0;
+      for (const GeometryItem& item : geos) {
+        const Geometry* geo = item.geo;
+        const Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+        if (geo->kind == Geometry::Kind::Line) {
+          avg = avg
+              + mul(M, makeVec3d(geo->line.a, 0.0, 0.0))
+              + mul(M, makeVec3d(geo->line.b, 0.0, 0.0));
+          nv += 2;
+        }
+        else if (geo->triangulation) {
+          for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
+            avg = avg + mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
+          }
+          nv += geo->triangulation->vertices_n;
+        }
+      }
+      avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
+    }
+
+    rj::Value rjPrimitives(rj::kArrayType);
+
+    // Break down into ranges of fixed sort key (fixed material and primitive type)    
+    std::sort(geos.begin(), geos.end(), [](const GeometryItem& a, const GeometryItem& b) { return a.sortKey < b.sortKey; });
+    for (size_t a = 0, n = geos.size(); a < n; ) {
+      size_t b = a + 1;
+      while (b < n && geos[a].sortKey == geos[b].sortKey) { b++; }
+
+      // build primitive containing range
+      std::span<const GeometryItem> span(geos.data() + a, b - a);
+      if (geos[a].geo->kind == Geometry::Kind::Line) {
+        addPrimitiveForLines(ctx, model, rjPrimitives, span, avg);
+      }
+      else {
+        addPrimitiveForTriangulations(ctx, model, rjPrimitives, span, avg);
+      }
+      a = b;
+    }
+
+    if (rjPrimitives.Empty()) {
+      return false; // No primitives
+    }
+
+    rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+    rj::Value mesh(rj::kObjectType);
+    mesh.AddMember("primitives", rjPrimitives, alloc);
+    uint32_t meshIndex = model.rjMeshes.Size();
+    model.rjMeshes.PushBack(mesh, alloc);
+
+    node.AddMember("mesh", meshIndex, alloc);
+
+    rj::Value translation(rj::kArrayType);
+    for (size_t r = 0; r < 3; r++) {
+      translation.PushBack(avg[r] - model.origin[r], alloc);
+    }
+    node.AddMember("translation", translation, alloc);
+
+    return true;
   }
 
   void addAttributes(Context& ctx, Model& model, rj::Value& rjNode, const Node* node)
@@ -435,6 +625,7 @@ namespace {
       rjNode.AddMember("extras", extras, alloc);
     }
   }
+
   uint32_t processNode(Context& ctx, Model& model, const Node* node, size_t level);
 
   void processChildren(Context& ctx, Model& model, rj::Value& children, const Node* firstChild, size_t level)
@@ -452,6 +643,37 @@ namespace {
     else {
       for (const Node* child = firstChild; child; child = child->next) {
         children.PushBack(processNode(ctx, model, child, nextLevel), model.rjAlloc);
+      }
+    }
+  }
+
+  void addGeometries(Context& ctx, Model& model, rj::Value& rjNode, rj::Value& rjNodeChildren, std::vector<GeometryItem>& geos, const bool modifyNodeTransform)
+  {
+    // Handle merging of multiple geometries
+    if (ctx.mergeGeometries && 1 < geos.size()) {
+      if (modifyNodeTransform) {
+        insertMergedGeometriesIntoNode(ctx, model, rjNode, geos);
+      }
+      else {
+        rj::Value geometryNode(rj::kObjectType);
+        if (insertMergedGeometriesIntoNode(ctx, model, geometryNode, geos)) {
+          addChildNode(model, rjNodeChildren, geometryNode);
+        }
+      }
+    }
+
+    // Handle single geometry when we can modify the node transform
+    else if (modifyNodeTransform && geos.size() == 1) {
+      insertGeometryIntoNode(ctx, model, rjNode, geos[0].geo);
+    }
+
+    // Or we have to create holder geometries for all
+    else {
+      for (const GeometryItem& item : geos) {
+        rj::Value geometryNode(rj::kObjectType);
+        if (insertGeometryIntoNode(ctx, model, geometryNode, item.geo)) {
+          addChildNode(model, rjNodeChildren, geometryNode);
+        }
       }
     }
   }
@@ -495,9 +717,20 @@ namespace {
       }
       if (includeContent) {
         addAttributes(ctx, model, rjNode, node);
-        // Create a child node for each geometry since transforms are per-geomtry
-        for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
-          createGeometryNode(ctx, model, children, geo);
+
+        if(node->group.geometries.first != nullptr) {
+
+          // Collect all geometries
+          std::vector<GeometryItem>& geos = ctx.tmpGeos;
+          geos.clear();
+          for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
+            size_t sortKey = (static_cast<size_t>(createOrGetColor(ctx, model, geo)) << 1) | (geo->kind == Geometry::Kind::Line ? 1 : 0);
+            geos.push_back({ .sortKey = sortKey, .geo = geo });
+          }
+
+          // Add geometries under node
+          addGeometries(ctx, model, rjNode, children, geos, node->children.first == nullptr);
+
         }
       }
       break;
@@ -792,13 +1025,14 @@ namespace {
 }
 
 
-bool exportGLTF(Store* store, Logger logger, const char* path, size_t splitLevel, bool rotateZToY, bool centerModel, bool includeAttributes)
+bool exportGLTF(Store* store, Logger logger, const char* path, size_t splitLevel, bool rotateZToY, bool centerModel, bool includeAttributes, bool mergeGeometries)
 {
   Context ctx{
     .logger = logger,
     .centerModel = centerModel,
     .rotateZToY = rotateZToY,
     .includeAttributes = includeAttributes,
+    .mergeGeometries = mergeGeometries
   };
   ctx.split.level = splitLevel;
 
