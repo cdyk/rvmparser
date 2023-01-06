@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <span>
 #include <memory>
 #include <cctype>
 #include <rapidjson/document.h>
@@ -378,6 +379,75 @@ namespace {
     }
   }
 
+  void mergeAndAddTriangulationRange(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const Geometry* const>& geos, const Vec3d& localOrigin, const uint32_t materialIx)
+  {
+    std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
+    std::vector<Vec3f>& N = ctx.tmp3f_2;
+    std::vector<uint32_t>& I = ctx.tmp32ui;
+
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
+    for (const Geometry* geo : geos) {
+
+      // Matrix that transform from local transform to cog
+      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
+      M.m03 -= localOrigin.x;
+      M.m13 -= localOrigin.y;
+      M.m23 -= localOrigin.z;
+
+      const Mat3f T = makeMat3f(geo->M_3x4.data);
+
+      size_t vertexCount = geo->triangulation->vertices_n;
+      size_t indexCount = 3 * geo->triangulation->triangles_n;
+
+      // Transform vertices and normals into new frame
+      V.resize(vertexOffset + vertexCount);
+      N.resize(vertexOffset + vertexCount);
+
+      for (size_t i = 0; i < vertexCount; i++) {
+        const Vec3d p = mul(M, makeVec3d(geo->triangulation->vertices + 3 * i));
+        ctx.tmp3f_1[vertexOffset + i] = makeVec3f(static_cast<float>(p.x),
+                                        static_cast<float>(p.y),
+                                        static_cast<float>(p.z));
+        Vec3f n = normalize(mul(T, makeVec3f(geo->triangulation->normals + 3 * i)));
+        if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
+          n = makeVec3f(1.f, 0.f, 0.f);
+        }
+        N[vertexOffset + i] = n;
+      }
+
+      // Transform indices
+      I.resize(indexOffset + indexCount);
+      for (size_t i = 0; i < indexCount; i++) {
+        I[indexOffset + i] = static_cast<uint32_t>(vertexOffset + geo->triangulation->indices[i]);
+      }
+
+      vertexOffset += vertexCount;
+      indexOffset += indexCount;
+    }
+    ctx.logger(2, "exportGLTF: merged %zu meshes, vertexCount=%zu, indexCount=%zu", geos.size(), vertexOffset, indexOffset);
+
+    if (vertexOffset != 0 && indexOffset != 0) {
+
+      uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), vertexOffset, true);
+      uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), vertexOffset, true);
+      uint32_t indicesAccesorIx = createAccessorUint32(ctx, model, I.data(), indexOffset, false);
+
+      rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
+
+      rj::Value rjAttributes(rj::kObjectType);
+      rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
+      rjAttributes.AddMember("NORMAL", normalAccessorIx, alloc);
+
+      rj::Value rjPrimitive(rj::kObjectType);
+      rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
+      rjPrimitive.AddMember("attributes", rjAttributes, alloc);
+      rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
+      rjPrimitive.AddMember("material", materialIx, alloc);
+
+      rjPrimitives.PushBack(rjPrimitive, alloc);
+    }
+  }
 
   void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, const std::vector<const Geometry*>& geos)
   {
@@ -399,77 +469,17 @@ namespace {
 
     avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
 
-    std::vector<Vec3f>& V = ctx.tmp3f_1;
-    V.resize(nv);
+    uint32_t materialIx = createOrGetColor(ctx, model,
+                                           geos[0]->colorName,
+                                           geos[0]->color,
+                                           static_cast<uint8_t>(geos[0]->transparency));
 
-    std::vector<Vec3f>& N = ctx.tmp3f_2;
-    N.resize(nv);
 
-    std::vector<uint32_t>& I = ctx.tmp32ui;
-    I.clear();
-    I.reserve(3 * nt);
-
-    size_t ov = 0;  // vertex offset
-    for (const Geometry* geo : geos) {
-
-      // Matrix that transform from local transform to cog
-      Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
-      M.m03 -= avg.x;
-      M.m13 -= avg.y;
-      M.m23 -= avg.z;
-
-      const Mat3f T = makeMat3f(geo->M_3x4.data);
-
-      // Transform vertices and normals into new frame
-      for (size_t i = 0; i < geo->triangulation->vertices_n; i++) {
-        const Vec3d p = mul(M, makeVec3d(geo->triangulation->vertices + 3*i));
-        ctx.tmp3f_1[ov + i] = makeVec3f(static_cast<float>(p.x),
-                                        static_cast<float>(p.y),
-                                        static_cast<float>(p.z));
-        Vec3f n = normalize(mul(T, makeVec3f(geo->triangulation->normals + 3 * i)));
-        if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
-          n = makeVec3f(1.f, 0.f, 0.f);
-        }
-        N[ov + i] = n;
-      }
-
-      // Transform indices
-      for (size_t i = 0; i < 3 * geo->triangulation->triangles_n; i++) {
-        I.push_back(static_cast<uint32_t>(geo->triangulation->indices[i] + ov));
-      }
-      ov += geo->triangulation->vertices_n;
-    }
-    assert(ov == nv);
-    assert(I.size() == 3 * nt);
-    ctx.logger(2, "exportGLTF: merged %zu meshes", geos.size());
+    rj::Value rjPrimitives(rj::kArrayType);
+    mergeAndAddTriangulationRange(ctx, model, rjPrimitives, geos, avg, materialIx);
 
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
-
-
-    uint32_t positionAccessorIx = createAccessorVec3f(ctx, model, V.data(), nv, true);
-    uint32_t normalAccessorIx = createAccessorVec3f(ctx, model, N.data(), nv, true);
-    uint32_t indicesAccesorIx = createAccessorUint32(ctx, model,  I.data(), 3 * nt, false);
-
-
-    rj::Value rjAttributes(rj::kObjectType);
-    rjAttributes.AddMember("POSITION", positionAccessorIx, alloc);
-    rjAttributes.AddMember("NORMAL", normalAccessorIx, alloc);
-
-    rj::Value rjPrimitive(rj::kObjectType);
-    rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
-    rjPrimitive.AddMember("attributes", rjAttributes, alloc);
-    rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
-    rjPrimitive.AddMember("material", createOrGetColor(ctx, model,
-                                                       geos[0]->colorName,
-                                                       geos[0]->color,
-                                                       static_cast<uint8_t>(geos[0]->transparency)),
-                          alloc);
-
-    rj::Value rjPrimitives(rj::kArrayType);
-    rjPrimitives.PushBack(rjPrimitive, alloc);
-
-    // Create mesh
     rj::Value mesh(rj::kObjectType);
     mesh.AddMember("primitives", rjPrimitives, alloc);
     uint32_t meshIndex = model.rjMeshes.Size();
