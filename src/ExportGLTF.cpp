@@ -52,6 +52,12 @@ namespace {
     Vec3f origin = makeVec3f(0.f);
   };
 
+  struct GeometryItem
+  {
+    const Geometry* geo;
+    uint32_t materialIx;
+  };
+
   struct Context {
     Logger logger = nullptr;
     
@@ -62,7 +68,7 @@ namespace {
     std::vector<Vec3f> tmp3f_1;
     std::vector<Vec3f> tmp3f_2;
     std::vector<uint32_t> tmp32ui;
-    std::vector<const Geometry*> geos;
+    std::vector<GeometryItem> geos;
 
     struct {
       size_t level = 0;   // Level to do splitting, 0 for no splitting
@@ -302,6 +308,14 @@ namespace {
     return colorIndex;
   }
 
+  uint32_t createOrGetColor(Context& ctx, Model& model, const Geometry* geo)
+  {
+    return createOrGetColor(ctx, model,
+                            geo->colorName,
+                            geo->color,
+                            static_cast<uint8_t>(geo->transparency));
+  }
+
   void addGeometryPrimitive(Context& ctx, Model& model, rj::Value& rjPrimitivesNode, Geometry* geo)
   {
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
@@ -379,7 +393,7 @@ namespace {
     }
   }
 
-  void mergeAndAddTriangulationRange(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const Geometry* const>& geos, const Vec3d& localOrigin, const uint32_t materialIx)
+  void mergeAndAddTriangulationRange(Context& ctx, Model& model, rj::Value& rjPrimitives, const std::span<const GeometryItem>& geos, const Vec3d& localOrigin)
   {
     std::vector<Vec3f>& V = ctx.tmp3f_1;  // No need to clear, they get resized before written to
     std::vector<Vec3f>& N = ctx.tmp3f_2;
@@ -387,7 +401,8 @@ namespace {
 
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
-    for (const Geometry* geo : geos) {
+    for (const GeometryItem& item : geos) {
+      const Geometry* geo = item.geo;
 
       // Matrix that transform from local transform to cog
       Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
@@ -443,19 +458,20 @@ namespace {
       rjPrimitive.AddMember("mode", 0x0004 /* GL_TRIANGLES */, alloc);
       rjPrimitive.AddMember("attributes", rjAttributes, alloc);
       rjPrimitive.AddMember("indices", indicesAccesorIx, alloc);
-      rjPrimitive.AddMember("material", materialIx, alloc);
+      rjPrimitive.AddMember("material", geos[0].materialIx, alloc);
 
       rjPrimitives.PushBack(rjPrimitive, alloc);
     }
   }
 
-  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, const std::vector<const Geometry*>& geos)
+  void insertMergedGeometriesIntoNode(Context& ctx, Model& model, rj::Value& node, const std::vector<GeometryItem>& geos)
   {
     // Calc average pos and count number of vertices
     size_t nv = 0;
     size_t nt = 0;
     Vec3d avg = makeVec3d(0.0, 0.0, 0.0);
-    for (const Geometry* geo : geos) {
+    for (const GeometryItem& item : geos) {
+      const Geometry* geo = item.geo;
       assert(geo->triangulation);
 
       const Mat3x4d M = makeMat3x4d(geo->M_3x4.data);
@@ -469,14 +485,9 @@ namespace {
 
     avg = (nv ? 1.0 / static_cast<double>(nv) : 0.0) * avg;
 
-    uint32_t materialIx = createOrGetColor(ctx, model,
-                                           geos[0]->colorName,
-                                           geos[0]->color,
-                                           static_cast<uint8_t>(geos[0]->transparency));
-
 
     rj::Value rjPrimitives(rj::kArrayType);
-    mergeAndAddTriangulationRange(ctx, model, rjPrimitives, geos, avg, materialIx);
+    mergeAndAddTriangulationRange(ctx, model, rjPrimitives, geos, avg);
 
     rj::MemoryPoolAllocator<rj::CrtAllocator>& alloc = model.rjAlloc;
 
@@ -618,7 +629,10 @@ namespace {
         ctx.geos.clear();
         for (Geometry* geo = node->group.geometries.first; geo; geo = geo->next) {
           if (geo->triangulation) {
-            ctx.geos.push_back(geo);
+            ctx.geos.push_back({
+              .geo = geo,
+              .materialIx = createOrGetColor(ctx, model, geo)
+            });
           }
         }
         if (!ctx.geos.empty()) {
