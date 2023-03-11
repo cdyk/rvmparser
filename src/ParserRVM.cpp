@@ -477,6 +477,13 @@ bool parseRVM(class Store* store, const char* path, const void * ptr, size_t siz
       curr_ptr = parse_colr(&ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
       if (curr_ptr == nullptr) return false;
       break;
+    case id("CNTE"):
+    { // Usually CNTB and CNTE are balanced in a file, but it appears that AVEVA Marine HullDesign
+      // can include an extra CNTE at the end of the file. We just ignore it for now.
+      uint32_t version_;
+      curr_ptr = read_uint32_be(version_, curr_ptr, end_ptr);
+      break;
+    }
     default:
       snprintf(ctx.buf, ctx.buf_size, "Unrecognized chunk %s", chunk_id);
       store->setErrorString(buf);
