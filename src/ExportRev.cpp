@@ -70,26 +70,18 @@ namespace {
   {
     // Skip primitives with unknown formatting
     switch (geometry->kind) {
-    case Geometry::Kind::Pyramid:
-      reportUnsupportedPrimitive(ctx,  1);
-      return; break;
-    case Geometry::Kind::RectangularTorus:
-      reportUnsupportedPrimitive(ctx,  3);
-      return; break;
-    case Geometry::Kind::EllipticalDish:
-      reportUnsupportedPrimitive(ctx,  5);
-      return; break;
     case Geometry::Kind::Sphere:
       reportUnsupportedPrimitive(ctx,  9);
       return; break;
-    case Geometry::Kind::Line:
-      reportUnsupportedPrimitive(ctx, 10);
-      return; break;
+    case Geometry::Kind::Pyramid:
+    case Geometry::Kind::RectangularTorus:
+    case Geometry::Kind::EllipticalDish:
     case Geometry::Kind::Box:
     case Geometry::Kind::CircularTorus:
     case Geometry::Kind::SphericalDish:
     case Geometry::Kind::Snout:
     case Geometry::Kind::Cylinder:
+    case Geometry::Kind::Line:
     case Geometry::Kind::FacetGroup:
       // supported
       break;
@@ -97,8 +89,21 @@ namespace {
       assert(false);
     }
 
-    // write
-    writeChunkHeader(ctx, "PRIM");
+    // write header with geometry type
+    switch (geometry->type) {
+    case Geometry::Type::Primitive:
+      writeChunkHeader(ctx, "PRIM");
+      break;
+    case Geometry::Type::Obstruction:
+      writeChunkHeader(ctx, "OBST");
+      break;
+    case Geometry::Type::Insulation:
+      writeChunkHeader(ctx, "INSU");
+      break;
+    default:
+      assert(false && "Invalid enum");
+      break;
+    }
 
     uint32_t kind = 0;
     switch (geometry->kind) {
@@ -129,16 +134,22 @@ namespace {
     }
 
     switch (geometry->kind) {
-    case Geometry::Kind::Pyramid: fflush(ctx->out);
-      fflush(ctx->out);
-      assert(false && "Unhandled primitive type 1");
+    case Geometry::Kind::Pyramid:
+      writeVec4f(ctx,
+                 geometry->pyramid.bottom[0], geometry->pyramid.bottom[1],
+                 geometry->pyramid.top[0], geometry->pyramid.top[1]);
+      writeVec3f(ctx,
+                 geometry->pyramid.offset[0], geometry->pyramid.offset[1], geometry->pyramid.height);
       break;
     case Geometry::Kind::Box:
       writeVec3f(ctx, geometry->box.lengths);
       break;
-    case Geometry::Kind::RectangularTorus: fflush(ctx->out);
-      fflush(ctx->out);
-      assert(false && "Unhandled primitive type 3");
+    case Geometry::Kind::RectangularTorus:
+      writeVec4f(ctx,
+                 geometry->rectangularTorus.inner_radius,
+                 geometry->rectangularTorus.outer_radius,
+                 geometry->rectangularTorus.height,
+                 geometry->rectangularTorus.angle);
       break;
     case Geometry::Kind::CircularTorus:
       writeVec3f(ctx,
@@ -146,9 +157,10 @@ namespace {
                  geometry->circularTorus.radius,
                  geometry->circularTorus.angle);
       break;
-    case Geometry::Kind::EllipticalDish: fflush(ctx->out);
-      fflush(ctx->out);
-      assert(false && "Unhandled primitive type 5");
+    case Geometry::Kind::EllipticalDish:
+      writeVec2f(ctx,
+                 geometry->ellipticalDish.baseRadius,
+                 geometry->ellipticalDish.height);
       break;
     case Geometry::Kind::SphericalDish:
       writeVec2f(ctx,
@@ -178,8 +190,9 @@ namespace {
       assert(false && "Unhandled primitive type 9");
       break;
     case Geometry::Kind::Line:
-      fflush(ctx->out);
-      assert(false && "Unhandled primitive type 10");
+      writeVec2f(ctx,
+                 geometry->line.a,
+                 geometry->line.b);
       break;
     case Geometry::Kind::FacetGroup: {
       const auto& facetGroup = geometry->facetGroup;
@@ -283,11 +296,11 @@ bool exportRev(Store* store, Logger logger, const char* path)
     return false;
   }
 #endif
-  logger(2, "exportRev: Writing %s...", path);
+  logger(0, "exportRev: Writing %s...", path);
   for (Node* file = store->getFirstRoot(); file; file = file->next) {
     writeFile(&ctx, file);
   }
-  logger(2, "exportRev: Writing %s... done", path);
+  logger(0, "exportRev: Writing %s... done", path);
   fclose(ctx.out);
   return true;
 }
