@@ -17,6 +17,7 @@ namespace {
   struct Context
   {
     Store* store;
+    Logger logger;
     char* buf;
     size_t buf_size;
     std::vector<Node*> group_stack;
@@ -430,10 +431,15 @@ namespace {
 
 }
 
-bool parseRVM(class Store* store, const char* path, const void * ptr, size_t size)
+bool parseRVM(class Store* store, Logger logger, const char* path, const void * ptr, size_t size)
 {
   char buf[1024];
-  Context ctx = { store,  buf, sizeof(buf) };
+  Context ctx = {
+    .store = store, 
+    .logger = logger,
+    .buf = buf,
+    .buf_size = sizeof(buf)
+  };
 
   const char* base_ptr = reinterpret_cast<const char*>(ptr);
   const char* curr_ptr = base_ptr;

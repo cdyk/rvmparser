@@ -340,7 +340,7 @@ int main(int argc, char** argv)
 
     // parse rvm file
     if (arg_lc.rfind(".rvm") != std::string::npos) {
-      if (processFile(arg, [store, arg](const void * ptr, size_t size) { return parseRVM(store, arg.c_str(), ptr, size); }))
+      if (processFile(arg, [store, arg](const void * ptr, size_t size) { return parseRVM(store, logger, arg.c_str(), ptr, size); }))
       {
         fprintf(stderr, "Successfully parsed %s\n", arg.c_str());
       }
