@@ -488,6 +488,7 @@ bool parseRVM(class Store* store, Logger logger, const char* path, const void * 
       // can include an extra CNTE at the end of the file. We just ignore it for now.
       uint32_t version_;
       curr_ptr = read_uint32_be(version_, curr_ptr, end_ptr);
+      ctx.logger(1, "Encountered unexpected CNTE chunk at root level, ignoring.");
       break;
     }
     default:
