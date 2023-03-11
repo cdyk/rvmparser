@@ -283,11 +283,11 @@ bool exportRev(Store* store, Logger logger, const char* path)
     return false;
   }
 #endif
-  logger(2, "exportRev: Writing %s...", path);
+  logger(0, "exportRev: Writing %s...", path);
   for (Node* file = store->getFirstRoot(); file; file = file->next) {
     writeFile(&ctx, file);
   }
-  logger(2, "exportRev: Writing %s... done", path);
+  logger(0, "exportRev: Writing %s... done", path);
   fclose(ctx.out);
   return true;
 }
