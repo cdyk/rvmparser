@@ -17,6 +17,7 @@ namespace {
   struct Context
   {
     Store* store;
+    Logger logger;
     char* buf;
     size_t buf_size;
     std::vector<Node*> group_stack;
@@ -430,10 +431,15 @@ namespace {
 
 }
 
-bool parseRVM(class Store* store, const char* path, const void * ptr, size_t size)
+bool parseRVM(class Store* store, Logger logger, const char* path, const void * ptr, size_t size)
 {
   char buf[1024];
-  Context ctx = { store,  buf, sizeof(buf) };
+  Context ctx = {
+    .store = store, 
+    .logger = logger,
+    .buf = buf,
+    .buf_size = sizeof(buf)
+  };
 
   const char* base_ptr = reinterpret_cast<const char*>(ptr);
   const char* curr_ptr = base_ptr;
@@ -477,6 +483,14 @@ bool parseRVM(class Store* store, const char* path, const void * ptr, size_t siz
       curr_ptr = parse_colr(&ctx, base_ptr, curr_ptr, end_ptr, expected_next_chunk_offset);
       if (curr_ptr == nullptr) return false;
       break;
+    case id("CNTE"):
+    { // Usually CNTB and CNTE are balanced in a file, but it appears that AVEVA Marine HullDesign
+      // can include an extra CNTE at the end of the file. We just ignore it for now.
+      uint32_t version_;
+      curr_ptr = read_uint32_be(version_, curr_ptr, end_ptr);
+      ctx.logger(1, "Encountered unexpected CNTE chunk at root level, ignoring.");
+      break;
+    }
     default:
       snprintf(ctx.buf, ctx.buf_size, "Unrecognized chunk %s", chunk_id);
       store->setErrorString(buf);
