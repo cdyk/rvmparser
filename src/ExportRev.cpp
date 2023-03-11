@@ -89,8 +89,21 @@ namespace {
       assert(false);
     }
 
-    // write
-    writeChunkHeader(ctx, "PRIM");
+    // write header with geometry type
+    switch (geometry->type) {
+    case Geometry::Type::Primitive:
+      writeChunkHeader(ctx, "PRIM");
+      break;
+    case Geometry::Type::Obstruction:
+      writeChunkHeader(ctx, "OBST");
+      break;
+    case Geometry::Type::Insulation:
+      writeChunkHeader(ctx, "INSU");
+      break;
+    default:
+      assert(false && "Invalid enum");
+      break;
+    }
 
     uint32_t kind = 0;
     switch (geometry->kind) {
