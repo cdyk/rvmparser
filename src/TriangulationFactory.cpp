@@ -1004,6 +1004,11 @@ Triangulation* TriangulationFactory::cylinder(Arena* arena, const Geometry* geo,
 
 Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale)
 {
+
+  if (scale_z == INFINITY) {
+    scale_z = 0;
+  }
+
   unsigned segments = sagittaBasedSegmentCount(twopi, radius, scale);
   unsigned samples = segments;  // Assumed to be closed
 
@@ -1015,6 +1020,8 @@ Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geomet
     arc = pi;
     is_sphere = true;
   }
+
+
 
   unsigned min_rings = 3;// arc <= half_pi ? 2 : 3;
   unsigned rings = unsigned(std::max(float(min_rings), scale_z * samples*arc*(1.f / twopi)));
