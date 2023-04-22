@@ -1005,7 +1005,7 @@ Triangulation* TriangulationFactory::cylinder(Arena* arena, const Geometry* geo,
 Triangulation* TriangulationFactory::sphereBasedShape(Arena* arena, const Geometry* geo, float radius, float arc, float shift_z, float scale_z, float scale)
 {
 
-  if (scale_z == INFINITY) {
+  if (!std::isfinite(scale_z)) {
     scale_z = 0;
   }
 
